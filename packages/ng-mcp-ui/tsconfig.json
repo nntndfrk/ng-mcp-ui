@@ -1,0 +1,35 @@
+{
+  // Single project compiling all four entry dirs (src/server, src/web,
+  // src/testing, src/tunnel) plus shared src/*, emitting to dist/* with matching
+  // .d.ts. Built with `ngc` (Angular compiler) in **partial** compilation mode
+  // (see angularCompilerOptions): the Node-only entries (server, tunnel) compile
+  // as plain TS, while the Angular entries (web, testing) — once they ship
+  // directives/pipes — emit Ivy partial metadata (`ɵɵngDeclare*`) so they are
+  // AOT-consumable by downstream apps. No bundler (no ng-packagr): the
+  // hand-authored package.json `exports` map the per-file dist directly.
+  //
+  // We start on ngc partial from the skeleton (rather than plain tsc) so the
+  // published build contract is correct from day one and never needs migrating
+  // when the first declarable lands. See README "Build tooling".
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    // Legacy (`__decorate`) emit for Angular's class decorators. Needed so
+    // Vitest's esbuild transform (which discovers THIS tsconfig) can down-level
+    // any decorated module without throwing at load in a Node test env — keeping
+    // the `web` barrel Node-importable. Harmless for the current decorator-free
+    // skeleton; load-bearing once the web declarables arrive.
+    "experimentalDecorators": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"],
+  // `**/*.test.ts` (runtime) and `**/*.test-d.ts` (type tests) are run by Vitest,
+  // never emitted to dist.
+  "exclude": ["**/*.test.ts", "**/*.test-d.ts", "dist", "node_modules"],
+  "angularCompilerOptions": {
+    "compilationMode": "partial"
+  }
+}
