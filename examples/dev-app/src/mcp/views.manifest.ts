@@ -1,0 +1,40 @@
+// View manifest wiring for the dev-app's MCP server.
+//
+// `IndexHtmlViewManifest` parses the widgets build's emitted
+// `dist/widgets/browser/index.html` for the hashed `main-*.js`/`styles-*.css`.
+// For the M1 server-track gate the widgets bundle is not necessarily built, so
+// we resolve the manifest defensively:
+//
+//   * if `dist/widgets/browser/index.html` exists → parse it
+//     (`IndexHtmlViewManifest`) so `resources/read` returns the real hashed
+//     filenames.
+//   * otherwise → an `InMemoryViewManifest('main.js')`, which still produces a
+//     well-formed shell (`serverUrl` + `viewName` + `<div id="root">` +
+//     `/assets/widgets/main.js`) — enough to satisfy the inspector probe.
+
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import {
+  IndexHtmlViewManifest,
+  InMemoryViewManifest,
+  type ViewManifest,
+} from "ng-mcp-ui/server";
+
+/** Resolve the widgets `index.html` relative to this module at runtime. */
+function widgetsIndexHtmlPath(): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  // At runtime this module lives in `dist/dev-app/server/`; the widgets build
+  // output is a sibling under `dist/widgets/browser/index.html`.
+  return resolve(here, "../../widgets/browser/index.html");
+}
+
+/** Pick the real parsed manifest when the widgets build exists, else in-memory. */
+export function resolveViewManifest(): ViewManifest {
+  const indexHtml = widgetsIndexHtmlPath();
+  if (existsSync(indexHtml)) {
+    return new IndexHtmlViewManifest({ path: indexHtml });
+  }
+  return new InMemoryViewManifest("main.js");
+}
