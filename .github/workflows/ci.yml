@@ -49,3 +49,36 @@ jobs:
 
       - name: Verify pack
         run: npm run verify:pack --workspace ng-mcp-ui
+
+  m1-gate:
+    # M1 server-track exit gate: build the library, then build the dev-app's
+    # Angular SSR server and probe its mounted `/mcp` endpoint end-to-end
+    # (examples/dev-app `verify` = `ng build` + verify-inspector). Its own job so
+    # the heavy Angular build doesn't slow the fast lint/test loop in `build`.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Cache Angular build
+        uses: actions/cache@v4
+        with:
+          path: examples/dev-app/.angular/cache
+          key: angular-cache-${{ runner.os }}-${{ hashFiles('examples/dev-app/**/*.ts', 'examples/dev-app/angular.json', 'package-lock.json') }}
+          restore-keys: |
+            angular-cache-${{ runner.os }}-
+
+      # The dev-app imports `ng-mcp-ui/server` from the workspace package's
+      # `dist/`, so the library must be built before the dev-app's `ng build`.
+      - name: Build library
+        run: npm run build --workspace ng-mcp-ui
+
+      - name: Verify M1 gate (dev-app)
+        run: npm run verify --workspace dev-app
