@@ -46,4 +46,13 @@ describe("mergeWithUnion", () => {
       v: ["x"],
     });
   });
+
+  it("overwrites non-plain objects (Date) wholesale instead of spreading them", () => {
+    const earlier = new Date(0);
+    const later = new Date(1000);
+    const merged = mergeWithUnion({ when: earlier }, { when: later });
+    // The source value wins and keeps its prototype — not a {} spread.
+    expect(merged.when).toBe(later);
+    expect(merged.when).toBeInstanceOf(Date);
+  });
 });
