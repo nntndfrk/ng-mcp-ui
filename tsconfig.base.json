@@ -1,0 +1,33 @@
+{
+  // Shared strict compiler options. Each package extends this and sets its own
+  // rootDir/outDir/composite/types.
+  "compilerOptions": {
+    // Module resolution
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+
+    // Language and environment
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "useDefineForClassFields": true,
+
+    // Strictness and checking
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // Code quality & diagnostics
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "isolatedModules": true,
+
+    // Output (defaults; packages override)
+    "declaration": true,
+    "sourceMap": true
+  }
+}

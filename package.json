@@ -1,0 +1,25 @@
+{
+  "name": "ng-mcp-ui-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Angular schematic + library that retrofits Angular apps with MCP interactive UI views",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "npm run build --workspaces --if-present",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.0",
+    "@types/node": "^25.9.2",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.8"
+  }
+}

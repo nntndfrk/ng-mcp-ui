@@ -1,0 +1,12 @@
+{
+  // Root project: type-checks workspace-level tooling (e.g. vitest.config.ts).
+  // Each package carries its own tsconfig + build. When the first package lands,
+  // this becomes a solution file with `references` driven by `tsc -b`
+  // (production build order — see .claude/DRAFT-TO-PRODUCTION-HANDOFF.md §9).
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["vitest.config.ts"]
+}

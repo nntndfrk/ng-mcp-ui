@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.angular/
+*.tsbuildinfo
+
+# Test output
+coverage/
+
+# Reference / scratch dirs — kept locally, never tracked
+#   .claude/ holds the planning docs, the draft codebase (.claude/draft/),
+#   and the recoverable draft-history.bundle. spike/ is the bundling PoC.
+.claude/
+spike/
+
+# OS / editor
+.DS_Store
+*.log
