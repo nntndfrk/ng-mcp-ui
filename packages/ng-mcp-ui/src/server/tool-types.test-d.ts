@@ -48,6 +48,23 @@ describe("ExtractStructuredContent", () => {
       ExtractStructuredContent<{ content: string }>
     >().toBeNever();
   });
+
+  it("pulls the shape from an optional structuredContent? (undefined stripped)", () => {
+    expectTypeOf<
+      ExtractStructuredContent<{
+        content: string;
+        structuredContent?: { hits: number };
+      }>
+    >().toEqualTypeOf<{ hits: number }>();
+  });
+
+  it("pulls the shape from the carrying member of a union return", () => {
+    expectTypeOf<
+      ExtractStructuredContent<
+        { content: string } | { content: string; structuredContent: { hits: number } }
+      >
+    >().toEqualTypeOf<{ hits: number }>();
+  });
 });
 
 describe("ExtractMeta", () => {
@@ -59,6 +76,12 @@ describe("ExtractMeta", () => {
 
   it("is unknown when the return declares no _meta", () => {
     expectTypeOf<ExtractMeta<{ content: string }>>().toBeUnknown();
+  });
+
+  it("pulls the shape from an optional _meta? (undefined stripped)", () => {
+    expectTypeOf<
+      ExtractMeta<{ content: string; _meta?: { traceId: string } }>
+    >().toEqualTypeOf<{ traceId: string }>();
   });
 });
 

@@ -42,19 +42,37 @@ export type ShapeOutput<Shape extends ZodRawShapeCompat> = Simplify<
   }
 >;
 
-/** @internal Pull a handler return's `structuredContent` shape, or `never` if it has none. */
-export type ExtractStructuredContent<T> = T extends {
-  structuredContent: infer SC;
-}
-  ? Simplify<SC>
+/**
+ * @internal
+ * Pull a handler return's `structuredContent` shape, or `never` if no return
+ * member declares it. Distributes over unions and tests key *presence* (rather
+ * than `T extends { structuredContent: infer SC }`, which only matches a
+ * **required** property), so an optional `structuredContent?:` and conditional
+ * (`A | B`) returns are handled — each member that carries the key contributes
+ * its shape, with `undefined` stripped.
+ */
+export type ExtractStructuredContent<T> = T extends unknown
+  ? "structuredContent" extends keyof T
+    ? Simplify<Exclude<T["structuredContent"], undefined>>
+    : never
   : never;
 
-/** @internal Pull a handler return's `_meta` shape, or `unknown` if it declares none. */
-export type ExtractMeta<T> = [Extract<T, { _meta: unknown }>] extends [never]
+/** @internal Per-union-member `_meta` shape, or `never` for members without it. */
+type MetaOf<T> = T extends unknown
+  ? "_meta" extends keyof T
+    ? Exclude<T["_meta"], undefined>
+    : never
+  : never;
+
+/**
+ * @internal
+ * Pull a handler return's `_meta` shape, or `unknown` if no return member
+ * declares it. Like {@link ExtractStructuredContent}, it tests key presence so
+ * an optional `_meta?:` and union returns are handled.
+ */
+export type ExtractMeta<T> = [MetaOf<T>] extends [never]
   ? unknown
-  : Extract<T, { _meta: unknown }> extends { _meta: infer M }
-    ? Simplify<M>
-    : unknown;
+  : Simplify<MetaOf<T>>;
 
 /**
  * @internal
