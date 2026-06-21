@@ -4,7 +4,9 @@
 // convenience wrapper (`optionalBearerAuth`). They are express-level
 // `RequestHandler`s, so they slot in naturally around `createMcpExpressRouter`:
 // mount `requireBearerAuth(...)` / `optionalBearerAuth(...)` on the host app
-// before the MCP router, or pass them into the router's error pipeline.
+// before the MCP router so an unauthenticated request is rejected before it
+// reaches the transport. (These are request middleware, not error handlers, so
+// they don't belong in the router's `errorMiddleware` pipeline.)
 //
 // Zero new dependencies: everything comes from `@modelcontextprotocol/sdk`
 // (already a peer dep) and `express` (already a peer dep). Nothing is stubbed.
