@@ -17,6 +17,13 @@ describe("readHeader", () => {
   it("returns undefined for an absent header", () => {
     expect(readHeader({}, "host")).toBeUndefined();
   });
+
+  it("looks up case-insensitively (HTTP header names are)", () => {
+    expect(readHeader({ Host: "a.com" }, "host")).toBe("a.com");
+    expect(readHeader({ "X-Forwarded-Host": "b.com" }, "x-forwarded-host")).toBe(
+      "b.com",
+    );
+  });
 });
 
 describe("resolveServerUrl", () => {
@@ -35,9 +42,24 @@ describe("resolveServerUrl", () => {
     );
   });
 
+  it("takes the first token of comma-separated forwarded headers (proxy chain)", () => {
+    expect(
+      resolveServerUrl({
+        "x-forwarded-host": "a.example.com, b.example.com",
+        "x-forwarded-proto": "https,http",
+      }),
+    ).toBe("https://a.example.com");
+  });
+
   it("falls back to origin when no forwarded host", () => {
     expect(resolveServerUrl({ origin: "https://app.example.com" })).toBe(
       "https://app.example.com",
+    );
+  });
+
+  it("treats Origin: null (sandboxed/opaque) as absent and falls through", () => {
+    expect(resolveServerUrl({ origin: "null", host: "example.com" })).toBe(
+      "https://example.com",
     );
   });
 
@@ -51,6 +73,14 @@ describe("resolveServerUrl", () => {
     expect(resolveServerUrl({ host: "127.0.0.1:3000" })).toBe(
       "http://127.0.0.1:3000",
     );
+  });
+
+  it("treats a bare localhost host (no port) as local", () => {
+    expect(resolveServerUrl({ host: "localhost" })).toBe("http://localhost");
+  });
+
+  it("treats an IPv6 loopback host as local", () => {
+    expect(resolveServerUrl({ host: "[::1]:3000" })).toBe("http://[::1]:3000");
   });
 
   it("uses https for a non-local host", () => {
@@ -105,5 +135,13 @@ describe("resolveConnectDomains", () => {
     expect(
       resolveConnectDomains("http://localhost:4200", { isProduction: false }),
     ).toEqual(["http://localhost:4200", "ws://localhost:4200"]);
+  });
+
+  it("normalizes the server URL to an origin (CSP sources must be origins)", () => {
+    expect(
+      resolveConnectDomains("https://app.example.com/widgets?x=1", {
+        isProduction: true,
+      }),
+    ).toEqual(["https://app.example.com"]);
   });
 });
