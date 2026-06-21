@@ -148,6 +148,29 @@ describe("injectCallTool — behavior", () => {
     injector.destroy();
   });
 
+  it("treats an args object that merely contains an onSuccess key as ARGS, not SideEffects", async () => {
+    // Disambiguation guard: only an object whose keys are ALL callbacks is read
+    // as SideEffects. A real args object that happens to carry an `onSuccess`
+    // data field (a valid CallToolArgs key) alongside other keys must be passed
+    // through as args, not silently dropped to null.
+    const callTool = vi.fn().mockResolvedValueOnce(data);
+    const injector = makeInjector(callTool);
+
+    const tool = runInInjectionContext(injector, () =>
+      injectCallTool<{ query: string; onSuccess: string }, typeof data>(
+        toolName,
+      ),
+    );
+
+    const realArgs = { query: "pikachu", onSuccess: "not-a-callback" };
+    tool.callTool(realArgs);
+    await flush();
+
+    expect(callTool).toHaveBeenCalledWith(toolName, realArgs);
+
+    injector.destroy();
+  });
+
   it("callToolAsync() with no args passes null to the adaptor", async () => {
     const callTool = vi.fn().mockResolvedValueOnce(data);
     const injector = makeInjector(callTool);

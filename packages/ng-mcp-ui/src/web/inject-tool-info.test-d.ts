@@ -15,13 +15,10 @@ describe("injectToolInfo — TypeScript typing", () => {
     expectTypeOf(result.isPending).toEqualTypeOf<boolean>();
     expectTypeOf(result.isSuccess).toEqualTypeOf<boolean>();
     expectTypeOf(result.isIdle).toEqualTypeOf<boolean>();
-    // With no generic, the typed fields collapse to `never` (the default
-    // `TS = Record<string, never>` ⇒ `TS["input"]` is `never`), so the only
-    // value `result.input` can hold across the union is `undefined`. This asserts
-    // assignability: `undefined` is assignable to `Record<string,unknown> | undefined`.
-    expectTypeOf(result.input).toMatchTypeOf<
-      Record<string, unknown> | undefined
-    >();
+    // With no generic, `TS` defaults to `ToolSignature`, so each typed field is
+    // `Record<string, unknown>`. Across the union `result.input` is that (pending
+    // /success) or `null` (idle) — matching the host-context runtime values.
+    expectTypeOf(result.input).toEqualTypeOf<Record<string, unknown> | null>();
   });
 
   it("narrows input/output/responseMetadata with an explicit ToolSignature", () => {
@@ -37,26 +34,28 @@ describe("injectToolInfo — TypeScript typing", () => {
     const result = tool();
 
     if (result.status === "idle") {
-      expectTypeOf(result.input).toEqualTypeOf<undefined>();
-      expectTypeOf(result.output).toEqualTypeOf<undefined>();
-      expectTypeOf(result.responseMetadata).toEqualTypeOf<undefined>();
+      expectTypeOf(result.input).toEqualTypeOf<null>();
+      expectTypeOf(result.output).toEqualTypeOf<null>();
+      expectTypeOf(result.responseMetadata).toEqualTypeOf<null>();
     }
     if (result.status === "pending") {
       expectTypeOf(result.input).toEqualTypeOf<
         Record<string, unknown> & TestInput
       >();
-      expectTypeOf(result.output).toEqualTypeOf<undefined>();
-      expectTypeOf(result.responseMetadata).toEqualTypeOf<undefined>();
+      expectTypeOf(result.output).toEqualTypeOf<null>();
+      expectTypeOf(result.responseMetadata).toEqualTypeOf<null>();
     }
     if (result.status === "success") {
       expectTypeOf(result.input).toEqualTypeOf<
         Record<string, unknown> & TestInput
       >();
+      // output / responseMetadata are nullable in success: deriveStatus reaches
+      // success as soon as either arrives, so the other may still be null.
       expectTypeOf(result.output).toEqualTypeOf<
-        Record<string, unknown> & TestOutput
+        (Record<string, unknown> & TestOutput) | null
       >();
       expectTypeOf(result.responseMetadata).toEqualTypeOf<
-        Record<string, unknown> & TestMetadata
+        (Record<string, unknown> & TestMetadata) | null
       >();
     }
   });
@@ -89,8 +88,13 @@ describe("injectToolInfo — TypeScript typing", () => {
     type S = ToolState<{ a: number }, { b: string }, { c: boolean }>;
     const state = {} as S;
     if (state.status === "success") {
-      expectTypeOf(state.output.b).toBeString();
-      expectTypeOf(state.responseMetadata.c).toBeBoolean();
+      // output / responseMetadata are nullable in success — narrow before use.
+      if (state.output) {
+        expectTypeOf(state.output.b).toBeString();
+      }
+      if (state.responseMetadata) {
+        expectTypeOf(state.responseMetadata.c).toBeBoolean();
+      }
     }
   });
 });

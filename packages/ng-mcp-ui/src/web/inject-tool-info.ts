@@ -16,15 +16,21 @@ import { MCP_ADAPTOR } from "./tokens.js";
  */
 type UnknownObject = Record<string, unknown>;
 
+// Absent host-context fields surface as `null`, not `undefined`: the adaptor
+// stores type `toolInput` / `toolOutput` / `toolResponseMetadata` as
+// `Record<string, unknown> | null` (see bridges/types.ts HostContext) and the
+// wrapper passes those snapshots through verbatim. Modeling absence as `null`
+// keeps the public types aligned with the runtime values.
+
 /** {@link injectToolInfo} state before the tool has been invoked. */
 export type ToolIdleState = {
   status: "idle";
   isIdle: true;
   isPending: false;
   isSuccess: false;
-  input: undefined;
-  output: undefined;
-  responseMetadata: undefined;
+  input: null;
+  output: null;
+  responseMetadata: null;
 };
 
 /** {@link injectToolInfo} state while the tool is executing — `input` is available, output is not yet. */
@@ -34,11 +40,17 @@ export type ToolPendingState<ToolInput extends UnknownObject> = {
   isPending: true;
   isSuccess: false;
   input: ToolInput;
-  output: undefined;
-  responseMetadata: undefined;
+  output: null;
+  responseMetadata: null;
 };
 
-/** {@link injectToolInfo} state once the tool returned — `input`, `output`, and `responseMetadata` are all available. */
+/**
+ * {@link injectToolInfo} state once the tool returned — `input` is present and
+ * at least one of `output` / `responseMetadata` is present. The other may still
+ * be `null`: `deriveStatus` reaches `success` as soon as *either* arrives (an
+ * mcp-app host can push `responseMetadata` without `structuredContent`), so both
+ * are modeled as nullable to match the runtime.
+ */
 export type ToolSuccessState<
   ToolInput extends UnknownObject,
   ToolOutput extends UnknownObject,
@@ -49,8 +61,8 @@ export type ToolSuccessState<
   isPending: false;
   isSuccess: true;
   input: ToolInput;
-  output: ToolOutput;
-  responseMetadata: ToolResponseMetadata;
+  output: ToolOutput | null;
+  responseMetadata: ToolResponseMetadata | null;
 };
 
 /**
@@ -111,9 +123,10 @@ function deriveStatus(
  * `DestroyRef` (wired by {@link createHostContextSignals}).
  *
  * @typeParam TS - Optional partial `{ input, output, responseMetadata }` shape
- * refining each typed field. When omitted each typed field resolves to the
- * generic `Record<string, unknown>` (intersected with `Record<string, never>`,
- * the default `TS extends Partial<ToolSignature>`).
+ * refining each typed field. When omitted it defaults to {@link ToolSignature},
+ * so each typed field resolves to the generic `Record<string, unknown>` (absent
+ * fields are still `null` per the state types). A `Record<string, never>` default
+ * was wrong here — indexing it collapses every field to `never`.
  *
  * @example
  * ```ts
@@ -129,7 +142,7 @@ function deriveStatus(
  * ```
  */
 export function injectToolInfo<
-  TS extends Partial<ToolSignature> = Record<string, never>,
+  TS extends Partial<ToolSignature> = ToolSignature,
 >(): Signal<
   ToolState<
     UnknownObject & TS["input"],

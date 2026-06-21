@@ -6,10 +6,13 @@ import type {
 
 /**
  * Shared test fakes for the inject* wrapper suites. This is **not** a public
- * API and not a test suite: it has no `.test.` infix so vitest's include glob
- * never collects it. It deliberately avoids importing `vitest` (a hand-rolled
- * call counter stands in for `vi.fn`) so `ngc` can compile it without test
- * types, mirroring the inline fakes in `host-context.test.ts` while
+ * API and not a test suite: it has no `.test.` infix, so vitest's runtime
+ * include glob never collects it as a suite, and `tsconfig.json` excludes the
+ * `test-fakes.ts` glob from the ngc build so it is never emitted to `dist` (it
+ * must not ship). It is reached only by the `*.test.ts` suites, which Vitest
+ * transpiles from the raw `.ts` via esbuild — so it never needs ngc compilation.
+ * It deliberately avoids importing `vitest` (a hand-rolled call counter stands
+ * in for `vi.fn`), mirroring the inline fakes in `host-context.test.ts` while
  * de-duplicating them across the inject* wrapper suites.
  */
 

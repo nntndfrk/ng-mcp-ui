@@ -222,15 +222,25 @@ export function injectCallTool<
     sideEffects?: SideEffects<ToolArgs, CombinedCallToolResponse>,
   ) => {
     let toolArgs: ToolArgs;
+    // Disambiguate `callTool(sideEffects)` from `callTool(args)`: treat the
+    // leading object as SideEffects only when EVERY own key is a known callback
+    // (and there is at least one). A looser `"onSuccess" in firstArg` check
+    // misread a real args object that merely *contained* an `onSuccess` /
+    // `onError` / `onSettled` key — all valid `CallToolArgs` keys — as callbacks,
+    // silently dropping the args and calling the tool with `null`.
+    const firstArgKeys =
+      firstArg && typeof firstArg === "object" ? Object.keys(firstArg) : [];
     if (
-      firstArg &&
-      typeof firstArg === "object" &&
-      ("onSuccess" in firstArg ||
-        "onError" in firstArg ||
-        "onSettled" in firstArg)
+      firstArgKeys.length > 0 &&
+      firstArgKeys.every(
+        (k) => k === "onSuccess" || k === "onError" || k === "onSettled",
+      )
     ) {
       toolArgs = null as ToolArgs; // no toolArgs provided
-      sideEffects = firstArg;
+      sideEffects = firstArg as SideEffects<
+        ToolArgs,
+        CombinedCallToolResponse
+      >;
     } else {
       toolArgs = (firstArg === undefined ? null : firstArg) as ToolArgs;
     }
