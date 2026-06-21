@@ -18,4 +18,14 @@ export {
 // (and `injectHostContext()` is usable) ahead of `provideMcpUi`, which will be
 // the ergonomic way to provide it. `MCP_SERVER_URL` is added alongside then.
 export { MCP_ADAPTOR } from "./tokens.js";
+// Angular modal service for mcp-app hosts. `provideMcpModal()` is appended by
+// `provideMcpUi()` once it lands; `createMcpModal` is the non-DI form. Wired for
+// mcp-app only (gated by `MCP_MODAL_ENABLED`); a no-op elsewhere.
+export {
+  createMcpModal,
+  MCP_MODAL,
+  MCP_MODAL_ENABLED,
+  type McpModal,
+  provideMcpModal,
+} from "./mcp-modal.js";
 export { NG_MCP_UI_VERSION } from "../version.js";
