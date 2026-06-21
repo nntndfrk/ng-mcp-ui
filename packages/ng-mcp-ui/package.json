@@ -68,6 +68,9 @@
     "@angular/compiler": "^22.0.0",
     "@angular/compiler-cli": "^22.0.0",
     "@angular/core": "^22.0.0",
-    "vitest": "^4.1.8"
+    "@modelcontextprotocol/ext-apps": "^1.7.3",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "vitest": "^4.1.8",
+    "zod": "^4.3.6"
   }
 }
