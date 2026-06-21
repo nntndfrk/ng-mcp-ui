@@ -83,10 +83,14 @@ export type CreateViewAssetRouterOptions =
  * Apply the always-on CORS header. Module scripts and `crossorigin` CSS fetches
  * require `Access-Control-Allow-Origin` to succeed cross-origin (PLAN §5.1).
  * `*` is safe: these are public, read-only static assets with no credentials.
+ *
+ * No `Vary: Origin`: the ACAO is a constant `*`, not a reflected request Origin,
+ * so the response is identical for every origin. Adding `Vary: Origin` would
+ * only shard shared/CDN caches per-origin and hurt hit rates on the immutable
+ * hashed bundles (and would clobber any upstream `Vary` on the dev-proxy path).
  */
 function applyCors(res: Response): void {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Vary", "Origin");
 }
 
 /**
@@ -164,6 +168,17 @@ export function createViewAssetRouter(
  */
 function devProxy(devServerUrl: string) {
   const upstream = new URL(devServerUrl);
+
+  // This minimal proxy speaks plain HTTP via `node:http`; an `https:` upstream
+  // would silently fail (HTTP request to a TLS port). `ng serve` is HTTP, so
+  // fail fast at construction with a clear message rather than at request time.
+  if (upstream.protocol !== "http:") {
+    throw new Error(
+      `ng-mcp-ui: the widgets dev-server proxy only supports http:// upstreams, ` +
+        `got "${devServerUrl}". Point devServerUrl at the \`ng serve\` origin ` +
+        "(e.g. http://localhost:4200).",
+    );
+  }
 
   return (req: Request, res: Response, next: NextFunction): void => {
     applyCors(res);

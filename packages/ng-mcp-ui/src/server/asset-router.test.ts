@@ -73,6 +73,13 @@ describe("createViewAssetRouter (production / static)", () => {
       .expect(404);
   });
 
+  it("does not set Vary: Origin (ACAO is a constant *, not a reflected origin)", async () => {
+    const res = await request(appWith(createViewAssetRouter({ dir })))
+      .get("/assets/widgets/main-XBYE53NT.js")
+      .expect(200);
+    expect(res.headers.vary).toBeUndefined();
+  });
+
   it("answers CORS preflight (OPTIONS) with 204 + allow headers", async () => {
     const res = await request(appWith(createViewAssetRouter({ dir })))
       .options("/assets/widgets/main-XBYE53NT.js")
@@ -132,5 +139,16 @@ describe("createViewAssetRouter (development / dev-proxy)", () => {
       }),
     );
     await request(app).get("/assets/widgets/main.js").expect(502);
+  });
+
+  it("throws at construction for an https:// dev upstream (node:http only)", () => {
+    // The minimal node:http proxy can't speak TLS; fail fast with a clear error
+    // rather than producing an obscure runtime failure on the first request.
+    expect(() =>
+      createViewAssetRouter({
+        mode: "development",
+        devServerUrl: "https://localhost:4200",
+      }),
+    ).toThrow(/only supports http:\/\/ upstreams/);
   });
 });
