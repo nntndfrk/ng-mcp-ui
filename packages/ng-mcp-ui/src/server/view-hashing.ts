@@ -13,8 +13,15 @@ import { createHash } from "node:crypto";
  * upstream Skybridge reference reads that header because it deploys behind
  * Alpic's hosting edge (which proxies the public connector URL and re-sends it
  * via that header); this library self-hosts / tunnels instead (PLAN §6), so the
- * header is never set — and trusting a client-settable header to seed a CSP
- * domain would be dead weight at best and a spoofing seam at worst.
+ * header is never set and reading it would be dead weight.
+ *
+ * Trust note: the hashed URL is only as trustworthy as the edge terminating the
+ * request. `serverUrl` derives from `x-forwarded-host` / `-proto`, which are
+ * themselves client-settable — so the deployment's edge (the Cloudflare tunnel,
+ * or a reverse proxy) MUST overwrite inbound forwarded headers for the resulting
+ * domain to be authoritative. Dropping the Alpic header narrows trust to that
+ * single, edge-governed forwarded chain; it does not by itself make the hash
+ * spoof-proof.
  *
  * A lone trailing slash is stripped first so the hash matches the connector URL
  * **exactly as registered with Claude** — bare origins are registered without a
