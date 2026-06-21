@@ -5,8 +5,10 @@ MCP servers whose tools render interactive Angular widgets inside Claude,
 ChatGPT, and other MCP-Apps hosts (Angular **v20–v22**).
 
 > ### 🚧 Status: early development
-> Package skeleton. The four subpath entries exist and resolve; their real
-> surface lands incrementally. Not yet published to npm — the API may change.
+> Under active construction. `ng-mcp-ui/server` now ships its pure-TS foundation
+> (content helpers, the `FileRef` schema, and the tool/type inference machinery);
+> the remaining server, web, testing, and tunnel surface lands incrementally. Not
+> yet published to npm — the API may change.
 
 ## Subpath exports
 

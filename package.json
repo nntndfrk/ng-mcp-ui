@@ -14,7 +14,8 @@
     "format": "biome format --write .",
     "typecheck": "node tools/typecheck.mjs",
     "build": "npm run build --workspaces --if-present",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "test:types": "vitest run --typecheck.only"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",

@@ -1,0 +1,22 @@
+{
+  // Used ONLY by `vitest --typecheck` (the `test:types` script, wired via
+  // `typecheck.tsconfig` in the root vitest.config.ts). Mirrors the package's
+  // strict settings but INCLUDES the `*.test-d.ts` type-test files (which the
+  // build/`tsconfig.json` excludes from emit) and emits nothing — type-check
+  // only. Never referenced by `build` / `typecheck` (ngc).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "sourceMap": false,
+    "experimentalDecorators": true,
+    "rootDir": "src",
+    "types": ["node"]
+  },
+  "include": ["src/**/*.test-d.ts", "src/**/*.ts"],
+  // Exclude the runtime `*.test.ts` suites: they're handled by vitest/esbuild at
+  // runtime and pull in test-only typings; this config is solely for the
+  // compile-time `*.test-d.ts` files + their imports.
+  "exclude": ["**/*.test.ts", "dist", "node_modules"]
+}
