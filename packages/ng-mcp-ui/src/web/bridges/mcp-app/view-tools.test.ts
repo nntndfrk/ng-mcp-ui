@@ -34,7 +34,10 @@ class FakeMessageEvent extends Event {
 }
 
 const outgoing: JsonRpcMessage[] = [];
-const eventTarget = new EventTarget();
+// Recreated per test in installHostMock() so a leaked `message` listener from a
+// prior test's ext-apps App (resetInstance() clears the bridge map but does not
+// tear the transport down) can't fire on this test's dispatches.
+let eventTarget = new EventTarget();
 
 interface FakeWindow {
   addEventListener: EventTarget["addEventListener"];
@@ -55,6 +58,7 @@ let fakeWindow: FakeWindow;
  */
 function installHostMock() {
   outgoing.length = 0;
+  eventTarget = new EventTarget();
   const parent = {
     postMessage: (message: JsonRpcMessage) => {
       outgoing.push(message);

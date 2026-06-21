@@ -4,6 +4,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import * as z from "zod";
+import { NG_MCP_UI_VERSION } from "../../../version.js";
 import type {
   AnyViewToolHandler,
   Bridge,
@@ -110,7 +111,7 @@ export class McpAppBridge implements Bridge<McpAppContext> {
     }
     if (!McpAppBridge.instance) {
       const defaultOptions = {
-        appInfo: { name: "ng-mcp-ui-app", version: "0.0.1" },
+        appInfo: { name: "ng-mcp-ui-app", version: NG_MCP_UI_VERSION },
       };
       McpAppBridge.instance = new McpAppBridge({
         ...defaultOptions,

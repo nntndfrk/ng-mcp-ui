@@ -37,6 +37,18 @@ function findStorageKey(viewUUID: string): string | undefined {
   return undefined;
 }
 
+/**
+ * @internal A persisted `viewState` must be a plain object (the contract is
+ * `Record<string, unknown> | null`). Guards against a corrupted or foreign
+ * localStorage entry — a primitive, array, or otherwise non-object value — that
+ * would violate the contract and break consumers assuming an object.
+ */
+export function isViewStateRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /** @internal MCP Apps implementation of {@link Adaptor}. Resolved via {@link getAdaptor}. */
 export class McpAppAdaptor implements Adaptor {
   private static instance: McpAppAdaptor | null = null;
@@ -144,12 +156,19 @@ export class McpAppAdaptor implements Adaptor {
       );
     }
 
-    McpAppBridge.getInstance()
-      .getApp()
-      .then((app) => app.openLink({ url: href }))
-      .catch((err) => {
-        console.error("Failed to open external link:", err);
-      });
+    // Fire-and-forget. `getInstance()` runs synchronously and can throw (wrong
+    // runtime), which the promise `.catch` below would not intercept; wrap it so
+    // a `void` method never throws to its caller.
+    try {
+      void McpAppBridge.getInstance()
+        .getApp()
+        .then((app) => app.openLink({ url: href }))
+        .catch((err) => {
+          console.error("Failed to open external link:", err);
+        });
+    } catch (err) {
+      console.error("Failed to open external link:", err);
+    }
   }
 
   private initializeStores(): {
@@ -327,10 +346,13 @@ export class McpAppAdaptor implements Adaptor {
       if (existingKey) {
         const stored = localStorage.getItem(existingKey);
         if (stored !== null) {
-          this._viewState = JSON.parse(stored);
-          this.viewStateListeners.forEach((listener) => {
-            listener();
-          });
+          const parsed: unknown = JSON.parse(stored);
+          if (isViewStateRecord(parsed)) {
+            this._viewState = parsed;
+            this.viewStateListeners.forEach((listener) => {
+              listener();
+            });
+          }
         }
       }
     } catch (err) {
