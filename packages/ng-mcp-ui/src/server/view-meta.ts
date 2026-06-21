@@ -185,11 +185,14 @@ export function buildExtAppsContentMeta(
 
   const fromView: McpAppsResourceMeta = {
     ui: {
-      ...(view.description && { description: view.description }),
+      // Scalar view fields skip only `undefined` (matching `mergeWithUnion`'s
+      // contract and the Apps SDK path), so an explicitly-set "" is honored
+      // rather than silently dropped by a truthiness check.
+      ...(view.description !== undefined && { description: view.description }),
       ...(view.prefersBorder !== undefined && {
         prefersBorder: view.prefersBorder,
       }),
-      ...(view.domain && { domain: view.domain }),
+      ...(view.domain !== undefined && { domain: view.domain }),
       csp: {
         ...(view.csp?.resourceDomains && {
           resourceDomains: view.csp.resourceDomains,

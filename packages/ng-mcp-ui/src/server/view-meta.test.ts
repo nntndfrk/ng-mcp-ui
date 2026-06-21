@@ -160,6 +160,19 @@ describe("buildExtAppsContentMeta", () => {
     });
   });
 
+  it("honors an explicit empty-string description (skips only undefined)", () => {
+    // Parity with the Apps SDK path, which keeps "" via mergeWithUnion.
+    expect(
+      buildExtAppsContentMeta(view({ description: "" }), EXT_APPS_DEFAULTS).ui
+        ?.description,
+    ).toBe("");
+    expect(
+      buildAppsSdkContentMeta(view({ description: "" }), APPS_SDK_DEFAULTS)[
+        "openai/widgetDescription"
+      ],
+    ).toBe("");
+  });
+
   it("carries description, prefersBorder, and the per-view domain on ui", () => {
     const meta = buildExtAppsContentMeta(
       view({ description: "A card", prefersBorder: false, domain: "view.example.com" }),
