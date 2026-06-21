@@ -1,35 +1,27 @@
 import { createHash } from "node:crypto";
-import { type RequestHeaders, readHeader } from "./request-context.js";
-
-/**
- * @internal
- * Resolve the request URL whose hash forms a Claude content domain.
- *
- * Precedence (matches the draft `resolveViewRequestContext`):
- *   1. `x-alpic-forwarded-url` — the URL the Alpic proxy received from Claude,
- *      authoritative when present (the in-process URL is the proxied origin,
- *      not the public connector URL Claude registered).
- *   2. `${serverUrl}${pathname}` — reconstructed from the resolved server origin
- *      and the request path otherwise.
- *
- * `headers` is injected (not read from any global), so this stays pure and
- * directly testable. The caller (the `McpServer` class) gates this on a
- * `Claude-User` user-agent — see {@link computeClaudeContentDomain}.
- */
-export function resolveClaudeContentUrl(
-  headers: RequestHeaders,
-  context: { serverUrl: string; pathname: string },
-): string {
-  return (
-    readHeader(headers, "x-alpic-forwarded-url") ??
-    `${context.serverUrl}${context.pathname}`
-  );
-}
 
 /**
  * @internal
  * Map a request URL to the `<hash>.claudemcpcontent.com` domain Claude serves
  * view content from. The hash is the first 32 hex chars of `sha256(url)`.
+ *
+ * The caller (the `McpServer` class) passes the URL Claude registered as its
+ * connector, built as `${serverUrl}${pathname}` — `serverUrl` being the
+ * `x-forwarded-host`-aware origin from `resolveServerUrl` (request-context).
+ *
+ * There is deliberately **no** `x-alpic-forwarded-url` precedence here. The
+ * upstream Skybridge reference reads that header because it deploys behind
+ * Alpic's hosting edge (which proxies the public connector URL and re-sends it
+ * via that header); this library self-hosts / tunnels instead (PLAN §6), so the
+ * header is never set and reading it would be dead weight.
+ *
+ * Trust note: the hashed URL is only as trustworthy as the edge terminating the
+ * request. `serverUrl` derives from `x-forwarded-host` / `-proto`, which are
+ * themselves client-settable — so the deployment's edge (the Cloudflare tunnel,
+ * or a reverse proxy) MUST overwrite inbound forwarded headers for the resulting
+ * domain to be authoritative. Dropping the Alpic header narrows trust to that
+ * single, edge-governed forwarded chain; it does not by itself make the hash
+ * spoof-proof.
  *
  * A lone trailing slash is stripped first so the hash matches the connector URL
  * **exactly as registered with Claude** — bare origins are registered without a

@@ -3,55 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeClaudeContentDomain,
   computeViewVersionParam,
-  resolveClaudeContentUrl,
 } from "./view-hashing.js";
-
-describe("resolveClaudeContentUrl", () => {
-  it("prefers the x-alpic-forwarded-url header (proxy-authoritative)", () => {
-    expect(
-      resolveClaudeContentUrl(
-        { "x-alpic-forwarded-url": "https://connector.example.com/mcp" },
-        { serverUrl: "https://internal.host", pathname: "/mcp" },
-      ),
-    ).toBe("https://connector.example.com/mcp");
-  });
-
-  it("falls back to serverUrl + pathname when the header is absent", () => {
-    expect(
-      resolveClaudeContentUrl(
-        {},
-        { serverUrl: "https://app.example.com", pathname: "/mcp" },
-      ),
-    ).toBe("https://app.example.com/mcp");
-  });
-
-  it("reads x-alpic-forwarded-url case-insensitively (reuses readHeader)", () => {
-    expect(
-      resolveClaudeContentUrl(
-        { "X-Alpic-Forwarded-Url": "https://connector.example.com/mcp" },
-        { serverUrl: "https://internal.host", pathname: "/mcp" },
-      ),
-    ).toBe("https://connector.example.com/mcp");
-  });
-
-  it("takes the first entry of a repeated header", () => {
-    expect(
-      resolveClaudeContentUrl(
-        { "x-alpic-forwarded-url": ["https://a.example.com", "https://b"] },
-        { serverUrl: "https://internal.host", pathname: "/mcp" },
-      ),
-    ).toBe("https://a.example.com");
-  });
-
-  it("treats an empty pathname as a bare origin in the fallback", () => {
-    expect(
-      resolveClaudeContentUrl(
-        {},
-        { serverUrl: "https://app.example.com", pathname: "" },
-      ),
-    ).toBe("https://app.example.com");
-  });
-});
 
 describe("computeClaudeContentDomain", () => {
   it("hashes to <sha256[:32]>.claudemcpcontent.com", () => {
