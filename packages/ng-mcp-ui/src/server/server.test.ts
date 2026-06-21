@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import * as z from "zod";
 import { McpServer } from "./server.js";
 import type { ViewName } from "./types.js";
-import { InMemoryViewManifest } from "./view-manifest.js";
+import { InMemoryViewManifest, type ViewManifest } from "./view-manifest.js";
 
 // `ViewName` is narrowed to `never` until a `ViewNameRegistry` augmentation
 // exists, so test view component names are cast.
@@ -371,6 +371,44 @@ describe("view URI versioning", () => {
     ).toBe(true);
     expect(
       uris.some((u) => u === `ui://views/ext-apps/poll.html${expected}`),
+    ).toBe(true);
+  });
+
+  it("still versions in production when styleFile() throws but mainFile() resolves", () => {
+    process.env.NODE_ENV = "production";
+    // A manifest where the style read throws (e.g. critical-CSS inlined, no
+    // global stylesheet) must not discard the resolved mainFile and disable
+    // cache-busting — the version param hashes mainFile + "" (empty style).
+    const manifest: ViewManifest = {
+      mainFile: () => "main-ONLY.js",
+      styleFile: () => {
+        throw new Error("no global stylesheet");
+      },
+    };
+    const server = new McpServer(
+      { name: "test", version: "1.0.0" },
+      { capabilities: {}, viewManifest: manifest },
+    ).registerTool(
+      { name: "v", view: { component: "poll" as ViewName } },
+      async () => ({ content: "ok", structuredContent: {} }),
+    );
+
+    const expected = `?v=${crypto
+      .createHash("sha256")
+      .update("main-ONLY.js")
+      .update("\0")
+      .digest("hex")
+      .slice(0, 8)}`;
+
+    // biome-ignore lint/suspicious/noExplicitAny: read internal registered resource uris
+    const registered = (server as any)._registeredResources as Record<
+      string,
+      unknown
+    >;
+    expect(
+      Object.keys(registered).some(
+        (u) => u === `ui://views/apps-sdk/poll.html${expected}`,
+      ),
     ).toBe(true);
   });
 

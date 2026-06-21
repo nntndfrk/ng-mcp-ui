@@ -295,7 +295,7 @@ export class McpServer<
   ): this {
     if (this.mcpMiddlewareApplied) {
       throw new Error(
-        "Cannot register MCP middleware after run() or connect() has been called",
+        "Cannot register MCP middleware after connect() / connectStatelessTransport() has been called",
       );
     }
 
@@ -597,13 +597,20 @@ export class McpServer<
    */
   private viewVersionParam(): string {
     const isProduction = process.env.NODE_ENV === "production";
+    // Resolve the two reads independently: `computeViewVersionParam` only
+    // requires `mainFile` (a missing `styleFile` hashes as ""), so a throwing
+    // `styleFile()` must not discard a good `mainFile()` and disable cache-busting.
     let mainFile: string | undefined;
     let styleFile: string | undefined;
     try {
       mainFile = this.viewManifest.mainFile();
-      styleFile = this.viewManifest.styleFile();
     } catch {
       mainFile = undefined;
+    }
+    try {
+      styleFile = this.viewManifest.styleFile();
+    } catch {
+      styleFile = undefined;
     }
     return computeViewVersionParam({ mainFile, styleFile }, { isProduction });
   }
