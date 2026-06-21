@@ -18,9 +18,12 @@ import { MCP_ADAPTOR } from "./tokens.js";
  * seeded with the store's current snapshot and updated whenever the adaptor's
  * per-key store fires `onStoreChange`.
  *
- * Dedup note: the adaptor's `getHostContextStore(key)` stores already coalesce
- * identical snapshots (their `subscribe` only fires on real changes), so we do
- * not re-dedupe here — every push writes straight into the signal.
+ * Dedup note: we add no equality check of our own. `subscribe` may fire on any
+ * host emit for the key (not only on value changes), but redundant writes are
+ * absorbed downstream — the Angular signal compares with `Object.is` (an equal
+ * primitive is a no-op), and the mcp-app store's `getSnapshot` returns a
+ * `deepEqual`-cached reference (an unchanged object stays `Object.is`-equal). So
+ * every push can write straight into the signal.
  */
 export type HostContextSignals = {
   readonly [K in keyof HostContext]: Signal<HostContext[K]>;
@@ -88,7 +91,9 @@ export function createHostContextSignals(adaptor: Adaptor): HostContextSignals {
     const sig = signal(store.getSnapshot());
 
     // Subscribe; on every host push, write the fresh snapshot into the signal.
-    // Dedup already happened in the adaptor store, so we write unconditionally.
+    // `subscribe` can fire even when the value is unchanged; the signal's
+    // `Object.is` check (and the mcp-app store's deepEqual snapshot cache) absorb
+    // the redundant write, so setting unconditionally is safe.
     const unsubscribe = store.subscribe(() => {
       sig.set(store.getSnapshot());
     });
