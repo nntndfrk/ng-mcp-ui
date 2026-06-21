@@ -9,9 +9,12 @@ import { McpAppBridge } from "./mcp-app/bridge.js";
 // adaptor constructs the ext-apps `App` (which touches window.parent/document/
 // requestAnimationFrame/ResizeObserver on connect), so install the same minimal
 // browser surface the mcp-app view-tools suite uses, keyed by hostType.
-const eventTarget = new EventTarget();
+// `eventTarget` is recreated per install so a leaked listener from a prior
+// test's App can't fire on this one's dispatches.
+let eventTarget = new EventTarget();
 
-function installHostMock(hostType: "apps-sdk" | "mcp-app"): void {
+function installHostMock(hostType: string): void {
+  eventTarget = new EventTarget();
   const parent = { postMessage: () => {} };
   vi.stubGlobal("window", {
     mcpUi: { hostType },
@@ -68,5 +71,10 @@ describe("getAdaptor", () => {
     const adaptor = getAdaptor();
     expect(adaptor).toBeInstanceOf(McpAppAdaptor);
     expect(adaptor).toBe(McpAppAdaptor.getInstance());
+  });
+
+  it("throws a clear error for an unknown host type", () => {
+    installHostMock("gemini");
+    expect(() => getAdaptor()).toThrow(/Unknown host type "gemini"/);
   });
 });
