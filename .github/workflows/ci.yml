@@ -27,3 +27,25 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Type tests
+        run: npm run test:types
+
+  pack:
+    # Publishable-artifact gate: build → npm pack → install the tarball into a
+    # scratch project → assert every subpath export resolves. Its own job so the
+    # scratch registry install (peers) doesn't slow the main lint/test loop.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Verify pack
+        run: npm run verify:pack --workspace ng-mcp-ui
