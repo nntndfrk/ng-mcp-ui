@@ -48,7 +48,10 @@ app.use(
   }),
 );
 
-// Angular SSR catch-all — MUST be last so /mcp and /assets/widgets win first.
+// Angular SSR catch-all — MUST come AFTER /mcp and /assets/widgets so those
+// explicit routes win first. It is not the final middleware: when Angular
+// produces no response it calls next(), falling through to the browser-static
+// handler below.
 app.use((req, res, next) => {
   angularApp
     .handle(req)
@@ -58,7 +61,8 @@ app.use((req, res, next) => {
     .catch(next);
 });
 
-// Static browser assets (host app), served after the explicit routes above.
+// Static browser assets (host app) — the fall-through after the SSR handler
+// above declines a request (e.g. a hashed `main-*.js` the app references).
 app.use(
   express.static(browserDistFolder, {
     maxAge: "1y",
