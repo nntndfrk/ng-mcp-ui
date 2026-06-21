@@ -28,8 +28,8 @@ export {
   provideMcpUi,
 } from "./provide-mcp-ui.js";
 // Angular modal service for mcp-app hosts. `provideMcpModal()` is appended by
-// `provideMcpUi()` once it lands; `createMcpModal` is the non-DI form. Wired for
-// mcp-app only (gated by `MCP_MODAL_ENABLED`); a no-op elsewhere.
+// `provideMcpUi()`; `createMcpModal` is the non-DI form. Wired for mcp-app only
+// (gated by `MCP_MODAL_ENABLED`); a no-op elsewhere.
 export {
   createMcpModal,
   MCP_MODAL,
@@ -37,4 +37,23 @@ export {
   type McpModal,
   provideMcpModal,
 } from "./mcp-modal.js";
+// Signal-based tool wrappers. `injectToolInfo()` returns a `Signal<ToolState>`
+// (idle/pending/success) derived from the tool host-context keys; `injectCallTool()`
+// returns `{ callTool, callToolAsync, status, data, error }` for invoking a server
+// tool and tracking its lifecycle. Both resolve the host via `MCP_ADAPTOR` (THE RULE).
+export {
+  injectToolInfo,
+  type ToolState,
+  type ToolIdleState,
+  type ToolPendingState,
+  type ToolSuccessState,
+} from "./inject-tool-info.js";
+export {
+  injectCallTool,
+  type CallToolState,
+  type CallToolFn,
+  type CallToolAsyncFn,
+  type InjectCallToolResult,
+  type SideEffects,
+} from "./inject-call-tool.js";
 export { NG_MCP_UI_VERSION } from "../version.js";

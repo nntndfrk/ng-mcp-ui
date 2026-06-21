@@ -27,8 +27,17 @@
   },
   "include": ["src/**/*.ts"],
   // `**/*.test.ts` (runtime) and `**/*.test-d.ts` (type tests) are run by Vitest,
-  // never emitted to dist.
-  "exclude": ["**/*.test.ts", "**/*.test-d.ts", "dist", "node_modules"],
+  // never emitted to dist. `**/test-fakes.ts` is a shared non-shipping test
+  // helper (no `.test.` infix, so it needs an explicit exclude) — imported only
+  // by the excluded `*.test.ts` suites, which Vitest transpiles from the raw
+  // `.ts`, so keeping it out of the ngc emit ships nothing test-only.
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test-d.ts",
+    "**/test-fakes.ts",
+    "dist",
+    "node_modules"
+  ],
   "angularCompilerOptions": {
     "compilationMode": "partial"
   }
