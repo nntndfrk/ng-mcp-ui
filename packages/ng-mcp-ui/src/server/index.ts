@@ -1,8 +1,17 @@
 // Public entry point for `ng-mcp-ui/server` — the MCP server library.
 // Pure-TS foundation: content helpers, the FileRef schema, and the tool/type
-// inference machinery (the `typeof server` -> typed-view chain), plus the
-// `McpServer` core (S04). The mountable express router, Angular shell + manifest
-// parser, and asset router land in the later server-track steps.
+// inference machinery (the `typeof server` -> typed-view chain), the `McpServer`
+// core (S04), and the mountable express router + auth helpers (S05). The real
+// Angular shell + index.html manifest parser and asset router land in S06.
+export {
+  type AuthInfo,
+  type AuthMetadataOptions,
+  type BearerAuthMiddlewareOptions,
+  InvalidTokenError,
+  mcpAuthMetadataRouter,
+  optionalBearerAuth,
+  requireBearerAuth,
+} from "./auth.js";
 export {
   audio,
   embeddedResource,
@@ -10,6 +19,10 @@ export {
   resourceLink,
   text,
 } from "./content-helpers.js";
+export {
+  createMcpExpressRouter,
+  type CreateMcpExpressRouterOptions,
+} from "./express.js";
 export { FileRef } from "./file-ref.js";
 export type {
   McpExtra,

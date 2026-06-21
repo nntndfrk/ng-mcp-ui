@@ -56,6 +56,9 @@
     "build": "ngc -p tsconfig.json",
     "verify:pack": "node tools/verify-pack.mjs"
   },
+  "dependencies": {
+    "cors": "^2.8.0"
+  },
   "peerDependencies": {
     "@angular/core": ">=20.0.0 <23.0.0",
     "@angular/platform-browser": ">=20.0.0 <23.0.0",
@@ -70,6 +73,11 @@
     "@angular/core": "^22.0.0",
     "@modelcontextprotocol/ext-apps": "^1.7.3",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/supertest": "^6.0.2",
+    "express": "^5.2.1",
+    "supertest": "^7.1.4",
     "vitest": "^4.1.8",
     "zod": "^4.3.6"
   }
