@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppsSdkAdaptor } from "./adaptor.js";
 import { AppsSdkBridge } from "./bridge.js";
-import { SET_GLOBALS_EVENT_TYPE } from "./types.js";
+import { SET_GLOBALS_EVENT_TYPE, SetGlobalsEvent } from "./types.js";
 
 // Framework-free tests for the Apps SDK bridge. Vitest runs under node (no DOM),
 // so we install a minimal fake `window` carrying the `openai` host API and
@@ -138,6 +138,33 @@ describe("AppsSdkAdaptor.getHostContextStore", () => {
     fire({ theme: "light" });
     expect(onChange).toHaveBeenCalledTimes(1);
   });
+
+  it("notifies when a watched global is explicitly cleared to undefined", () => {
+    const store = AppsSdkAdaptor.getInstance().getHostContextStore("maxHeight");
+    const onChange = vi.fn();
+    store.subscribe(onChange);
+
+    // `maxHeight` present in the patch with value `undefined` is a real change
+    // (the host cleared it). An own-property check fires; `!== undefined` would
+    // have missed it.
+    window.dispatchEvent(
+      new CustomEvent(SET_GLOBALS_EVENT_TYPE, {
+        detail: { globals: { maxHeight: undefined } },
+      }),
+    );
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes a SetGlobalsEvent constructed via the class to listeners", () => {
+    const store = AppsSdkAdaptor.getInstance().getHostContextStore("theme");
+    const onChange = vi.fn();
+    store.subscribe(onChange);
+
+    // The class fixes its dispatched type in the constructor; dispatching one
+    // must reach a listener registered for SET_GLOBALS_EVENT_TYPE.
+    window.dispatchEvent(new SetGlobalsEvent({ globals: { theme: "dark" } }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("AppsSdkAdaptor.setViewState", () => {
@@ -150,6 +177,17 @@ describe("AppsSdkAdaptor.setViewState", () => {
     expect(openai.setWidgetState).toHaveBeenCalledWith({
       privateContent: { secret: 1 },
       modelContent: { next: true },
+    });
+  });
+
+  it("writes against a null widgetState without throwing (object spread of null is a no-op)", () => {
+    openai.widgetState = null;
+    expect(() =>
+      AppsSdkAdaptor.getInstance().setViewState({ seeded: true }),
+    ).not.toThrow();
+    expect(openai.setWidgetState).toHaveBeenCalledWith({
+      privateContent: {},
+      modelContent: { seeded: true },
     });
   });
 

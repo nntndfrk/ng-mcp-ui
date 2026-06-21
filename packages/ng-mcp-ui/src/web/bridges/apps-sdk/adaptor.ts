@@ -164,8 +164,14 @@ export class AppsSdkAdaptor implements Adaptor {
     await window.openai.setWidgetState(state);
   }
 
-  public openModal(options: RequestModalOptions) {
-    return window.openai.requestModal(options);
+  public openModal(options: RequestModalOptions): void {
+    // Fire-and-forget per the `Adaptor` contract (the mcp-app sibling is
+    // synchronous). Attach a catch so a host rejection surfaces as a log rather
+    // than an unhandled promise rejection — merely discarding the promise would
+    // not prevent that.
+    window.openai.requestModal(options).catch((error: unknown) => {
+      console.error("[ng-mcp-ui] openModal: requestModal failed", error);
+    });
   }
 
   public setOpenInAppUrl(href: string): Promise<void> {

@@ -35,8 +35,11 @@ export class AppsSdkBridge implements Bridge<AppsSdkContext> {
       : [keyOrKeys];
     return (onChange: () => void) => {
       const handleSetGlobal = (event: SetGlobalsEvent) => {
-        const hasRelevantChange = keys.some(
-          (key) => event.detail.globals[key] !== undefined,
+        // Own-property check, not `!== undefined`: a global cleared to
+        // `undefined` (e.g. `maxHeight`) is still a real change, and the host
+        // sends only the changed keys in the partial patch.
+        const hasRelevantChange = keys.some((key) =>
+          Object.hasOwn(event.detail.globals, key),
         );
         if (!hasRelevantChange) {
           return;

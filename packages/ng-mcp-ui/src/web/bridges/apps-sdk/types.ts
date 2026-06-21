@@ -22,7 +22,13 @@ export const TOOL_RESPONSE_EVENT_TYPE = "openai:tool_response";
 export class ToolResponseEvent extends CustomEvent<{
   tool: { name: string; args: UnknownObject };
 }> {
-  override readonly type = TOOL_RESPONSE_EVENT_TYPE;
+  // Fix the dispatched event type at construction rather than shadowing
+  // `Event.type` with a class field — a field initializer would override the
+  // reader while leaving the internal type slot (what `dispatchEvent` routes
+  // on) free to diverge.
+  constructor(detail: { tool: { name: string; args: UnknownObject } }) {
+    super(TOOL_RESPONSE_EVENT_TYPE, { detail });
+  }
 }
 
 declare global {
@@ -136,7 +142,11 @@ export const SET_GLOBALS_EVENT_TYPE = "openai:set_globals";
 export class SetGlobalsEvent extends CustomEvent<{
   globals: Partial<AppsSdkContext>;
 }> {
-  override readonly type = SET_GLOBALS_EVENT_TYPE;
+  // Fix the dispatched event type at construction (see {@link ToolResponseEvent})
+  // so `dispatchEvent` always routes on `SET_GLOBALS_EVENT_TYPE`.
+  constructor(detail: { globals: Partial<AppsSdkContext> }) {
+    super(SET_GLOBALS_EVENT_TYPE, { detail });
+  }
 }
 
 type View = {
