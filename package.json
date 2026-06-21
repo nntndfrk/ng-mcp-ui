@@ -12,7 +12,7 @@
   "scripts": {
     "lint": "biome lint .",
     "format": "biome format --write .",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "node tools/typecheck.mjs",
     "build": "npm run build --workspaces --if-present",
     "test": "vitest run --passWithNoTests"
   },

@@ -1,0 +1,73 @@
+{
+  "name": "ng-mcp-ui",
+  "version": "0.0.0",
+  "description": "Angular library that retrofits Angular apps with MCP interactive UI views (server + web bridge)",
+  "license": "MIT",
+  "author": "nntndfrk",
+  "homepage": "https://github.com/nntndfrk/ng-mcp-ui#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nntndfrk/ng-mcp-ui.git",
+    "directory": "packages/ng-mcp-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/nntndfrk/ng-mcp-ui/issues"
+  },
+  "keywords": [
+    "angular",
+    "mcp",
+    "model-context-protocol",
+    "mcp-ui",
+    "mcp-apps",
+    "chatgpt-apps",
+    "claude",
+    "schematics",
+    "ai"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
+    },
+    "./web": {
+      "types": "./dist/web/index.d.ts",
+      "default": "./dist/web/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    },
+    "./tunnel": {
+      "types": "./dist/tunnel/index.d.ts",
+      "default": "./dist/tunnel/index.js"
+    }
+  },
+  "scripts": {
+    "build": "ngc -p tsconfig.json",
+    "verify:pack": "node tools/verify-pack.mjs"
+  },
+  "peerDependencies": {
+    "@angular/core": ">=20.0.0 <23.0.0",
+    "@angular/platform-browser": ">=20.0.0 <23.0.0",
+    "@modelcontextprotocol/ext-apps": "^1.7.0",
+    "@modelcontextprotocol/sdk": ">=1.27.0",
+    "express": "^5.0.0",
+    "zod": "^3.24.0 || ^4.0.0"
+  },
+  "devDependencies": {
+    "@angular/compiler": "^22.0.0",
+    "@angular/compiler-cli": "^22.0.0",
+    "@angular/core": "^22.0.0",
+    "vitest": "^4.1.8"
+  }
+}
