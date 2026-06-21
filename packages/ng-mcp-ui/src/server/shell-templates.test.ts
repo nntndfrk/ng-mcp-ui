@@ -176,4 +176,32 @@ describe("AngularShellRenderer", () => {
     expect(html).toContain("request.css");
     expect(html).not.toContain("ctor-main.js");
   });
+
+  it("falls back to the constructed mode + manifest when the input omits them", () => {
+    const renderer = new AngularShellRenderer(
+      "production",
+      new InMemoryViewManifest("ctor-main.js", "ctor.css"),
+    );
+    const html = renderer.render({
+      hostType: "apps-sdk",
+      serverUrl: "https://app.example.com",
+      viewName: "card",
+    });
+    expect(html).toContain("ctor-main.js");
+    expect(html).toContain("ctor.css");
+  });
+
+  it("falls back to the constructed development mode when isProduction is omitted", () => {
+    const renderer = new AngularShellRenderer(
+      "development",
+      new InMemoryViewManifest("ctor-main.js"),
+    );
+    const html = renderer.render({
+      hostType: "apps-sdk",
+      serverUrl: "https://app.example.com",
+      viewName: "card",
+    });
+    expect(html).toContain("/assets/widgets/main.js");
+    expect(html).not.toContain("ctor-main.js");
+  });
 });

@@ -40,9 +40,10 @@ function escapeHtml(value: string): string {
 /**
  * Serialize a single string value as a JS string literal safe to embed in a
  * `<script>`. `JSON.stringify` handles quoting/escaping of `"`, backslashes, and
- * control chars; we additionally escape `<` to `<` so the value can never
- * close the enclosing `<script>` element (the classic `</script>` injection
- * guard). The result is still a valid JS string when the browser parses it.
+ * control chars; we additionally rewrite every `<` into its equivalent JS
+ * unicode escape (so the literal characters `</script>` can never appear in the
+ * output and close the enclosing `<script>` element — the classic injection
+ * guard). The escaped form is still the same string when the browser parses it.
  */
 function jsString(value: string): string {
   return JSON.stringify(value).replace(/</g, "\\u003c");

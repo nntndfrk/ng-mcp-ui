@@ -16,10 +16,17 @@ export interface ShellRenderInput {
   serverUrl: string;
   /** The view component name the widget entry should bootstrap. */
   viewName: string;
-  /** `true` for `NODE_ENV=production` — picks the hashed-asset shell. */
-  isProduction: boolean;
-  /** Resolves hashed asset filenames in production. */
-  manifest: ViewManifest;
+  /**
+   * `true` for `NODE_ENV=production` — picks the hashed-asset shell. Optional:
+   * a stateful renderer (e.g. {@link AngularShellRenderer}) falls back to the
+   * mode it was constructed with when omitted.
+   */
+  isProduction?: boolean;
+  /**
+   * Resolves hashed asset filenames in production. Optional: a stateful renderer
+   * falls back to the manifest it was constructed with when omitted.
+   */
+  manifest?: ViewManifest;
 }
 
 /**
