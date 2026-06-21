@@ -11,6 +11,7 @@ export {
   text,
 } from "./content-helpers.js";
 export { FileRef } from "./file-ref.js";
+export { normalizeContent } from "./normalize-content.js";
 export type {
   AnyToolRegistry,
   InferTools,
