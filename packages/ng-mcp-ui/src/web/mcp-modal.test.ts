@@ -1,5 +1,5 @@
 import { type EnvironmentInjector, Injector } from "@angular/core";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   Adaptor,
   HostContext,
@@ -243,5 +243,58 @@ describe("provideMcpModal", () => {
     }) as EnvironmentInjector;
     expect(injector.get(MCP_MODAL_ENABLED)).toBe(false);
     injector.destroy();
+  });
+});
+
+describe("createMcpModal Escape-key listener lifecycle (DI)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("removes the keydown listener on injector destroy (not leaked across lifetimes)", () => {
+    // Stub a DOM so the Escape-to-close branch runs (node has no `document`).
+    const keydownHandlers: Array<(e: KeyboardEvent) => void> = [];
+    const addEventListener = spy((type: string, h: (e: KeyboardEvent) => void) => {
+      if (type === "keydown") {
+        keydownHandlers.push(h);
+      }
+    });
+    const removeEventListener = spy();
+    vi.stubGlobal("document", { addEventListener, removeEventListener });
+
+    const display = createFakeStore<"display">({ mode: "inline" });
+    const closeModal = spy(() => {
+      display.push({ mode: "inline" });
+    });
+    const adaptor: Adaptor = {
+      ...createFakeAdaptor({ stores: { display: display.store } }),
+      closeModal,
+    } as Adaptor;
+
+    const injector = Injector.create({
+      providers: [
+        { provide: MCP_ADAPTOR, useValue: adaptor },
+        provideMcpModal(),
+        { provide: MCP_MODAL_ENABLED, useValue: true },
+      ],
+    }) as EnvironmentInjector;
+
+    // Resolving MCP_MODAL (in the injector's context) wires the keydown listener.
+    injector.get(MCP_MODAL);
+    expect(addEventListener.callCount()).toBe(1);
+    expect(addEventListener.calls[0]?.[0]).toBe("keydown");
+    const handler = keydownHandlers[0];
+
+    // Escape while open closes the modal.
+    display.push({ mode: "modal" });
+    handler?.({ key: "Escape" } as KeyboardEvent);
+    expect(closeModal.callCount()).toBe(1);
+
+    // The listener is removed when the injector is destroyed (the bug: the old
+    // `ctx.destroy` monkeypatch was never invoked by DestroyRef, so it leaked).
+    injector.destroy();
+    expect(removeEventListener.callCount()).toBe(1);
+    expect(removeEventListener.calls[0]?.[0]).toBe("keydown");
+    expect(removeEventListener.calls[0]?.[1]).toBe(handler);
   });
 });

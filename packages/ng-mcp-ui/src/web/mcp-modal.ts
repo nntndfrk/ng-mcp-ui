@@ -1,4 +1,5 @@
 import {
+  DestroyRef,
   type EnvironmentProviders,
   InjectionToken,
   type Signal,
@@ -121,11 +122,22 @@ export function createMcpModal(adaptor: Adaptor, enabled: boolean): McpModal {
       }
     };
     document.addEventListener("keydown", handler);
-    const innerDestroy = ctx.destroy;
-    ctx.destroy = (): void => {
+    // Remove the listener on teardown. `createHostContextSignals` already
+    // registered its own `destroy` with this DestroyRef, capturing that exact
+    // reference — so reassigning `ctx.destroy` here would be dead code (DestroyRef
+    // never re-reads the property). Register a sibling DestroyRef callback
+    // instead. `inject()` throws outside an injection context, so probe
+    // optionally; a non-DI caller (rare, and skipped in no-DOM envs) owns its
+    // own teardown.
+    let destroyRef: DestroyRef | null = null;
+    try {
+      destroyRef = inject(DestroyRef, { optional: true });
+    } catch {
+      destroyRef = null;
+    }
+    destroyRef?.onDestroy(() => {
       document.removeEventListener("keydown", handler);
-      innerDestroy();
-    };
+    });
   }
 
   return { isOpen, close };
