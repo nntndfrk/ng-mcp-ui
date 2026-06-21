@@ -24,6 +24,15 @@ export function filterViewContext<T extends ViewState>(
     return null;
   }
 
+  // Only clone when the host-internal key is actually present. Returning the
+  // original reference for an unchanged snapshot keeps it referentially equal,
+  // so a Signal `set` with it is a no-op rather than a spurious recompute.
+  // `Object.hasOwn` checks own keys only (not the prototype chain — the snapshot
+  // is external host data).
+  if (!Object.hasOwn(state, VIEW_CONTEXT_KEY)) {
+    return state;
+  }
+
   const { [VIEW_CONTEXT_KEY]: _, ...filteredState } = state as T & {
     [VIEW_CONTEXT_KEY]?: unknown;
   };
@@ -51,11 +60,10 @@ export function injectViewContext<T extends ViewState>(
     .getHostContextStore("viewState")
     .getSnapshot() as (T & { [VIEW_CONTEXT_KEY]?: unknown }) | null;
 
-  if (
-    currentState !== null &&
-    currentState !== undefined &&
-    VIEW_CONTEXT_KEY in currentState
-  ) {
+  // `Object.hasOwn` (own key only — the snapshot is external host data, so the
+  // prototype-walking `in` operator could pick up an inherited key). The store
+  // types `viewState` as `Record | null`, so no separate `undefined` guard.
+  if (currentState !== null && Object.hasOwn(currentState, VIEW_CONTEXT_KEY)) {
     return {
       ...newState,
       [VIEW_CONTEXT_KEY]: currentState[VIEW_CONTEXT_KEY],

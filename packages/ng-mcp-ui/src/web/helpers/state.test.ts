@@ -53,6 +53,22 @@ describe("state helpers", () => {
       const stateNoContext = { count: 5, name: "test" };
       expect(filterViewContext(stateNoContext)).toEqual(stateNoContext);
     });
+
+    it("returns the SAME reference when no context key is present (no spurious clone)", () => {
+      // A fresh object would trip Signal `===` equality and force a recompute on
+      // an unchanged snapshot; the original reference must be returned as-is.
+      const stateNoContext = { count: 5, name: "test" };
+      expect(filterViewContext(stateNoContext)).toBe(stateNoContext);
+    });
+
+    it("ignores a VIEW_CONTEXT_KEY that lives on the prototype (own-key only)", () => {
+      // Snapshots are external host data; an inherited key must not be stripped.
+      const proto = { [VIEW_CONTEXT_KEY]: "inherited" };
+      const state = Object.assign(Object.create(proto), { a: 1 });
+      const result = filterViewContext(state);
+      expect(result).toBe(state); // no own context key → same reference
+      expect(result).toEqual(state);
+    });
   });
 
   describe("injectViewContext", () => {
@@ -82,6 +98,15 @@ describe("state helpers", () => {
         page: 3,
         [VIEW_CONTEXT_KEY]: { llm: "payload" },
       });
+    });
+
+    it("does not re-attach a VIEW_CONTEXT_KEY inherited via the prototype (own-key only)", () => {
+      const proto = { [VIEW_CONTEXT_KEY]: { llm: "inherited" } };
+      const snapshot = Object.assign(Object.create(proto), { old: true });
+      const adaptor = adaptorWithViewState(snapshot);
+      const next = { page: 4 };
+      // Inherited key must be ignored → newState passes through unchanged.
+      expect(injectViewContext(adaptor, next)).toEqual({ page: 4 });
     });
   });
 });
