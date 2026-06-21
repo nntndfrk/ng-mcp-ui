@@ -14,10 +14,19 @@ export {
   type HostContextSignals,
   injectHostContext,
 } from "./host-context.js";
-// The DI token is public now so consumers can provide the adaptor explicitly
-// (and `injectHostContext()` is usable) ahead of `provideMcpUi`, which will be
-// the ergonomic way to provide it. `MCP_SERVER_URL` is added alongside then.
-export { MCP_ADAPTOR } from "./tokens.js";
+// DI core. `provideMcpUi()` is the ergonomic provider (zoneless + both
+// host-derived tokens + the mcp-app modal service); `bootstrapWidget()` boots a
+// widget into the shell's `#root`. The two DI tokens (`MCP_ADAPTOR`,
+// `MCP_SERVER_URL`) are surfaced here through `provide-mcp-ui` (their single
+// public export site — it re-exports them from the leaf `tokens` module) so a
+// consumer can still provide the adaptor explicitly (e.g. ahead of `provideMcpUi`
+// for a bare `injectHostContext()`).
+export {
+  MCP_ADAPTOR,
+  MCP_SERVER_URL,
+  bootstrapWidget,
+  provideMcpUi,
+} from "./provide-mcp-ui.js";
 // Angular modal service for mcp-app hosts. `provideMcpModal()` is appended by
 // `provideMcpUi()` once it lands; `createMcpModal` is the non-DI form. Wired for
 // mcp-app only (gated by `MCP_MODAL_ENABLED`); a no-op elsewhere.

@@ -13,8 +13,9 @@ import {
   createHostContextSignals,
   injectHostContext,
 } from "./host-context.js";
-// MCP_ADAPTOR lives in the leaf tokens module (provide-mcp-ui re-exports it once
-// it lands; until then import it straight from the leaf).
+// MCP_ADAPTOR lives in the leaf tokens module; internal modules import it
+// straight from the leaf (provide-mcp-ui re-exports it as the single public
+// export site, but importing the leaf here avoids a needless module hop).
 import { MCP_ADAPTOR } from "./tokens.js";
 
 /**

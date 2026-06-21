@@ -8,9 +8,8 @@ import type { Adaptor } from "./bridges/types.js";
  * Why a dedicated module: downstream files (`provideMcpUi` and the modal service
  * it wires) both need {@link MCP_ADAPTOR}. Parking the token on a common leaf
  * avoids an import cycle between them (which would trip Vitest's module
- * transformer); `provideMcpUi` re-exports it so the public import path stays
- * stable. `MCP_SERVER_URL` joins this module when `provideMcpUi` / `mcpAsset`
- * land.
+ * transformer); `provideMcpUi` re-exports both tokens so the public import path
+ * stays stable.
  */
 
 /**
@@ -22,3 +21,11 @@ import type { Adaptor } from "./bridges/types.js";
  * with a pure provider override.
  */
 export const MCP_ADAPTOR = new InjectionToken<Adaptor>("MCP_ADAPTOR");
+
+/**
+ * DI token carrying the MCP server origin (`window.mcpUi.serverUrl`). Used by
+ * `mcpAsset` (S14) and any `HttpClient`/`fetch` that must target the app's own
+ * server rather than the opaque host iframe origin. Empty string when the shell
+ * did not inject a `serverUrl`.
+ */
+export const MCP_SERVER_URL = new InjectionToken<string>("MCP_SERVER_URL");
