@@ -43,7 +43,8 @@ export type McpExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
  * A single MCP middleware function following the onion model.
  * Call `next()` to invoke the next middleware or the final handler.
  * For notifications, `extra` is `undefined` (SDK does not provide extra context)
- * and `next()` resolves to `undefined`.
+ * and `next()` typically resolves to `undefined` — SDK notification handlers
+ * return no result, though the chain forwards whatever the handler returns.
  */
 export type McpMiddlewareFn = (
   request: { method: string; params: Record<string, unknown> },
