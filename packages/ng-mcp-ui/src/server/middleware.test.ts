@@ -201,8 +201,11 @@ describe("buildMiddlewareChain", () => {
   });
 
   it("propagates params mutated by middleware to the original handler", async () => {
-    const handler = async (req: { params: Record<string, unknown> }) =>
-      req.params;
+    // Typed to match buildMiddlewareChain's `(...args: unknown[]) => Promise<unknown>`
+    // — a narrower `req` param would be contravariantly unassignable under
+    // strictFunctionTypes; narrow to the request shape inside the body.
+    const handler = async (req: unknown) =>
+      (req as { params: Record<string, unknown> }).params;
     const chain = buildMiddlewareChain("tools/call", false, handler, [
       {
         filter: null,
