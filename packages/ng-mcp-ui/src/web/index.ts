@@ -56,4 +56,57 @@ export {
   type InjectCallToolResult,
   type SideEffects,
 } from "./inject-call-tool.js";
+// Remaining inject* wrappers over the rest of the host surface. Read-derived
+// signals (layout / user / display-mode / view-state) and callable forwarders
+// (open-external / send-follow-up / request-modal|size|close / files / download /
+// set-open-in-app-url / register-view-tool). Each resolves the host via
+// `MCP_ADAPTOR` (THE RULE) — none calls `getAdaptor()`.
+export {
+  injectViewState,
+  type InjectViewStateResult,
+  type SetViewStateUpdater,
+} from "./inject-view-state.js";
+export { injectLayout, type LayoutState } from "./inject-layout.js";
+export { injectUser, type UserState } from "./inject-user.js";
+export {
+  injectDisplayMode,
+  type InjectDisplayModeResult,
+} from "./inject-display-mode.js";
+export {
+  injectOpenExternal,
+  type OpenExternalFn,
+} from "./inject-open-external.js";
+export {
+  injectSendFollowUpMessage,
+  type SendFollowUpMessageFn,
+} from "./inject-send-follow-up-message.js";
+export {
+  injectRequestModal,
+  type InjectRequestModalResult,
+} from "./inject-request-modal.js";
+export {
+  injectRequestSize,
+  type RequestSizeFn,
+} from "./inject-request-size.js";
+export {
+  injectRequestClose,
+  type RequestCloseFn,
+} from "./inject-request-close.js";
+export { injectFiles, type InjectFilesResult } from "./inject-files.js";
+export { injectDownload, type DownloadFn } from "./inject-download.js";
+export {
+  injectSetOpenInAppUrl,
+  type SetOpenInAppUrlFn,
+} from "./inject-set-open-in-app-url.js";
+export {
+  injectRegisterViewTool,
+  type RegisterViewToolHandle,
+} from "./inject-register-view-tool.js";
+// View-state context helpers — used by injectViewState; exported for advanced
+// callers (and the forthcoming S14 data-llm channel, which shares VIEW_CONTEXT_KEY).
+export {
+  filterViewContext,
+  injectViewContext,
+  VIEW_CONTEXT_KEY,
+} from "./helpers/state.js";
 export { NG_MCP_UI_VERSION } from "../version.js";
