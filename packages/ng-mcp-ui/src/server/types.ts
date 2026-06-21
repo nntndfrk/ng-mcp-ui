@@ -50,8 +50,18 @@ export interface ViewCsp {
 // biome-ignore lint/suspicious/noEmptyInterface: register pattern — augmented by a generated `views.d.ts` to narrow ViewName
 export interface ViewNameRegistry {}
 
-/** Union of valid view component names. Narrowed by {@link ViewNameRegistry}. */
-export type ViewName = keyof ViewNameRegistry & string;
+/**
+ * Valid view component names. **Defaults to `string`** so {@link ViewConfig} is
+ * usable out of the box (before any view typings are generated); a generated
+ * `views.d.ts` augmenting {@link ViewNameRegistry} then narrows it to the
+ * concrete union of registered views. The `[keyof …] extends [never]` guard is
+ * what distinguishes "no augmentations yet" (→ `string`) from an actual union —
+ * a bare `keyof ViewNameRegistry & string` would resolve to `never` while the
+ * registry is empty, making `component` impossible to set in fresh projects.
+ */
+export type ViewName = [keyof ViewNameRegistry] extends [never]
+  ? string
+  : keyof ViewNameRegistry & string;
 
 /**
  * Pass under `view` in a tool's `registerTool` config to render the tool's
