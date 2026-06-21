@@ -160,6 +160,25 @@ describe("provideMcpUi", () => {
       expect(() => injector.get(MCP_ADAPTOR)).toThrow(/hostType/);
       injector.destroy();
     });
+
+    it("MCP_ADAPTOR error guides to the supported MCP_ADAPTOR override only", () => {
+      // The escape hatch must point at the API that exists today (override the
+      // MCP_ADAPTOR token), not the forthcoming `provideMockMcpUi` (S16, testing
+      // entrypoint still a skeleton) — referencing an absent API misleads users.
+      vi.stubGlobal("window", {});
+      const injector = injectorFromProvideMcpUi();
+      // Resolve once and inspect the captured message: a second `injector.get`
+      // would surface Angular's cached CIRCULAR error, not the original.
+      let message = "";
+      try {
+        injector.get(MCP_ADAPTOR);
+      } catch (err) {
+        message = (err as Error).message;
+      }
+      expect(message).toContain("MCP_ADAPTOR");
+      expect(message).not.toContain("provideMockMcpUi");
+      injector.destroy();
+    });
   });
 
   describe("(c) MCP_ADAPTOR is overridable without window (the mock seam)", () => {

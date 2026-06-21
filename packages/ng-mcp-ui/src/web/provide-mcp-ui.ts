@@ -1,4 +1,5 @@
 import {
+  type ApplicationRef,
   type EnvironmentProviders,
   type Provider,
   type Type,
@@ -28,7 +29,9 @@ import { MCP_ADAPTOR, MCP_SERVER_URL } from "./tokens.js";
  * If the shell never set `window.mcpUi`, the {@link MCP_ADAPTOR} factory throws a
  * clear error naming the shell contract: a widget can only boot inside a
  * host-provided shell that injects `window.mcpUi`. Tests/Storybook avoid the
- * throw by overriding {@link MCP_ADAPTOR} (see `provideMockMcpUi`, S16).
+ * throw by overriding {@link MCP_ADAPTOR} with a provider (a forthcoming
+ * `provideMockMcpUi` from `ng-mcp-ui/testing` will package that override; until
+ * it lands, provide the token directly).
  */
 export function provideMcpUi(): EnvironmentProviders {
   return makeEnvironmentProviders([
@@ -54,8 +57,8 @@ export function provideMcpUi(): EnvironmentProviders {
             "[ng-mcp-ui] provideMcpUi(): window.mcpUi is not set. A widget " +
               "must be bootstrapped inside a host-provided shell that injects " +
               "`window.mcpUi = { hostType, serverUrl }`. If you are testing " +
-              "or running in Storybook, provide MCP_ADAPTOR directly (see " +
-              "provideMockMcpUi).",
+              "or running in Storybook, override the MCP_ADAPTOR token with a " +
+              "provider (e.g. { provide: MCP_ADAPTOR, useValue: <fake> }).",
           );
         }
         return getAdaptor();
@@ -100,7 +103,7 @@ export function provideMcpUi(): EnvironmentProviders {
 export function bootstrapWidget(
   component: Type<unknown>,
   providers: Array<Provider | EnvironmentProviders> = [],
-): Promise<unknown> {
+): Promise<ApplicationRef> {
   return import("@angular/platform-browser").then(({ createApplication }) =>
     createApplication({
       providers: [provideMcpUi(), ...providers],
