@@ -221,9 +221,11 @@ function addDependencies(options: NgAddOptions): Rule {
 const MCP_ROUTES_MARKER = "// ng-mcp-ui:mcp-routes";
 
 /**
- * The Express block we splice in just before the Angular SSR catch-all. Kept as
- * a single template so the inserted text matches the hand-written M1 reference
- * (`examples/dev-app/src/server.ts`) byte-for-byte modulo indentation.
+ * The Express block we splice in just before the Angular SSR catch-all. The
+ * block is self-contained: it derives the widgets dir from `import.meta.url`
+ * (via `fileURLToPath(new URL(...))`) rather than from any variable the
+ * consumer's server.ts happens to declare, and uses a standard, broadly-typed
+ * form that typechecks in arbitrary consumer tsconfigs.
  */
 const MCP_ROUTES_BLOCK = `${MCP_ROUTES_MARKER}
 // MCP JSON-RPC endpoint — host (Claude/ChatGPT) connects here.
@@ -232,12 +234,12 @@ app.use("/mcp", createMcpExpressRouter(mcp));
 
 // Built widget chunks + CSS, served with CORS + CSP-friendly caching. Resolved
 // relative to this server bundle (\`<serverDist>/../../widgets/browser\`); we use
-// \`import.meta.dirname\` so the path works regardless of which variables the
-// app's server.ts happens to declare.
+// \`import.meta.url\` so the path works regardless of which variables the app's
+// server.ts happens to declare.
 app.use(
   "/assets/widgets",
   createViewAssetRouter({
-    dir: resolve(import.meta.dirname, "../../widgets/browser"),
+    dir: fileURLToPath(new URL("../../widgets/browser", import.meta.url)),
   }),
 );
 
@@ -250,7 +252,7 @@ Add the MCP routes by hand. In src/server.ts:
 
   1. Add these imports:
 
-       import { resolve } from "node:path";
+       import { fileURLToPath } from "node:url";
        import {
          createMcpExpressRouter,
          createViewAssetRouter,
@@ -269,15 +271,17 @@ Add the MCP routes by hand. In src/server.ts:
        app.use(
          "/assets/widgets",
          createViewAssetRouter({
-           dir: resolve(import.meta.dirname, "../../widgets/browser"),
+           dir: fileURLToPath(new URL("../../widgets/browser", import.meta.url)),
          }),
        );
 `;
 
 /**
  * Resolve the path to the target project's `server.ts`. Mirrors what
- * `@angular/ssr`'s own schematic does: `<sourceRoot>/server.ts`, falling back
- * to `<projectRoot>/src/server.ts`.
+ * `@angular/ssr`'s own schematic does: prefer `<sourceRoot>/server.ts`, and
+ * when that doesn't exist on the tree, fall back to `<projectRoot>/src/server.ts`.
+ * When neither exists we return the primary `<sourceRoot>/server.ts` candidate
+ * so the caller bails gracefully (logs the manual snippet) on a missing file.
  */
 async function resolveServerTsPath(
   tree: Tree,
@@ -289,9 +293,17 @@ async function resolveServerTsPath(
   if (!project) {
     return null;
   }
-  const sourceRoot = project.sourceRoot ?? `${project.root}/src`;
   // Workspace paths are root-relative; the Tree is rooted at "/".
-  return `/${sourceRoot}/server.ts`;
+  const sourceRoot = project.sourceRoot ?? `${project.root}/src`;
+  const candidate = `/${sourceRoot}/server.ts`;
+  if (tree.exists(candidate)) {
+    return candidate;
+  }
+  const rootSrc = `/${project.root ? `${project.root}/` : ""}src/server.ts`;
+  if (rootSrc !== candidate && tree.exists(rootSrc)) {
+    return rootSrc;
+  }
+  return candidate; // not found → caller bails with the manual snippet
 }
 
 /**
@@ -423,7 +435,7 @@ function patchServerTs(options: NgAddOptions): Rule {
     const changes: Change[] = [
       // Imports. insertImport is itself idempotent, but the marker guard above
       // already short-circuits a second run.
-      insertImport(source, serverTsPath, "resolve", "node:path"),
+      insertImport(source, serverTsPath, "fileURLToPath", "node:url"),
       insertImport(
         source,
         serverTsPath,

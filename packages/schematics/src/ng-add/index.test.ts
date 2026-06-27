@@ -136,10 +136,12 @@ describe("ng-add", () => {
 
     // Ordering: the MCP routes must come BEFORE the Angular SSR catch-all.
     const markerIdx = server.indexOf("// ng-mcp-ui:mcp-routes");
-    const catchAllIdx = server.indexOf("angularApp");
-    const lastCatchAll = server.lastIndexOf("angularApp\n    .handle");
+    // Anchor on the catch-all statement, not the earlier `angularApp` declaration,
+    // so a formatting change in the handler can't false-fail this.
+    const catchAllIdx = server.indexOf("app.use((req, res, next)");
     expect(markerIdx).toBeGreaterThan(-1);
-    expect(markerIdx).toBeLessThan(lastCatchAll === -1 ? catchAllIdx : lastCatchAll);
+    expect(catchAllIdx).toBeGreaterThan(-1);
+    expect(markerIdx).toBeLessThan(catchAllIdx);
   });
 
   // The @angular/ssr application-builder server.ts template is identical across
