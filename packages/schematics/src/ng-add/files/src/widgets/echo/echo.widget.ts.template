@@ -32,7 +32,10 @@ export default class EchoWidget {
 
   protected readonly message = computed(() => {
     const state = this.tool();
-    if (state.isSuccess) {
+    // `output` is nullable even in the success state: an mcp-app host can reach
+    // success by pushing `responseMetadata` alone (no `structuredContent`), so
+    // guard it — AOT strict templates reject an unchecked `state.output.message`.
+    if (state.isSuccess && state.output) {
       return state.output.message;
     }
     if (state.isPending) {

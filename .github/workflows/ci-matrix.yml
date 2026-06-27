@@ -1,0 +1,37 @@
+name: CI matrix (Angular 20/21/22)
+
+# S30 (PLAN §7.5) — the heavy cross-major integration gate. For each supported
+# Angular major it scaffolds a real SSR app, retrofits it with ng-mcp-ui via the
+# ng-add schematic (--example=demo), builds the AOT widget bundle + SSR host, and
+# probes the mounted /mcp endpoint. Catches partial-linker / AST-patch / AOT /
+# builder drift that the SchematicTestRunner tree assertions (S26–S29) cannot.
+# Slow — kept in its own workflow so the fast lint/typecheck/test gate (ci.yml)
+# stays snappy.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ng-major: ["20", "21", "22"]
+    name: ng${{ matrix.ng-major }} fixture
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install workspace
+        run: npm ci
+
+      - name: Cross-major fixture (ng ${{ matrix.ng-major }})
+        run: npm run ci:fixture -- --ng-version ${{ matrix.ng-major }}
