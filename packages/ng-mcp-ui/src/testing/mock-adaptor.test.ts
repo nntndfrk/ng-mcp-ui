@@ -90,6 +90,16 @@ describe("MockAdaptor", () => {
     expect(store.getSnapshot()).toEqual({ count: 2 });
   });
 
+  it("setViewState's functional updater sees a prior pushHostContext('viewState')", () => {
+    // The store is the single source of truth: a host push of viewState must be
+    // visible to a later functional setViewState updater (no stale cache).
+    const store = adaptor.getHostContextStore("viewState");
+    adaptor.pushHostContext("viewState", { count: 41 });
+
+    adaptor.setViewState((prev) => ({ count: ((prev?.count as number) ?? 0) + 1 }));
+    expect(store.getSnapshot()).toEqual({ count: 42 });
+  });
+
   it("openModal reflects on the display store", () => {
     const store = adaptor.getHostContextStore("display");
     adaptor.openModal({ title: "t", params: { a: 1 } });

@@ -57,6 +57,20 @@ const HOST_CONTEXT_KEYS = [
   "viewState",
 ] as const satisfies readonly (keyof HostContext)[];
 
+// Compile-time exhaustiveness guard (mirrors web/host-context.ts): `satisfies`
+// above only checks membership, not coverage. If a key is added to HostContext
+// without being listed here, MockAdaptor would build one fewer store and return
+// `undefined` at runtime for the new key — this line turns that drift into a
+// build error.
+type _AssertAllKeysListed = Exclude<
+  keyof HostContext,
+  (typeof HOST_CONTEXT_KEYS)[number]
+> extends never
+  ? true
+  : ["HOST_CONTEXT_KEYS is missing HostContext keys", never];
+const _allKeysListed: _AssertAllKeysListed = true;
+void _allKeysListed;
+
 /**
  * A record of one entry in a {@link MockAdaptor}'s call log: the method name
  * and the arguments it was invoked with. Tests assert against this to prove a
@@ -175,12 +189,10 @@ export class MockAdaptor implements Adaptor {
     [K in keyof HostContext]: MockStore<K>;
   };
   private readonly toolResponses: Record<string, MockToolResponse>;
-  private viewState: HostContext["viewState"];
 
   constructor(args: MockMcpUiArgs = {}) {
     const seed = { ...DEFAULT_HOST_CONTEXT, ...args.hostContext };
     this.toolResponses = args.toolResponses ?? {};
-    this.viewState = seed.viewState;
 
     // Build one mock store per key. An indexed write into the mapped type would
     // distribute `key`'s union and reject the assignment (TS2322); we accumulate
@@ -289,13 +301,14 @@ export class MockAdaptor implements Adaptor {
     stateOrUpdater: SetViewStateAction,
   ): Promise<void> => {
     this.record("setViewState", stateOrUpdater);
+    // The `viewState` store is the single source of truth: read `prev` from its
+    // snapshot so a prior `pushHostContext("viewState", …)` is reflected in a
+    // functional updater (no separate cache to drift out of sync).
+    const prev = this.stores.viewState.store.getSnapshot();
     const next =
-      typeof stateOrUpdater === "function"
-        ? stateOrUpdater(this.viewState)
-        : stateOrUpdater;
-    // Mirror the real adaptor: update the in-memory state and notify the
-    // `viewState` store so a subscribed signal reflects the write.
-    this.viewState = next;
+      typeof stateOrUpdater === "function" ? stateOrUpdater(prev) : stateOrUpdater;
+    // Mirror the real adaptor: notify the `viewState` store so a subscribed
+    // signal reflects the write.
     this.stores.viewState.push(next);
   };
 
