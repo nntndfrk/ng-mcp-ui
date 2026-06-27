@@ -172,10 +172,10 @@ describe("view", () => {
     expect(result.files).not.toContain(`${WIDGETS}/registry.ts`);
   });
 
-  it("--with-tool is gracefully skipped while the `tool` generator is unbuilt (S28)", async () => {
-    // S28's `tool` schematic is not registered in this collection yet, so the
-    // `--with-tool` delegation must NOT throw: the view is still generated, and
-    // the paired tool is skipped (logged) until S28 lands.
+  it("--with-tool delegates to the `tool` generator: produces BOTH the view AND the paired tool (S28)", async () => {
+    // S28 registers the `tool` generator in this collection, which flips the
+    // `--with-tool` delegation guard live: a `view <name> --with-tool` run now
+    // ALSO scaffolds + wires the paired MCP tool, linked back to the view.
     const fixture = await scaffolded();
 
     const result = await runner.runSchematic(
@@ -184,13 +184,22 @@ describe("view", () => {
       fixture,
     );
 
-    // The view itself is produced regardless of the `--with-tool` outcome.
+    // The view itself is still produced.
     expect(result.files).toContain(`${WIDGETS}/foo/foo.widget.ts`);
     expect(result.files).toContain(`${WIDGETS}/views.d.ts`);
-    // No paired tool file — `tool` (S28) is not registered yet, so delegation
-    // was skipped rather than scaffolding `mcp/tools/foo.ts`.
-    expect(result.files).not.toContain(
-      "/projects/fixture-app/src/mcp/tools/foo.ts",
+
+    // The paired tool was scaffolded, linked to the `foo` view, and wired into
+    // createMcpServer() in server.ts.
+    const toolPath = "/projects/fixture-app/src/mcp/tools/foo.ts";
+    expect(result.files).toContain(toolPath);
+    const toolFile = result.readContent(toolPath);
+    expect(toolFile).toContain(
+      "export function registerFooTool(server: McpServer): void",
     );
+    expect(toolFile).toContain('component: "foo"');
+
+    const server = result.readContent("/projects/fixture-app/src/mcp/server.ts");
+    expect(server).toContain("registerFooTool(server);");
+    expect(server).toContain("./tools/foo");
   });
 });

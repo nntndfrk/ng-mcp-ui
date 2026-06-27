@@ -110,6 +110,9 @@ try {
       // the pre-pack dist; this checks the installed tarball).
       "dist/schematics/ng-add/files/src/widgets/registry.ts.template",
       "dist/schematics/view/files/__name@dasherize__/__name@dasherize__.widget.ts.template",
+      "dist/schematics/tool/index.js",
+      "dist/schematics/tool/schema.json",
+      "dist/schematics/tool/files/__name@dasherize__.ts.template",
     ]) {
       const abs = join(pkgDir, rel);
       if (!existsSync(abs)) {
