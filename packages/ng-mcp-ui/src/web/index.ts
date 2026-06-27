@@ -115,6 +115,20 @@ export {
   injectViewContext,
   VIEW_CONTEXT_KEY,
 } from "./helpers/state.js";
+// data-llm channel — `DataLlmDirective` (`[dataLlm]`) surfaces in-view content to
+// the model without an extra tool call. Each directive registers its `content` as
+// a node in a shared tree (parent discovery via `inject(DataLlmDirective, {
+// skipSelf })`); the flattened tree is serialized as an indented bullet list and
+// persisted on the host's `viewState` under `VIEW_CONTEXT_KEY`. The decorator-free
+// core (`data-llm-core.ts`) holds the registry + serializer; the `@Directive`
+// resolves `MCP_ADAPTOR` (THE RULE) and delegates. `getLLMDescriptionString` is
+// exported for advanced callers / tests.
+export {
+  DataLlmDirective,
+  type DataLlmContent,
+  type DataLlmNode,
+  getLLMDescriptionString,
+} from "./data-llm.js";
 // Asset-URL pipe — the first Angular declarable (Ivy `ɵɵngDeclarePipe` partial
 // emit). `mcpAsset` rewrites a relative asset path to an absolute URL on the MCP
 // server origin (`${serverUrl}/assets/widgets/${path}`), fixing the cross-origin
