@@ -21,6 +21,15 @@ const steps = [
     args: ["-p", "packages/ng-mcp-ui/tsconfig.json"],
   },
   {
+    // Build (not just typecheck) the schematics package: it EMITS dist incl. the
+    // JSON assets (collection.json + ng-add/schema.json), mirroring the ngc step
+    // above, so the schematic test can read dist/collection.json. npm is on PATH
+    // (we don't use bin("npm"), which won't resolve on Windows).
+    label: "schematics (build)",
+    cmd: "npm",
+    args: ["run", "build", "--workspace", "ng-mcp-ui-schematics"],
+  },
+  {
     label: "workspace tooling (tsc)",
     cmd: bin("tsc"),
     args: ["-p", "tsconfig.json"],

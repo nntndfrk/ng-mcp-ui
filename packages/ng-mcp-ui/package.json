@@ -26,6 +26,7 @@
   ],
   "type": "module",
   "sideEffects": false,
+  "schematics": "./dist/schematics/collection.json",
   "engines": {
     "node": ">=22.0.0"
   },
@@ -54,10 +55,16 @@
   },
   "scripts": {
     "build": "ngc -p tsconfig.json",
+    "build:pack": "ngc -p tsconfig.json && node tools/embed-schematics.mjs",
+    "prepack": "node tools/embed-schematics.mjs",
     "verify:pack": "node tools/verify-pack.mjs"
   },
   "dependencies": {
-    "cors": "^2.8.0"
+    "@angular-devkit/core": "^22.0.0",
+    "@angular-devkit/schematics": "^22.0.0",
+    "@schematics/angular": "^22.0.0",
+    "cors": "^2.8.0",
+    "typescript": ">=5.8.0 <6.1.0"
   },
   "peerDependencies": {
     "@angular/core": ">=20.0.0 <23.0.0",

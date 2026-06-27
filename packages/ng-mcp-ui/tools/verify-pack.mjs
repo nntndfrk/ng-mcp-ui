@@ -83,6 +83,39 @@ try {
   console.log(
     "\nverify-pack: OK — all four subpath exports resolve from a packed install.",
   );
+
+  // 4. Assert the embedded schematics shipped in the tarball. `npm pack` runs
+  //    this package's `prepack` → embed-schematics, so the installed tree must
+  //    carry the `"schematics"` field and the embedded collection + ng-add
+  //    factory under dist/schematics.
+  const schematicsProbe = `
+    import { existsSync } from "node:fs";
+    import { dirname, join } from "node:path";
+    import { fileURLToPath } from "node:url";
+    const pkgJsonUrl = import.meta.resolve("ng-mcp-ui/package.json");
+    const pkgDir = dirname(fileURLToPath(pkgJsonUrl));
+    const { default: pkg } = await import(pkgJsonUrl, { with: { type: "json" } });
+    if (pkg.schematics !== "./dist/schematics/collection.json") {
+      throw new Error("unexpected schematics field: " + pkg.schematics);
+    }
+    for (const rel of [
+      "dist/schematics/collection.json",
+      "dist/schematics/ng-add/index.js",
+    ]) {
+      const abs = join(pkgDir, rel);
+      if (!existsSync(abs)) {
+        throw new Error("embedded schematics asset missing: " + rel);
+      }
+      console.log("ng-mcp-ui/" + rel + " ->", abs);
+    }
+    console.log("ng-mcp-ui schematics field ->", pkg.schematics);
+  `;
+  process.stdout.write(
+    runCapture("node", ["--input-type=module", "-e", schematicsProbe], scratch),
+  );
+  console.log(
+    "\nverify-pack: OK — embedded schematics collection + ng-add factory shipped.",
+  );
 } catch (err) {
   console.error(`\nverify-pack: FAILED — ${err.message}`);
   process.exitCode = 1;

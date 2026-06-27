@@ -1,0 +1,26 @@
+{
+  // Schematics MUST compile to CommonJS — the @angular-devkit/schematics
+  // runtime `require()`s factory modules referenced from collection.json, so
+  // ESM output would not load. We therefore override the ESM-oriented base
+  // (module/moduleResolution/verbatimModuleSyntax) with a Node CommonJS profile.
+  // node10 resolution is sufficient and matches the devkit's own emit.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "verbatimModuleSyntax": false,
+    "esModuleInterop": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"],
+  // `src/<schematic>/files/**` are scaffold TEMPLATES shipped as data (copied to
+  // dist by copy-assets.mjs), NOT part of the schematic's own compilation — they
+  // import the consumer's `ng-mcp-ui` runtime / `@angular/core` which aren't
+  // resolvable here. tsc must skip every schematic's `files/` tree (ng-add,
+  // example, …).
+  "exclude": ["**/*.test.ts", "src/*/files/**", "dist", "node_modules"]
+}
