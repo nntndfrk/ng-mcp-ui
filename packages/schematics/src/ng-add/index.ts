@@ -482,12 +482,20 @@ function patchServerTs(options: NgAddOptions): Rule {
 }
 
 /**
- * The `build-widgets` Angular target — copied verbatim from the verified
- * `examples/dev-app/angular.json`. Single supported ("lazy" code-split) bundling
- * path: `@angular/build:application` over `src/widgets/main.ts` with
- * `src/widgets/index.html` as the shell, `namedChunks` + `outputHashing: all` so
- * each registry view code-splits into a name-stable hashed chunk that the
- * post-build manifest generator (`tools/build-widgets.mjs`) can resolve.
+ * The `build-widgets` Angular target — mirrors the bundling-spike-verified
+ * widgets config (PLAN §5.1/§5.5; not committed to `examples/dev-app/angular.json`,
+ * which is the server-track host and carries no widgets target). Single supported
+ * ("lazy" code-split) bundling path: `@angular/build:application` over
+ * `src/widgets/main.ts` with `src/widgets/index.html` as the shell, `namedChunks` +
+ * `outputHashing: all` so each registry view code-splits into a name-stable hashed
+ * chunk that the post-build manifest generator (`tools/build-widgets.mjs`) can
+ * resolve.
+ *
+ * `outputPath: dist/widgets` is workspace-root-anchored (one widgets bundle per
+ * workspace), matching the runtime resolver in `views.manifest.ts` which climbs
+ * `../../widgets/browser` out of `dist/<project>/server/` to `dist/widgets/browser`.
+ * A multi-app workspace retrofitting more than one host would need per-app output
+ * dirs; the single-host SSR-retrofit flow this schematic targets does not.
  *
  * NOTE: `options.bundling` is intentionally NOT branched on here — only the
  * default single-target lazy path is verified/supported in S26. A non-default
