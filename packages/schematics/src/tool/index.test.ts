@@ -85,6 +85,10 @@ describe("tool", () => {
     expect(callIdx).toBeGreaterThan(-1);
     expect(returnIdx).toBeGreaterThan(-1);
     expect(callIdx).toBeLessThan(returnIdx);
+
+    // Formatting: the inserted call keeps the body's 2-space indent and leaves a
+    // blank line before `return` (matches the ng-add template formatting).
+    expect(server).toMatch(/\n {2}registerBarTool\(server\);\n\n {2}return server;/);
   });
 
   it('--view <existing> wires `view: { component: "echo" }` into the config', async () => {
@@ -120,6 +124,64 @@ describe("tool", () => {
     const toolFile = result.readContent(`${TOOLS}/qux.ts`);
     expect(toolFile).toContain('component: "nope"');
     expect(logs.join("\n")).toContain('--view "nope" is not registered');
+  });
+
+  it("does NOT warn for a camelCase --view that IS registered (raw-key match)", async () => {
+    // The `view` schematic registers the RAW key `castVote`; warnUnknownView must
+    // match the raw name, not a dasherized `cast-vote` (regression: false warn).
+    const fixture = await scaffolded();
+    const withView = await runner.runSchematic(
+      "view",
+      { name: "castVote" },
+      fixture,
+    );
+
+    const logs: string[] = [];
+    runner.logger.subscribe((e) => logs.push(e.message));
+
+    const result = await runner.runSchematic(
+      "tool",
+      { name: "vote", view: "castVote" },
+      withView,
+    );
+
+    expect(result.readContent(`${TOOLS}/vote.ts`)).toContain(
+      'component: "castVote"',
+    );
+    expect(logs.join("\n")).not.toContain("is not registered");
+  });
+
+  it("wires with the resolved instance name (non-`server`) + only inside createMcpServer", async () => {
+    // server.ts where the McpServer instance is `mcp`, plus a decoy helper with
+    // its own `return server;` BEFORE createMcpServer. The register call must
+    // target `mcp` (not a hard-coded `server`) and land inside createMcpServer,
+    // not at the decoy's return.
+    const fixture = await scaffolded();
+    const custom = [
+      'import { McpServer } from "ng-mcp-ui/server";',
+      "",
+      "function decoy(server: McpServer): McpServer {",
+      "  return server;",
+      "}",
+      "",
+      "export function createMcpServer(): McpServer {",
+      "  const mcp = new McpServer({ name: 'x', version: '0.0.0' });",
+      "  return mcp;",
+      "}",
+      "",
+    ].join("\n");
+    fixture.overwrite(SERVER, custom);
+
+    const result = await runner.runSchematic("tool", { name: "bar" }, fixture);
+    const server = result.readContent(SERVER);
+
+    // Targets the resolved instance name.
+    expect(server).toContain("registerBarTool(mcp);");
+    expect(server).not.toContain("registerBarTool(server);");
+    // Lands before createMcpServer's `return mcp;`, NOT the decoy's `return server;`.
+    expect(server).toMatch(/registerBarTool\(mcp\);\n\n {2}return mcp;/);
+    const decoyIdx = server.indexOf("return server;");
+    expect(server.indexOf("registerBarTool(mcp);")).toBeGreaterThan(decoyIdx);
   });
 
   it("throws when the tool already exists", async () => {

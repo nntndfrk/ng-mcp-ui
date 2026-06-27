@@ -169,9 +169,13 @@ function warnUnknownView(options: ToolOptions): Rule {
       return tree;
     }
     const registry = tree.readText(registryPath);
-    // Match a top-level registry key, e.g. `echo:` or `"echo":`.
+    // Registry keys are the RAW view name (the `view` schematic writes
+    // `key = options.name`, quoted only when not a bare identifier), and the
+    // tool template emits `component: "<raw>"` — so match the raw name, NOT a
+    // dasherized form (else a camelCase view like `castVote` would warn
+    // spuriously against its own `castVote:` registry key).
     const keyRe = new RegExp(
-      `(^|[,{\\s])["']?${escapeRegExp(dasherize(options.view))}["']?\\s*:`,
+      `(^|[,{\\s])["']?${escapeRegExp(options.view)}["']?\\s*:`,
     );
     if (!keyRe.test(registry)) {
       context.logger.warn(
@@ -196,15 +200,40 @@ async function resolveServerTsPath(
 }
 
 /**
- * Find the `return server;` statement inside `createMcpServer()` so we can
- * splice the tool registration call directly before it. We accept any
- * `return <ident>;` whose identifier matches the `const <ident> = new McpServer`
- * declaration in the same file; in the ng-add scaffold that identifier is
- * `server`. Returns the statement's full-text start, or `null` when the shape
- * is unrecognized (caller bails gracefully).
+ * Locate the `return <server>;` statement INSIDE `createMcpServer()` so we can
+ * splice the tool registration call directly before it, and resolve the
+ * McpServer instance identifier (`const <server> = new McpServer(...)`) so the
+ * inserted call targets the right variable (e.g. `return mcp;` →
+ * `registerXTool(mcp);`). Both scans are scoped to the `createMcpServer` body so
+ * an unrelated `return server;` / `new McpServer` in another function can't
+ * become the anchor. Returns `{ start, serverName }` (the statement's full-text
+ * start + the resolved instance name), or `null` when the shape is unrecognized
+ * (caller bails gracefully).
  */
-function findReturnServerStart(source: ts.SourceFile): number | null {
-  // The McpServer instance name (`const server = new McpServer(...)`).
+function findReturnServerStart(
+  source: ts.SourceFile,
+): { start: number; serverName: string } | null {
+  // Scope to the `createMcpServer` function body.
+  let body: ts.Block | null = null;
+  const visitFn = (node: ts.Node): void => {
+    if (
+      body === null &&
+      ts.isFunctionDeclaration(node) &&
+      node.name?.text === "createMcpServer" &&
+      node.body
+    ) {
+      body = node.body;
+      return;
+    }
+    ts.forEachChild(node, visitFn);
+  };
+  ts.forEachChild(source, visitFn);
+  if (body === null) {
+    return null;
+  }
+  const fnBody: ts.Block = body;
+
+  // The McpServer instance name (`const <server> = new McpServer(...)`).
   let serverName: string | null = null;
   const visitDecl = (node: ts.Node): void => {
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
@@ -220,8 +249,11 @@ function findReturnServerStart(source: ts.SourceFile): number | null {
     }
     ts.forEachChild(node, visitDecl);
   };
-  ts.forEachChild(source, visitDecl);
+  ts.forEachChild(fnBody, visitDecl);
 
+  // The matching `return <serverName>;` within the same body (falling back to a
+  // bare `server` when the declaration wasn't recognized).
+  const wanted: string = serverName ?? "server";
   let found: number | null = null;
   const visitReturn = (node: ts.Node): void => {
     if (found !== null) {
@@ -231,17 +263,16 @@ function findReturnServerStart(source: ts.SourceFile): number | null {
       ts.isReturnStatement(node) &&
       node.expression &&
       ts.isIdentifier(node.expression) &&
-      // Prefer the matched McpServer name; fall back to a bare `server`.
-      (node.expression.text === serverName ||
-        (serverName === null && node.expression.text === "server"))
+      node.expression.text === wanted
     ) {
       found = node.getStart(source);
       return;
     }
     ts.forEachChild(node, visitReturn);
   };
-  ts.forEachChild(source, visitReturn);
-  return found;
+  ts.forEachChild(fnBody, visitReturn);
+
+  return found === null ? null : { start: found, serverName: wanted };
 }
 
 /**
@@ -266,7 +297,6 @@ function wireIntoServer(options: ToolOptions): Rule {
     const dash = dasherize(options.name);
     const importName = `register${cls}Tool`;
     const importPath = `./tools/${dash}`;
-    const registerCall = `${importName}(server);`;
 
     if (!tree.exists(serverTsPath)) {
       context.logger.warn(manualWireSnippet(options.name));
@@ -275,11 +305,6 @@ function wireIntoServer(options: ToolOptions): Rule {
 
     const content = tree.readText(serverTsPath);
 
-    // Idempotency: the registration call is already present → no-op.
-    if (content.includes(registerCall)) {
-      return tree;
-    }
-
     const source = ts.createSourceFile(
       serverTsPath,
       content,
@@ -287,16 +312,27 @@ function wireIntoServer(options: ToolOptions): Rule {
       /* setParentNodes */ true,
     );
 
-    const returnStart = findReturnServerStart(source);
-    if (returnStart === null) {
+    const target = findReturnServerStart(source);
+    if (target === null) {
       // Unrecognized shape — bail gracefully with copy-pasteable instructions.
       context.logger.warn(manualWireSnippet(options.name));
       return tree;
     }
 
+    // Target the resolved instance name so non-`server` apps still compile.
+    const registerCall = `${importName}(${target.serverName});`;
+
+    // Idempotency: the registration call is already present → no-op.
+    if (content.includes(registerCall)) {
+      return tree;
+    }
+
     const changes: Change[] = [
       insertImport(source, serverTsPath, importName, importPath),
-      new InsertChange(serverTsPath, returnStart, `${registerCall}\n\n  `),
+      // `target.start` is the `return` token's start (leading indent excluded by
+      // getStart), so the existing indent prefixes the inserted call and the
+      // trailing `\n\n  ` re-indents the return — preserving 2-space formatting.
+      new InsertChange(serverTsPath, target.start, `${registerCall}\n\n  `),
     ];
 
     const recorder = tree.beginUpdate(serverTsPath);
