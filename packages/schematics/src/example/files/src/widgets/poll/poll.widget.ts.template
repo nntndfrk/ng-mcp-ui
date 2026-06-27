@@ -85,14 +85,13 @@ type PollSnapshot = {
           </button>
         </header>
 
-        <div class="poll-options" role="radiogroup" aria-labelledby="poll-question">
+        <div class="poll-options" role="group" aria-labelledby="poll-question">
           @for (option of p.options; track option) {
             <button
               type="button"
               class="poll-option"
-              role="radio"
               [class.voted]="myVote() === option"
-              [attr.aria-checked]="myVote() === option"
+              [attr.aria-pressed]="myVote() === option"
               [disabled]="isBusy()"
               (click)="vote(option)"
             >
@@ -113,7 +112,7 @@ type PollSnapshot = {
                 role="progressbar"
                 [attr.aria-valuenow]="entry.count"
                 [attr.aria-valuemin]="0"
-                [attr.aria-valuemax]="p.total"
+                [attr.aria-valuemax]="p.total || 1"
                 [attr.aria-label]="entry.option + ': ' + entry.count + ' votes'"
               >
                 <div class="poll-bar-fill" [style.width.%]="pct(entry.count)"></div>
