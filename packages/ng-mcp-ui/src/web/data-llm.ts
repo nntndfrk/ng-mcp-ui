@@ -99,21 +99,26 @@ export class DataLlmDirective implements OnChanges {
 
   /**
    * Re-register on every `content` change — the Angular analog of the source's
-   * `useEffect(..., [id, parentId, content])`. Non-empty content registers a
-   * content node and writes the `data-llm` attribute; empty/null removes the node
-   * (structural parent) and clears the attribute.
+   * `useEffect(..., [id, parentId, content])`. The node is always (re)registered
+   * via {@link setNode}: non-empty content registers a content node and writes
+   * the `data-llm` attribute; empty/null registers a *structural parent* (a node
+   * with `null` content — it emits no line of its own but keeps its children
+   * nested in the serialized tree) and clears the attribute.
+   *
+   * This must stay a `setNode` (not a `removeNode`) for the empty case:
+   * `removeNode` would drop the parent from the registry, orphaning any child
+   * `[dataLlm]` whose `parentId` points at it (the root traversal would never
+   * reach them). Removal is teardown-only — see the `DestroyRef` cleanup above.
    */
   ngOnChanges(): void {
     const content = this.content() ?? null;
 
-    if (content) {
-      setNode(this.adaptor, { id: this.id, parentId: this.parentId, content });
-      if (this.renderer && this.host) {
+    setNode(this.adaptor, { id: this.id, parentId: this.parentId, content });
+
+    if (this.renderer && this.host) {
+      if (content) {
         this.renderer.setAttribute(this.host.nativeElement, "data-llm", content);
-      }
-    } else {
-      removeNode(this.adaptor, this.id);
-      if (this.renderer && this.host) {
+      } else {
         this.renderer.removeAttribute(this.host.nativeElement, "data-llm");
       }
     }

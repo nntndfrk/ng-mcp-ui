@@ -86,6 +86,38 @@ describe("data-llm core", () => {
     expect(ctx).toBe("  - Child A\n  - Child B");
   });
 
+  it("re-registering a parent with null content keeps children reachable (not orphaned)", () => {
+    // Locks the DataLlmDirective contract: when `[dataLlm]` content goes empty
+    // the directive must `setNode` a structural parent (null content), NOT
+    // `removeNode`. Removing the parent drops it from the registry, so the root
+    // traversal can never reach children keyed to its id — they silently vanish
+    // from the serialized tree. This asserts the *correct* path; the next test
+    // documents the orphaning that `removeNode` would cause.
+    const { adaptor, lastContext } = makeAdaptor();
+    setNode(adaptor, { id: "p", parentId: null, content: "Parent" });
+    setNode(adaptor, { id: "c", parentId: "p", content: "Child" });
+    expect(lastContext()).toBe("- Parent\n  - Child");
+
+    // Parent content cleared → re-register as a structural parent (the path the
+    // directive's ngOnChanges now takes), children still nest.
+    setNode(adaptor, { id: "p", parentId: null, content: null });
+    expect(lastContext()).toBe("  - Child");
+  });
+
+  it("removeNode on a parent orphans its children (why empty content must not removeNode)", () => {
+    const { adaptor, lastContext } = makeAdaptor();
+    setNode(adaptor, { id: "p", parentId: null, content: "Parent" });
+    setNode(adaptor, { id: "c", parentId: "p", content: "Child" });
+    expect(lastContext()).toBe("- Parent\n  - Child");
+
+    // Removing the parent (teardown semantics) drops it from the registry; the
+    // child's parentId now points at a missing node, so it is unreachable from
+    // the root traversal and disappears from the output. The directive reserves
+    // removeNode for DestroyRef teardown precisely because of this.
+    removeNode(adaptor, "p");
+    expect(lastContext()).toBe("");
+  });
+
   it("orders siblings by id within a parent", () => {
     const { adaptor, lastContext } = makeAdaptor();
     setNode(adaptor, { id: "z", parentId: null, content: "Zeta" });
