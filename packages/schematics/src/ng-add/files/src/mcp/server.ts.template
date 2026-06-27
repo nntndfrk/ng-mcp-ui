@@ -1,0 +1,49 @@
+// Your app's MCP server: a sample `echo` tool with a paired view resource.
+//
+// `createMcpServer()` is consumed by `src/server.ts` (mounted at `/mcp`).
+// Register your own tools here; pair a tool with a `view` to render it as an
+// MCP UI widget under `src/widgets/`.
+
+import { McpServer } from "ng-mcp-ui/server";
+import { z } from "zod";
+
+import { resolveViewManifest } from "./views.manifest";
+
+// Narrow `ViewName` to include this app's views. `ng generate ng-mcp-ui:view`
+// keeps this registry augmentation in sync; the sample `echo` view is declared
+// here so `view: { component: 'echo' }` typechecks.
+declare module "ng-mcp-ui/server" {
+  interface ViewNameRegistry {
+    echo: true;
+  }
+}
+
+export function createMcpServer(): McpServer {
+  const server = new McpServer(
+    { name: "<%= projectName %>", version: "0.0.0" },
+    { viewManifest: resolveViewManifest() },
+  );
+
+  server.registerTool(
+    {
+      name: "echo",
+      title: "Echo",
+      description: "Echoes the message back, and renders it in the echo view.",
+      inputSchema: { message: z.string() },
+      outputSchema: { message: z.string() },
+      view: {
+        component: "echo",
+        description: "Renders the echoed message.",
+      },
+    },
+    (args) => {
+      const message = args.message;
+      return {
+        content: message,
+        structuredContent: { message },
+      };
+    },
+  );
+
+  return server;
+}

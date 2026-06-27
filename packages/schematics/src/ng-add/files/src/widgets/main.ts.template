@@ -1,0 +1,19 @@
+// Widget bootstrap entry. The shell (from `resources/read`) injects
+// `window.mcpUi`; this reads its `viewName` and boots the matching widget.
+// The widgets browser build is exactly where `bootstrapWidget` is meant to run
+// (it lazy-imports `@angular/platform-browser` + applies `provideMcpUi()`, so the
+// widget reads live tool state via the host bridge).
+import { bootstrapWidget } from "ng-mcp-ui/web";
+
+import { registry, type ViewName } from "./registry";
+
+// `ng-mcp-ui/web` augments `Window.mcpUi` as `{ hostType, serverUrl }`. The
+// shell additionally injects `viewName` (shell contract); read it via a narrow
+// cast rather than re-declaring the global (which would clash with the
+// library's augmentation).
+const injected = window.mcpUi as { viewName?: string } | undefined;
+const name = (injected?.viewName ?? "echo") as ViewName;
+
+// Lazy-load the registry entry (esbuild code-splits each into a name-stable
+// hashed chunk, e.g. `echo.widget-HASH.js`), then boot it under provideMcpUi().
+registry[name]().then((m) => bootstrapWidget(m.default));

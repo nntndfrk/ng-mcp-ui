@@ -47,7 +47,12 @@ writeFileSync(
 // 3. Assert the embedded tree is complete (collection + the ng-add factory +
 //    schema). A missing piece means `ng add` would fail at runtime, so fail the
 //    pack instead.
-const required = ["collection.json", "ng-add/index.js", "ng-add/schema.json"];
+const required = [
+  "collection.json",
+  "ng-add/index.js",
+  "ng-add/schema.json",
+  "ng-add/files",
+];
 const missing = required.filter((rel) => !existsSync(join(dest, rel)));
 if (missing.length > 0) {
   console.error(
