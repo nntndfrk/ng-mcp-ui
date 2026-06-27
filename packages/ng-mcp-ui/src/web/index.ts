@@ -102,6 +102,12 @@ export {
   injectRegisterViewTool,
   type RegisterViewToolHandle,
 } from "./inject-register-view-tool.js";
+// Typed wrapper factory. `injectAppHelpers<typeof server>()` returns
+// tool-name-narrowed `injectCallTool` / `injectToolInfo` (input/output/metadata
+// inferred from the server's `$types` registry). Pure-TS sugar over the real
+// wrappers — the returned fns still delegate to them, so they must be called
+// from an injection context.
+export { injectAppHelpers } from "./inject-app-helpers.js";
 // View-state context helpers — used by injectViewState; exported for advanced
 // callers (and the forthcoming S14 data-llm channel, which shares VIEW_CONTEXT_KEY).
 export {
