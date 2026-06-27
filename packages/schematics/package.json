@@ -1,0 +1,30 @@
+{
+  "name": "ng-mcp-ui-schematics",
+  "version": "0.0.0",
+  "description": "Angular schematics (ng-add + generators) for ng-mcp-ui",
+  "license": "MIT",
+  "private": true,
+  "type": "commonjs",
+  "schematics": "./dist/collection.json",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc -b && node tools/copy-assets.mjs",
+    "clean": "node tools/clean.mjs"
+  },
+  "dependencies": {
+    "@angular-devkit/core": "^22.0.0",
+    "@angular-devkit/schematics": "^22.0.0",
+    "@schematics/angular": "^22.0.0",
+    "typescript": ">=5.8.0 <6.1.0"
+  },
+  "devDependencies": {
+    "@angular-devkit/schematics-cli": "^22.0.0",
+    "vitest": "^4.1.8"
+  }
+}
