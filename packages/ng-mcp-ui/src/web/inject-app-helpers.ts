@@ -174,9 +174,11 @@ export function injectAppHelpers<AppType = never>() {
      * const toolInfo = injectToolInfo<"search-trip">();
      * const state = toolInfo();
      * if (state.isSuccess) {
-     *   // output and responseMetadata are defined and typed here
-     *   console.log(state.output.results);
-     *   console.log(state.responseMetadata);
+     *   // `output` / `responseMetadata` are typed here but still nullable:
+     *   // success is reached as soon as *either* arrives, so null-guard before
+     *   // reading the schema-typed fields.
+     *   if (state.output) console.log(state.output.results);
+     *   if (state.responseMetadata) console.log(state.responseMetadata);
      * }
      * ```
      */
