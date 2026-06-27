@@ -114,7 +114,9 @@ function fail(step, detail) {
   if (keep && fixtureDir) {
     console.error(`${tag} fixture kept at ${fixtureDir}`);
   } else if (fixtureDir) {
-    rmSync(fixtureDir, { recursive: true, force: true });
+    // `fixtureDir` is `<workDir>/<APP>`; remove the whole temp workspace so a
+    // failed run doesn't leak the parent dir across repeated invocations.
+    rmSync(dirname(fixtureDir), { recursive: true, force: true });
   }
   process.exit(1);
 }
@@ -140,8 +142,14 @@ function packLib(pkgDir, dest) {
 }
 
 function findTarball(dir, namePrefix) {
+  // Require a digit right after the prefix so a version-agnostic prefix
+  // (`ng-mcp-ui-`) matches `ng-mcp-ui-<version>.tgz` across major bumps without
+  // also matching a sibling like `ng-mcp-ui-schematics-*.tgz`.
   const f = readdirSync(dir).find(
-    (x) => x.startsWith(namePrefix) && x.endsWith(".tgz"),
+    (x) =>
+      x.startsWith(namePrefix) &&
+      x.endsWith(".tgz") &&
+      /^\d/.test(x.slice(namePrefix.length)),
   );
   if (!f) {
     fail("pack", `no tarball matching ${namePrefix}*.tgz in ${dir}`);
@@ -203,6 +211,12 @@ async function probe() {
     env: { ...process.env, PORT: port },
     stdio: ["ignore", "pipe", "pipe"],
   });
+  // A spawn failure (bad bundle path, perms) emits 'error'; without a handler
+  // it becomes an unhandled exception that crashes the run with no tagged step
+  // or cleanup. Route it through fail() for a consistent `[major N] step probe`.
+  server.on("error", (e) =>
+    fail("probe", `failed to spawn SSR server (${bundle}): ${e.message}`),
+  );
   server.stdout.on("data", (d) => process.stderr.write(`[server] ${d}`));
   server.stderr.on("data", (d) => process.stderr.write(`[server] ${d}`));
 
@@ -338,6 +352,42 @@ async function probe() {
         text ? `${text.slice(0, 60)}…` : "no text",
       );
     }
+
+    // Exercise the poll demo's RUNTIME handlers (create → vote → tally), not
+    // just their registration — a `registerPollTools` / handler / in-memory
+    // store regression in the chained example demo would pass a list-only check.
+    const createRes = await client.callTool({
+      name: "create_poll",
+      arguments: { question: "Lunch?", options: ["Pizza", "Sushi"] },
+    });
+    const created = createRes.structuredContent;
+    const pollId =
+      created && typeof created === "object" ? created.pollId : undefined;
+    check(
+      "tools/call create_poll returns a snapshot with a pollId",
+      typeof pollId === "string" && pollId.length > 0,
+      `structured=${JSON.stringify(created)}`,
+    );
+    if (typeof pollId === "string" && pollId.length > 0) {
+      await client.callTool({
+        name: "cast_vote",
+        arguments: { pollId, option: "Pizza" },
+      });
+      const tallyRes = await client.callTool({
+        name: "tally_votes",
+        arguments: { pollId },
+      });
+      const tallied = tallyRes.structuredContent;
+      const pizza =
+        tallied && typeof tallied === "object" && Array.isArray(tallied.tally)
+          ? tallied.tally.find((t) => t.option === "Pizza")
+          : undefined;
+      check(
+        "tools/call cast_vote → tally_votes counts the vote",
+        Boolean(pizza) && pizza.count === 1 && tallied.total === 1,
+        `tally=${JSON.stringify(tallied)}`,
+      );
+    }
   } catch (err) {
     check("probe connect/exchange", false, String(err?.message ?? err));
   } finally {
@@ -365,7 +415,7 @@ async function main() {
   // 1. pack the single ng-mcp-ui package (with embedded schematics).
   const packDir = mkCanonTemp("ng-mcp-ui-packs-");
   packLib(join(repoRoot, "packages", "ng-mcp-ui"), packDir);
-  const libTar = findTarball(packDir, "ng-mcp-ui-0");
+  const libTar = findTarball(packDir, "ng-mcp-ui-");
 
   // 2. ng new (fresh SSR app at the requested major). --skip-install so we do a
   //    single resolve in step 3 that also pulls our local pack + peers.
