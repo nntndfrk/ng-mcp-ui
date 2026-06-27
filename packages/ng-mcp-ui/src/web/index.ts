@@ -115,6 +115,19 @@ export {
   injectViewContext,
   VIEW_CONTEXT_KEY,
 } from "./helpers/state.js";
+// View store — a store-style API over the same host `viewState` bidirectional
+// sync that `injectViewState` provides, for callers who have outgrown a single
+// `value`/`set` pair: `state` signal + `set`/`update`/`patch` + memoized
+// `select`ors + explicit `flush`. Debounced host writes, a `deepEqual` conflict
+// guard against the write/echo loop, and view-context filtering/re-attach.
+// Resolves the host via `MCP_ADAPTOR` (THE RULE — no `getAdaptor()`).
+export {
+  injectViewStore,
+  type InjectViewStore,
+  type InjectViewStoreOptions,
+  type ViewStoreCreator,
+  type ViewStoreUpdater,
+} from "./inject-view-store.js";
 // data-llm channel — `DataLlmDirective` (`[dataLlm]`) surfaces in-view content to
 // the model without an extra tool call. Each directive registers its `content` as
 // a node in a shared tree (parent discovery via `inject(DataLlmDirective, {
