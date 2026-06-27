@@ -173,6 +173,41 @@ describe("injectViewStore", () => {
     injector.destroy();
   });
 
+  it("(d) does not persist a caller-supplied reserved VIEW_CONTEXT_KEY", () => {
+    // The reserved key is host-internal: a caller writing it must not reach the
+    // host. The persisted payload carries only the host's own context (here:
+    // none), never the caller's value, and the exposed state is filtered.
+    const { setViewState, injector } = setup(null);
+    const { state, set } = runInInjectionContext(injector, () =>
+      injectViewStore<State>(defaultState),
+    );
+
+    set({ count: 1, name: "x", [VIEW_CONTEXT_KEY]: "sneaky" } as State);
+    vi.runAllTimers();
+
+    expect(setViewState.calls).toEqual([[{ count: 1, name: "x" }]]);
+    expect(
+      (state() as Record<string, unknown>)[VIEW_CONTEXT_KEY],
+    ).toBeUndefined();
+    injector.destroy();
+  });
+
+  it("(d) set(null) clears local state but does not persist (no null host write)", () => {
+    const { setViewState, injector } = setup(null);
+    const { state, set } = runInInjectionContext(injector, () =>
+      injectViewStore<State>(defaultState),
+    );
+    expect(state()).toEqual(defaultState);
+
+    set(null);
+    expect(state()).toBeNull();
+
+    vi.runAllTimers();
+    // `adaptor.setViewState` has no null form, so a null clear never persists.
+    expect(setViewState.callCount()).toBe(0);
+    injector.destroy();
+  });
+
   it("(e) rehydrates from an external host push that differs (filtered)", () => {
     const { view, injector } = setup({ seed: 0 });
     const { state } = runInInjectionContext(injector, () =>

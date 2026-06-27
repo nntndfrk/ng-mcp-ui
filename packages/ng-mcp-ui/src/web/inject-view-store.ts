@@ -66,8 +66,10 @@ export type InjectViewStore<State extends ViewState> = {
   state: Signal<State | null>;
   /**
    * Replace the state. Accepts a value, `null`, or a `(prev) => next` updater
-   * (the previous value is the current filtered state). Persists to the host
-   * (debounced).
+   * (the previous value is the current filtered state). A non-null result is
+   * persisted to the host (debounced). `set(null)` clears the local `state`
+   * signal but does **not** persist a host clear — `adaptor.setViewState` has no
+   * `null` form — matching {@link injectViewState}.
    */
   set: (updater: ViewStoreUpdater<State>) => void;
   /**
@@ -229,9 +231,13 @@ export function injectViewStore<State extends ViewState>(
       typeof updater === "function"
         ? (updater as (prev: State | null) => State | null)(prevState)
         : updater;
-    // Optimistic, filtered local update; persist the unfiltered next (debounced).
-    state.set(filterViewContext(next));
-    schedulePersist(next);
+    // Filter once, then use that same value for both the optimistic local update
+    // and the (debounced) persist. Filtering before persist keeps a
+    // caller-supplied reserved `VIEW_CONTEXT_KEY` from leaking to the host;
+    // `persistNow` re-attaches the host's own view-context via `injectViewContext`.
+    const filtered = filterViewContext(next);
+    state.set(filtered);
+    schedulePersist(filtered);
   };
 
   const update = (
