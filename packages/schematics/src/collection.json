@@ -11,6 +11,11 @@
       "description": "Generate an MCP UI view (standalone widget component) and wire it into the widget registry + ViewNameRegistry.",
       "factory": "./view/index#view",
       "schema": "./view/schema.json"
+    },
+    "tool": {
+      "description": "Generate an MCP tool (registerTool with zod schemas, optionally linked to a view) and wire it into createMcpServer().",
+      "factory": "./tool/index#tool",
+      "schema": "./tool/schema.json"
     }
   }
 }

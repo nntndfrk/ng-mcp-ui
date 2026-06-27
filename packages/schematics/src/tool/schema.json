@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "NgMcpUiTool",
+  "title": "ng-mcp-ui tool options",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the tool.",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      },
+      "x-prompt": "What name would you like to use for the tool?"
+    },
+    "project": {
+      "type": "string",
+      "description": "The name of the project to target.",
+      "$default": {
+        "$source": "projectName"
+      }
+    },
+    "view": {
+      "type": "string",
+      "description": "Name of an existing view to link this tool to."
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}
