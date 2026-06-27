@@ -1,0 +1,43 @@
+import { ChangeDetectionStrategy, Component, computed } from "@angular/core";
+import { DataLlmDirective, injectToolInfo } from "ng-mcp-ui/web";
+
+/**
+ * The sample `echo` view. Reads live tool state from the host bridge via
+ * `injectToolInfo`, typed to the `echo` tool's input/output shape declared in
+ * `src/mcp/server.ts` (`{ message: string }` for both). Boots under
+ * `provideMcpUi()` (applied by `bootstrapWidget` in `widgets/main.ts`), so the
+ * `MCP_ADAPTOR` token is resolved from the shell-injected `window.mcpUi`.
+ *
+ * The `ToolState` discriminated union drives the template: idle before the tool
+ * runs, pending while it executes, success with the echoed `output.message`.
+ *
+ * `[dataLlm]` surfaces the displayed message back to the model.
+ */
+@Component({
+  selector: "echo-widget",
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [DataLlmDirective],
+  template: `
+    <div id="echo">
+      <h1>Echo</h1>
+      <p [dataLlm]="message()">{{ message() }}</p>
+    </div>
+  `,
+})
+export default class EchoWidget {
+  private readonly tool = injectToolInfo<{
+    input: { message: string };
+    output: { message: string };
+  }>();
+
+  protected readonly message = computed(() => {
+    const state = this.tool();
+    if (state.isSuccess) {
+      return state.output.message;
+    }
+    if (state.isPending) {
+      return state.input.message;
+    }
+    return "(waiting for tool output)";
+  });
+}

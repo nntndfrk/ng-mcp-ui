@@ -1,0 +1,205 @@
+#!/usr/bin/env node
+// POST-BUILD WIDGETS MANIFEST GENERATOR — builds the widgets target, then
+// derives a `views.manifest.json` from the real emitted bundle graph and FAILS
+// LOUDLY if any registered view has no emitted code-split chunk on disk.
+//
+//   1. Build the widgets target (`ng run <%= projectName %>:build-widgets`) →
+//      emits `dist/widgets/browser/{index.html, main-*.js, <view>.widget-*.js}`.
+//   2. Parse `dist/widgets/browser/index.html` for the hashed entry `main-*.js`
+//      and, if present, the `styles-*.css`.
+//   3. Load the list of registered view names from `src/widgets/registry.ts`.
+//   4. For EACH view, find the relative lazy `import("./<view>.widget-*.js")`
+//      inside the entry bundle (the registry's `() => import(...)` after esbuild
+//      code-split) and resolve that chunk on disk under `dist/widgets/browser/`.
+//   5. On success, emit `src/mcp/views.manifest.json`; on any unresolvable view,
+//      throw a named `WidgetsManifestError`, name the failing view, and exit 1.
+//
+// The hash regexes are base64url-aware (`[A-Za-z0-9_-]`), matching the
+// `outputHashing: all` build setting.
+
+import { spawn } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const projectRoot = resolve(__dirname, "..");
+
+const WIDGETS_BROWSER_DIR = resolve(projectRoot, "dist/widgets/browser");
+const INDEX_HTML = resolve(WIDGETS_BROWSER_DIR, "index.html");
+const REGISTRY_TS = resolve(projectRoot, "src/widgets/registry.ts");
+// The generated manifest lives beside the runtime resolver (views.manifest.ts).
+// It is an ADDITIVE build artifact + a build-time validation record — it does
+// NOT change `resolveViewManifest()` runtime behavior, which keeps parsing
+// index.html directly.
+const OUTPUT_MANIFEST = resolve(projectRoot, "src/mcp/views.manifest.json");
+
+/** Named error so a view missing its emitted chunk is unambiguous in CI output. */
+class WidgetsManifestError extends Error {
+  name = "WidgetsManifestError";
+}
+
+/** Run a command to completion, inheriting stdio; reject on non-zero exit. */
+function run(cmd, args) {
+  return new Promise((res, rej) => {
+    const child = spawn(cmd, args, {
+      cwd: projectRoot,
+      stdio: "inherit",
+      shell: false,
+    });
+    child.on("error", rej);
+    child.on("exit", (code) =>
+      code === 0
+        ? res()
+        : rej(new Error(`\`${cmd} ${args.join(" ")}\` exited with code ${code}`)),
+    );
+  });
+}
+
+/**
+ * Read the registry's view-name list.
+ *
+ * Design choice: we parse `registry.ts` as TEXT rather than importing it. The
+ * registry is a `.ts` source with a runtime `import("./echo/echo.widget")` body;
+ * importing it from a plain `.mjs` would require a TS loader AND would try to
+ * resolve the widget modules, which is the wrong layer for a build-graph check.
+ * The file is a flat object literal — `viewName: () => import(...)` — so
+ * extracting the top-level object keys is small and robust. We scope the scan to
+ * the `registry = { ... }` literal body to avoid matching the `ViewName` type
+ * alias or comments.
+ */
+function loadRegistryViewNames() {
+  if (!existsSync(REGISTRY_TS)) {
+    throw new WidgetsManifestError(`registry not found at ${REGISTRY_TS}`);
+  }
+  const src = readFileSync(REGISTRY_TS, "utf8");
+  const literal = src.match(/registry\s*=\s*\{([\s\S]*?)\}\s*as const/);
+  if (!literal) {
+    throw new WidgetsManifestError(
+      `could not locate the \`registry = { ... } as const\` object literal in ${REGISTRY_TS}`,
+    );
+  }
+  // Match each entry key: an identifier (or quoted key) immediately followed by
+  // a colon and an arrow-function lazy import. This skips line comments.
+  const body = literal[1];
+  const names = [];
+  const entry = /(?:^|[,{\n])\s*(?:"([^"]+)"|'([^']+)'|([A-Za-z_$][\w$]*))\s*:\s*\(\s*\)\s*=>/g;
+  let m = entry.exec(body);
+  while (m !== null) {
+    names.push(m[1] ?? m[2] ?? m[3]);
+    m = entry.exec(body);
+  }
+  if (names.length === 0) {
+    throw new WidgetsManifestError(
+      `no view entries found in the registry literal in ${REGISTRY_TS}`,
+    );
+  }
+  return names;
+}
+
+/** Pull the hashed entry `main-*.js` basename out of the built index.html. */
+function parseEntry(indexHtml) {
+  const m = indexHtml.match(
+    /<script\b[^>]*\bsrc="(main(?:-[A-Za-z0-9_-]+)?\.js)"[^>]*>/i,
+  );
+  if (!m) {
+    throw new WidgetsManifestError(
+      `could not find the hashed \`main-*.js\` entry script in ${INDEX_HTML}`,
+    );
+  }
+  return m[1];
+}
+
+/** Pull the hashed `styles-*.css` basename out of index.html, if any. */
+function parseStyles(indexHtml) {
+  const m = indexHtml.match(
+    /<link\b[^>]*\bhref="(styles(?:-[A-Za-z0-9_-]+)?\.css)"[^>]*>/i,
+  );
+  return m ? m[1] : null;
+}
+
+/**
+ * Find the relative lazy `import("./<view>.widget-*.js")` for one view inside the
+ * entry bundle — the registry's `() => import("./<view>/<view>.widget")` after
+ * esbuild code-split. Returns the chunk basename, or null if not present.
+ */
+function findViewChunk(mainJs, view) {
+  // View name may contain regex metachars in theory; escape it defensively.
+  const safe = view.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(
+    `import\\(\\s*["'](\\.\\/${safe}\\.widget-[A-Za-z0-9_-]+\\.js)["']\\s*\\)`,
+  );
+  const m = mainJs.match(re);
+  return m ? basename(m[1]) : null;
+}
+
+async function main() {
+  // (0) Build the widgets target so the manifest is derived from fresh output.
+  console.log("build-widgets: building widgets target…");
+  await run("npx", ["ng", "run", "<%= projectName %>:build-widgets"]);
+
+  if (!existsSync(INDEX_HTML)) {
+    throw new WidgetsManifestError(
+      `widgets build did not emit ${INDEX_HTML}. Did \`<%= projectName %>:build-widgets\` run?`,
+    );
+  }
+
+  const indexHtml = readFileSync(INDEX_HTML, "utf8");
+  const entry = parseEntry(indexHtml);
+  const styles = parseStyles(indexHtml);
+
+  const entryPath = resolve(WIDGETS_BROWSER_DIR, entry);
+  if (!existsSync(entryPath)) {
+    throw new WidgetsManifestError(`entry bundle missing on disk: ${entryPath}`);
+  }
+  const mainJs = readFileSync(entryPath, "utf8");
+
+  // (1) Walk the lazy-import chain for EVERY registered view; collect failures.
+  const views = loadRegistryViewNames();
+  const resolved = {};
+  const missing = [];
+  for (const view of views) {
+    const chunk = findViewChunk(mainJs, view);
+    if (chunk === null) {
+      missing.push(view);
+      continue;
+    }
+    const chunkPath = resolve(WIDGETS_BROWSER_DIR, chunk);
+    if (!existsSync(chunkPath)) {
+      missing.push(view);
+      continue;
+    }
+    resolved[view] = chunk;
+  }
+
+  // (2) Fail loudly if any registered view has no emitted code-split chunk.
+  if (missing.length > 0) {
+    throw new WidgetsManifestError(
+      `registered view(s) with no emitted widget chunk: ${missing.join(", ")}. ` +
+        "Each registry view must code-split into a relative " +
+        '`import("./<view>.widget-*.js")` chunk under dist/widgets/browser/. ' +
+        "Check that the view's widget module exists and is reachable from " +
+        "src/widgets/main.ts.",
+    );
+  }
+
+  // (3) Emit the manifest beside the runtime resolver.
+  const manifest = { entry, styles, views: resolved };
+  writeFileSync(OUTPUT_MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+  console.log(
+    `build-widgets: wrote ${OUTPUT_MANIFEST}\n  entry=${entry}` +
+      `${styles ? ` styles=${styles}` : " styles=(none)"}` +
+      ` views=${Object.keys(resolved).length} [${Object.keys(resolved).join(", ")}]`,
+  );
+  process.exit(0);
+}
+
+main().catch((err) => {
+  if (err instanceof WidgetsManifestError) {
+    console.error(`build-widgets: ${err.name}: ${err.message}`);
+  } else {
+    console.error("build-widgets: fatal error", err);
+  }
+  process.exit(1);
+});

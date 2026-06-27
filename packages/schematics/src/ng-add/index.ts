@@ -1,10 +1,17 @@
 import {
+  MergeStrategy,
   type Rule,
   SchematicsException,
   type SchematicContext,
   type Tree,
+  apply,
+  applyTemplates,
   chain,
   externalSchematic,
+  filter,
+  mergeWith,
+  move,
+  url,
 } from "@angular-devkit/schematics";
 import { NodePackageInstallTask } from "@angular-devkit/schematics/tasks";
 import { insertImport } from "@schematics/angular/utility/ast-utils";
@@ -18,7 +25,10 @@ import {
   addPackageJsonDependency,
   getPackageJsonDependency,
 } from "@schematics/angular/utility/dependencies";
-import { getWorkspace } from "@schematics/angular/utility/workspace";
+import {
+  getWorkspace,
+  updateWorkspace,
+} from "@schematics/angular/utility/workspace";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as ts from "typescript";
@@ -472,14 +482,189 @@ function patchServerTs(options: NgAddOptions): Rule {
 }
 
 /**
+ * The `build-widgets` Angular target — mirrors the bundling-spike-verified
+ * widgets config (PLAN §5.1/§5.5; not committed to `examples/dev-app/angular.json`,
+ * which is the server-track host and carries no widgets target). Single supported
+ * ("lazy" code-split) bundling path: `@angular/build:application` over
+ * `src/widgets/main.ts` with `src/widgets/index.html` as the shell, `namedChunks` +
+ * `outputHashing: all` so each registry view code-splits into a name-stable hashed
+ * chunk that the post-build manifest generator (`tools/build-widgets.mjs`) can
+ * resolve.
+ *
+ * `outputPath: dist/widgets` is workspace-root-anchored (one widgets bundle per
+ * workspace), matching the runtime resolver in `views.manifest.ts` which climbs
+ * `../../widgets/browser` out of `dist/<project>/server/` to `dist/widgets/browser`.
+ * A multi-app workspace retrofitting more than one host would need per-app output
+ * dirs; the single-host SSR-retrofit flow this schematic targets does not.
+ *
+ * NOTE: `options.bundling` is intentionally NOT branched on here — only the
+ * default single-target lazy path is verified/supported in S26. A non-default
+ * value is ignored for now.
+ */
+const BUILD_WIDGETS_TARGET = {
+  builder: "@angular/build:application",
+  options: {
+    browser: "src/widgets/main.ts",
+    index: "src/widgets/index.html",
+    outputPath: "dist/widgets",
+    tsConfig: "tsconfig.widgets.json",
+    namedChunks: true,
+    outputHashing: "all",
+    styles: [] as string[],
+  },
+  configurations: {
+    production: { outputHashing: "all" },
+    development: { optimization: false, sourceMap: true },
+  },
+  defaultConfiguration: "production",
+} as const;
+
+/**
+ * Resolve the target project's root + sourceRoot (root-relative workspace paths).
+ */
+async function resolveProjectPaths(
+  tree: Tree,
+  options: NgAddOptions,
+): Promise<{ root: string; sourceRoot: string }> {
+  const projectName = await resolveProjectName(tree, options);
+  const workspace = await getWorkspace(tree);
+  const project = workspace.projects.get(projectName);
+  if (!project) {
+    throw new SchematicsException(
+      `ng-mcp-ui ng-add: project "${projectName}" not found in the workspace.`,
+    );
+  }
+  const root = project.root ?? "";
+  const sourceRoot = project.sourceRoot ?? `${root ? `${root}/` : ""}src`;
+  return { root, sourceRoot };
+}
+
+/**
+ * Step 5 — scaffold the MCP + widgets source from `./files` templates.
+ *
+ * The template tree mirrors the verified dev-app layout: `src/mcp/*`,
+ * `src/widgets/**`, `tools/build-widgets.mjs` and `tsconfig.widgets.json`. We
+ * `move(...)` the whole tree under the target project's ROOT — so `src/...`
+ * lands at `<root>/src/...` (which equals the project `sourceRoot` in the
+ * standard `<root>/src` layout) and `tools/`+`tsconfig.widgets.json` land at the
+ * project root, matching the verified dev-app placement.
+ *
+ * Idempotency / respect for pre-existing files: we `filter` out any template
+ * whose resolved target path already exists in the host tree BEFORE merging, so
+ * the merge never sees a create-vs-existing collision. This keeps the host's
+ * file verbatim (the incoming create is simply never produced), which is what we
+ * want both for a user's pre-authored file AND for a second `ng add` run — no
+ * throw, no clobber, no duplicate. (We use the explicit filter rather than a
+ * `MergeStrategy` flag because in this devkit version the conflict flags either
+ * throw or overwrite; none means "keep existing".) The filter accounts for the
+ * `.template` suffix being stripped and the `move(root)` prefix.
+ *
+ * Templating: only `*.template` files are EJS-processed (`applyTemplates` is
+ * scoped to that suffix in this devkit version) and have the suffix stripped on
+ * output — `server.ts.template` and `tools/build-widgets.mjs.template` use
+ * `<%= projectName %>`. The remaining files are fixed scaffolds copied verbatim.
+ */
+function scaffoldSources(options: NgAddOptions): Rule {
+  return async (tree: Tree) => {
+    const projectName = await resolveProjectName(tree, options);
+    const { root } = await resolveProjectPaths(tree, options);
+    const prefix = root ? `/${root}` : "";
+
+    const templates = apply(url("./files"), [
+      // Drop templates whose final destination already exists in the consumer
+      // tree. `path` here is the source-tree path (leading "/", pre-`move`); we
+      // strip the `.template` suffix and prepend the project root to mirror what
+      // `applyTemplates` + `move(root)` will produce.
+      filter((path) => {
+        const dest = `${prefix}${path.replace(/\.template$/, "")}`;
+        return !tree.exists(dest);
+      }),
+      applyTemplates({ projectName }),
+      move(root),
+    ]);
+
+    return mergeWith(templates, MergeStrategy.Default);
+  };
+}
+
+/**
+ * Step 6 — add the `build-widgets` target to the resolved project. Idempotent:
+ * skips when the target already exists (a second run is a no-op).
+ */
+function addBuildWidgetsTarget(options: NgAddOptions): Rule {
+  return async (tree: Tree) => {
+    const projectName = await resolveProjectName(tree, options);
+    return updateWorkspace((workspace) => {
+      const project = workspace.projects.get(projectName);
+      if (!project || project.targets.has("build-widgets")) {
+        return;
+      }
+      project.targets.add({
+        name: "build-widgets",
+        ...structuredClone(BUILD_WIDGETS_TARGET),
+      });
+    });
+  };
+}
+
+/**
+ * Step 7 — add npm scripts to the consumer's package.json. Idempotent: never
+ * overwrites an existing script of the same name.
+ *
+ * Script bodies:
+ *   - `build:widgets` — runs the post-build manifest generator, which itself
+ *     builds the `build-widgets` target then derives `views.manifest.json`.
+ *   - `dev:mcp` — serves the SSR app (`ng serve`); the mounted `/mcp` router and
+ *     `/assets/widgets` are then reachable from a host for local development.
+ *   - `tunnel` — a thin, dependency-free wrapper documenting the manual step:
+ *     the live zero-auth tunnel is not gated/installed by this schematic, so we
+ *     emit a guidance line rather than hard-wiring a provider CLI. Replace the
+ *     body with your chosen tunnel command (e.g. `cloudflared tunnel --url
+ *     http://localhost:4200`).
+ */
+function addScripts(): Rule {
+  return (tree: Tree) => {
+    const path = "/package.json";
+    if (!tree.exists(path)) {
+      return tree;
+    }
+    const pkg = JSON.parse(tree.readText(path));
+    pkg.scripts ??= {};
+
+    const scripts: Record<string, string> = {
+      "build:widgets": "node tools/build-widgets.mjs",
+      "dev:mcp": "ng serve",
+      tunnel:
+        'echo "Expose http://localhost:4200 with your tunnel of choice, e.g. ' +
+        'cloudflared tunnel --url http://localhost:4200"',
+    };
+
+    let changed = false;
+    for (const [name, body] of Object.entries(scripts)) {
+      if (pkg.scripts[name] === undefined) {
+        pkg.scripts[name] = body;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      tree.overwrite(path, `${JSON.stringify(pkg, null, 2)}\n`);
+    }
+    return tree;
+  };
+}
+
+/**
  * `ng add ng-mcp-ui` entry point.
  *
  * S24 (PLAN §7.1 steps 1–3): version guard (>=20 <23), ensure SSR (delegating
  * to `@angular/ssr`'s own `ng-add`), and add `ng-mcp-ui` as a dependency with a
  * single `NodePackageInstallTask`.
  * S25 (PLAN §7.1 step 4): patch `server.ts` to mount the MCP JSON-RPC router
- * and the widget asset router before the Angular SSR catch-all. Later slices add
- * the source scaffold, build target, npm scripts and example chaining.
+ * and the widget asset router before the Angular SSR catch-all.
+ * S26 (PLAN §7.1 steps 5–7): scaffold the MCP + widgets sources from the
+ * `./files` templates, add the `build-widgets` Angular target, and wire the
+ * `build:widgets`/`dev:mcp`/`tunnel` npm scripts.
  */
 export function ngAdd(options: NgAddOptions): Rule {
   return chain([
@@ -487,5 +672,8 @@ export function ngAdd(options: NgAddOptions): Rule {
     ensureSsr(options),
     addDependencies(options),
     patchServerTs(options),
+    scaffoldSources(options),
+    addBuildWidgetsTarget(options),
+    addScripts(),
   ]);
 }

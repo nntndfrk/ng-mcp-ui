@@ -263,6 +263,201 @@ describe("ng-add", () => {
     expect(joined).toContain('app.use("/mcp", createMcpExpressRouter(mcp));');
   });
 
+  // ── S26: scaffold sources + build-widgets target + npm scripts ──────────
+
+  const SCAFFOLD_FILES = [
+    "/projects/fixture-app/src/mcp/server.ts",
+    "/projects/fixture-app/src/mcp/views.manifest.ts",
+    "/projects/fixture-app/src/widgets/main.ts",
+    "/projects/fixture-app/src/widgets/registry.ts",
+    "/projects/fixture-app/src/widgets/index.html",
+    "/projects/fixture-app/src/widgets/echo/echo.widget.ts",
+    "/projects/fixture-app/tools/build-widgets.mjs",
+    "/projects/fixture-app/tsconfig.widgets.json",
+  ];
+
+  it("scaffolds the MCP + widgets source tree with the expected anchors", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+
+    for (const path of SCAFFOLD_FILES) {
+      expect(result.files).toContain(path);
+    }
+
+    const server = result.readContent("/projects/fixture-app/src/mcp/server.ts");
+    expect(server).toContain("export function createMcpServer(): McpServer");
+    expect(server).toContain('name: "echo"');
+    expect(server).toContain("interface ViewNameRegistry");
+    // The project-name template variable was interpolated.
+    expect(server).toContain('{ name: "fixture-app", version: "0.0.0" }');
+
+    const manifest = result.readContent(
+      "/projects/fixture-app/src/mcp/views.manifest.ts",
+    );
+    expect(manifest).toContain("export function resolveViewManifest()");
+
+    const main = result.readContent("/projects/fixture-app/src/widgets/main.ts");
+    expect(main).toContain("bootstrapWidget");
+
+    const registry = result.readContent(
+      "/projects/fixture-app/src/widgets/registry.ts",
+    );
+    expect(registry).toContain('echo: () => import("./echo/echo.widget")');
+    expect(registry).toContain("as const");
+
+    const widget = result.readContent(
+      "/projects/fixture-app/src/widgets/echo/echo.widget.ts",
+    );
+    expect(widget).toContain("injectToolInfo");
+    expect(widget).toContain("[dataLlm]");
+
+    const tsconfig = result.readContent(
+      "/projects/fixture-app/tsconfig.widgets.json",
+    );
+    expect(JSON.parse(tsconfig).include).toEqual(["src/widgets/**/*.ts"]);
+
+    const buildWidgets = result.readContent(
+      "/projects/fixture-app/tools/build-widgets.mjs",
+    );
+    // The `ng run <project>:build-widgets` target name was interpolated.
+    expect(buildWidgets).toContain("fixture-app:build-widgets");
+    expect(buildWidgets).toContain("views.manifest.json");
+  });
+
+  it("adds the `build-widgets` Angular target with the verified config", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+
+    const angularJson = JSON.parse(result.readContent("/angular.json"));
+    const target =
+      angularJson.projects["fixture-app"].architect["build-widgets"];
+    expect(target).toBeDefined();
+    expect(target.builder).toBe("@angular/build:application");
+    expect(target.options).toEqual({
+      browser: "src/widgets/main.ts",
+      index: "src/widgets/index.html",
+      outputPath: "dist/widgets",
+      tsConfig: "tsconfig.widgets.json",
+      namedChunks: true,
+      outputHashing: "all",
+      styles: [],
+    });
+    expect(target.configurations.production).toEqual({ outputHashing: "all" });
+    expect(target.configurations.development).toEqual({
+      optimization: false,
+      sourceMap: true,
+    });
+    expect(target.defaultConfiguration).toBe("production");
+  });
+
+  it("adds the build:widgets, dev:mcp and tunnel npm scripts", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+
+    const pkg = JSON.parse(result.readContent("/package.json"));
+    expect(pkg.scripts["build:widgets"]).toBe("node tools/build-widgets.mjs");
+    expect(pkg.scripts["dev:mcp"]).toBe("ng serve");
+    expect(pkg.scripts.tunnel).toContain("localhost:4200");
+  });
+
+  it("does not overwrite a pre-existing scaffold file or npm script", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+    // Pre-author a registry the user already owns + a clashing script.
+    fixture.create(
+      "/projects/fixture-app/src/widgets/registry.ts",
+      "export const registry = { mine: () => import('./mine') } as const;\n",
+    );
+    const pkgBefore = JSON.parse(fixture.readContent("/package.json"));
+    pkgBefore.scripts ??= {};
+    pkgBefore.scripts["build:widgets"] = "echo do-not-clobber";
+    fixture.overwrite("/package.json", JSON.stringify(pkgBefore, null, 2));
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+
+    // Existing file is respected (MergeStrategy.Default keeps the host tree's).
+    expect(
+      result.readContent("/projects/fixture-app/src/widgets/registry.ts"),
+    ).toContain("mine");
+    // Existing script is respected; the other two are still added.
+    const pkg = JSON.parse(result.readContent("/package.json"));
+    expect(pkg.scripts["build:widgets"]).toBe("echo do-not-clobber");
+    expect(pkg.scripts["dev:mcp"]).toBe("ng serve");
+  });
+
+  it("S26 scaffold/target/scripts are idempotent across two runs", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+
+    const once = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+    const angularAfterFirst = once.readContent("/angular.json");
+    const pkgAfterFirst = once.readContent("/package.json");
+
+    // A second run must not throw and must not duplicate anything.
+    const twice = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      once,
+    );
+
+    expect(twice.readContent("/angular.json")).toBe(angularAfterFirst);
+    expect(twice.readContent("/package.json")).toBe(pkgAfterFirst);
+
+    const angularJson = JSON.parse(twice.readContent("/angular.json"));
+    const architect = angularJson.projects["fixture-app"].architect;
+    expect(Object.keys(architect).filter((k) => k === "build-widgets").length).toBe(
+      1,
+    );
+    const widget = twice.readContent(
+      "/projects/fixture-app/src/widgets/echo/echo.widget.ts",
+    );
+    expect(widget.match(/export default class EchoWidget/g)?.length).toBe(1);
+  });
+
+  it("--ssr=false still scaffolds widgets but skips the server patch", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: false });
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true, ssr: false },
+      fixture,
+    );
+
+    // No SSR ⇒ no server.ts patch (no server.ts present at all).
+    expect(result.files).not.toContain("/projects/fixture-app/src/server.ts");
+    // But the widgets/MCP scaffold + target + scripts are still produced.
+    for (const path of SCAFFOLD_FILES) {
+      expect(result.files).toContain(path);
+    }
+    const angularJson = JSON.parse(result.readContent("/angular.json"));
+    expect(
+      angularJson.projects["fixture-app"].architect["build-widgets"],
+    ).toBeDefined();
+    const pkg = JSON.parse(result.readContent("/package.json"));
+    expect(pkg.scripts["build:widgets"]).toBe("node tools/build-widgets.mjs");
+  });
+
   it("rejects an Angular v19 workspace with a clear message", async () => {
     const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
     fixture.overwrite(

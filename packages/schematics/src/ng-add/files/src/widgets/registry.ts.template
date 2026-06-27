@@ -1,0 +1,8 @@
+// Registry: viewName -> lazy import of the widget module. `ng generate
+// ng-mcp-ui:view` adds entries here. esbuild code-splits each dynamic import()
+// into its own lazy chunk.
+export const registry = {
+  echo: () => import("./echo/echo.widget"),
+} as const;
+
+export type ViewName = keyof typeof registry;
