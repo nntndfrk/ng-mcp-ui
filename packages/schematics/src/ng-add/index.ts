@@ -7,6 +7,12 @@ import {
   externalSchematic,
 } from "@angular-devkit/schematics";
 import { NodePackageInstallTask } from "@angular-devkit/schematics/tasks";
+import { insertImport } from "@schematics/angular/utility/ast-utils";
+import {
+  type Change,
+  InsertChange,
+  applyToUpdateRecorder,
+} from "@schematics/angular/utility/change";
 import {
   NodeDependencyType,
   addPackageJsonDependency,
@@ -15,6 +21,7 @@ import {
 import { getWorkspace } from "@schematics/angular/utility/workspace";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import * as ts from "typescript";
 import type { NgAddOptions } from "./schema";
 
 /** Supported `@angular/core` major versions (inclusive). */
@@ -207,17 +214,278 @@ function addDependencies(options: NgAddOptions): Rule {
 }
 
 /**
+ * Idempotency marker. Once the MCP routes have been inserted we drop this
+ * comment in front of them; a second `ng add` run sees it and bails with no
+ * diff. (PLAN §7.1 step 4 — "running twice produces no diff".)
+ */
+const MCP_ROUTES_MARKER = "// ng-mcp-ui:mcp-routes";
+
+/**
+ * The Express block we splice in just before the Angular SSR catch-all. The
+ * block is self-contained: it derives the widgets dir from `import.meta.url`
+ * (via `fileURLToPath(new URL(...))`) rather than from any variable the
+ * consumer's server.ts happens to declare, and uses a standard, broadly-typed
+ * form that typechecks in arbitrary consumer tsconfigs.
+ */
+const MCP_ROUTES_BLOCK = `${MCP_ROUTES_MARKER}
+// MCP JSON-RPC endpoint — host (Claude/ChatGPT) connects here.
+app.use(express.json());
+app.use("/mcp", createMcpExpressRouter(mcp));
+
+// Built widget chunks + CSS, served with CORS + CSP-friendly caching. Resolved
+// relative to this server bundle (\`<serverDist>/../../widgets/browser\`); we use
+// \`import.meta.url\` so the path works regardless of which variables the app's
+// server.ts happens to declare.
+app.use(
+  "/assets/widgets",
+  createViewAssetRouter({
+    dir: fileURLToPath(new URL("../../widgets/browser", import.meta.url)),
+  }),
+);
+
+`;
+
+/** The copy-pasteable instructions printed when we can't safely auto-patch. */
+const MANUAL_PATCH_SNIPPET = `
+Could not automatically patch src/server.ts — its shape was not recognized.
+Add the MCP routes by hand. In src/server.ts:
+
+  1. Add these imports:
+
+       import { fileURLToPath } from "node:url";
+       import {
+         createMcpExpressRouter,
+         createViewAssetRouter,
+       } from "ng-mcp-ui/server";
+       import { createMcpServer } from "./mcp/server";
+
+  2. After \`const app = express();\` (and the AngularNodeAppEngine line) add:
+
+       const mcp = createMcpServer();
+
+  3. BEFORE the Angular SSR catch-all (the \`app.use((req, res, next) => ...)\`
+     / \`app.use("*", ...)\` handler), add:
+
+       app.use(express.json());
+       app.use("/mcp", createMcpExpressRouter(mcp));
+       app.use(
+         "/assets/widgets",
+         createViewAssetRouter({
+           dir: fileURLToPath(new URL("../../widgets/browser", import.meta.url)),
+         }),
+       );
+`;
+
+/**
+ * Resolve the path to the target project's `server.ts`. Mirrors what
+ * `@angular/ssr`'s own schematic does: prefer `<sourceRoot>/server.ts`, and
+ * when that doesn't exist on the tree, fall back to `<projectRoot>/src/server.ts`.
+ * When neither exists we return the primary `<sourceRoot>/server.ts` candidate
+ * so the caller bails gracefully (logs the manual snippet) on a missing file.
+ */
+async function resolveServerTsPath(
+  tree: Tree,
+  options: NgAddOptions,
+): Promise<string | null> {
+  const projectName = await resolveProjectName(tree, options);
+  const workspace = await getWorkspace(tree);
+  const project = workspace.projects.get(projectName);
+  if (!project) {
+    return null;
+  }
+  // Workspace paths are root-relative; the Tree is rooted at "/".
+  const sourceRoot = project.sourceRoot ?? `${project.root}/src`;
+  const candidate = `/${sourceRoot}/server.ts`;
+  if (tree.exists(candidate)) {
+    return candidate;
+  }
+  const rootSrc = `/${project.root ? `${project.root}/` : ""}src/server.ts`;
+  if (rootSrc !== candidate && tree.exists(rootSrc)) {
+    return rootSrc;
+  }
+  return candidate; // not found → caller bails with the manual snippet
+}
+
+/**
+ * Find the Angular SSR catch-all `app.use(...)` statement in `server.ts`.
+ *
+ * The `@angular/ssr` application-builder template (v20–v22) and the M1
+ * reference both emit `app.use((req, res, next) => { angularApp.handle(...) })`.
+ * Older/exotic templates may instead use a string route (`app.use("*", ...)` or
+ * `app.use("/{*splat}", ...)`). We recognize an `app.use(...)` call expression
+ * whose argument set EITHER references `angularApp.handle` OR opens with a
+ * wildcard string route, and return the top-level statement node so the caller
+ * can insert before its full-text start.
+ *
+ * @returns the catch-all statement, or `null` when no recognizable shape found.
+ */
+function findCatchAllStatement(source: ts.SourceFile): ts.Statement | null {
+  for (const statement of source.statements) {
+    if (!ts.isExpressionStatement(statement)) {
+      continue;
+    }
+    const call = statement.expression;
+    if (
+      !ts.isCallExpression(call) ||
+      !ts.isPropertyAccessExpression(call.expression) ||
+      call.expression.name.text !== "use" ||
+      !ts.isIdentifier(call.expression.expression) ||
+      call.expression.expression.text !== "app"
+    ) {
+      continue;
+    }
+
+    const text = call.getText(source);
+    // Shape A (v20–22 application-builder + M1 ref): callback delegates to the
+    // Angular engine. Shape B: an explicit wildcard route string.
+    const isEngineHandler = /angularApp\s*\.\s*handle\s*\(/.test(text);
+    const firstArg = call.arguments[0];
+    const isWildcardRoute =
+      firstArg !== undefined &&
+      ts.isStringLiteral(firstArg) &&
+      (firstArg.text === "*" || firstArg.text.includes("*splat"));
+    if (isEngineHandler || isWildcardRoute) {
+      return statement;
+    }
+  }
+  return null;
+}
+
+/**
+ * Find the `const angularApp = new AngularNodeAppEngine();` declaration so we
+ * can splice `const mcp = createMcpServer();` directly after it. Falls back to
+ * the `const app = express();` declaration. Returns the end position to insert
+ * at, or `null` if neither anchor is present.
+ */
+function findEngineAnchorEnd(source: ts.SourceFile): number | null {
+  let appDeclEnd: number | null = null;
+  for (const statement of source.statements) {
+    if (!ts.isVariableStatement(statement)) {
+      continue;
+    }
+    for (const decl of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(decl.name) || !decl.initializer) {
+        continue;
+      }
+      const init = decl.initializer.getText(source);
+      if (decl.name.text === "angularApp" && /AngularNodeAppEngine/.test(init)) {
+        return statement.getEnd();
+      }
+      if (decl.name.text === "app" && /express\s*\(\s*\)/.test(init)) {
+        appDeclEnd = statement.getEnd();
+      }
+    }
+  }
+  return appDeclEnd;
+}
+
+/**
+ * Step 4 — patch the target app's `src/server.ts` so the MCP JSON-RPC router
+ * and the widget asset router are mounted BEFORE the Angular SSR catch-all.
+ *
+ * AST strategy: we use `@schematics/angular`'s `ast-utils.insertImport` +
+ * `change`/`InsertChange` + `applyToUpdateRecorder` rather than `ts-morph`.
+ * Rationale: ast-utils is already a (transitive) dependency via
+ * `@schematics/angular`, whereas `ts-morph` would be a NEW runtime dependency —
+ * the step's scope forbids adding/installing one. The devkit utilities are the
+ * idiomatic choice for schematics and give us idempotent import insertion for
+ * free.
+ *
+ * Graceful bail: if `server.ts` is missing or its shape is unrecognized, we log
+ * the manual-patch snippet via the context logger and return the tree
+ * unchanged — we never throw.
+ *
+ * Idempotency: guarded by the {@link MCP_ROUTES_MARKER} marker comment; a second
+ * run is a no-op.
+ */
+function patchServerTs(options: NgAddOptions): Rule {
+  return async (tree: Tree, context: SchematicContext) => {
+    if (options.ssr === false) {
+      return tree;
+    }
+
+    const serverTsPath = await resolveServerTsPath(tree, options);
+    if (!serverTsPath || !tree.exists(serverTsPath)) {
+      context.logger.warn(MANUAL_PATCH_SNIPPET);
+      return tree;
+    }
+
+    const content = tree.readText(serverTsPath);
+
+    // Idempotency: marker already present → no-op (no diff on a second run).
+    if (content.includes(MCP_ROUTES_MARKER)) {
+      return tree;
+    }
+
+    const source = ts.createSourceFile(
+      serverTsPath,
+      content,
+      ts.ScriptTarget.Latest,
+      /* setParentNodes */ true,
+    );
+
+    const catchAll = findCatchAllStatement(source);
+    const engineAnchorEnd = findEngineAnchorEnd(source);
+    if (!catchAll || engineAnchorEnd === null) {
+      // Unrecognized shape — bail gracefully with copy-pasteable instructions.
+      context.logger.warn(MANUAL_PATCH_SNIPPET);
+      return tree;
+    }
+
+    const changes: Change[] = [
+      // Imports. insertImport is itself idempotent, but the marker guard above
+      // already short-circuits a second run.
+      insertImport(source, serverTsPath, "fileURLToPath", "node:url"),
+      insertImport(
+        source,
+        serverTsPath,
+        "createMcpExpressRouter",
+        "ng-mcp-ui/server",
+      ),
+      insertImport(
+        source,
+        serverTsPath,
+        "createViewAssetRouter",
+        "ng-mcp-ui/server",
+      ),
+      insertImport(source, serverTsPath, "createMcpServer", "./mcp/server"),
+      // `const mcp = createMcpServer();` right after the engine/app declaration.
+      new InsertChange(
+        serverTsPath,
+        engineAnchorEnd,
+        "\nconst mcp = createMcpServer();\n",
+      ),
+      // The MCP + asset routers, spliced in before the catch-all statement.
+      new InsertChange(
+        serverTsPath,
+        catchAll.getStart(source),
+        MCP_ROUTES_BLOCK,
+      ),
+    ];
+
+    const recorder = tree.beginUpdate(serverTsPath);
+    applyToUpdateRecorder(recorder, changes);
+    tree.commitUpdate(recorder);
+
+    return tree;
+  };
+}
+
+/**
  * `ng add ng-mcp-ui` entry point.
  *
  * S24 (PLAN §7.1 steps 1–3): version guard (>=20 <23), ensure SSR (delegating
  * to `@angular/ssr`'s own `ng-add`), and add `ng-mcp-ui` as a dependency with a
- * single `NodePackageInstallTask`. Later slices add the `server.ts` patch,
- * source scaffold, build target, npm scripts and example chaining.
+ * single `NodePackageInstallTask`.
+ * S25 (PLAN §7.1 step 4): patch `server.ts` to mount the MCP JSON-RPC router
+ * and the widget asset router before the Angular SSR catch-all. Later slices add
+ * the source scaffold, build target, npm scripts and example chaining.
  */
 export function ngAdd(options: NgAddOptions): Rule {
   return chain([
     guardAngularVersion(),
     ensureSsr(options),
     addDependencies(options),
+    patchServerTs(options),
   ]);
 }

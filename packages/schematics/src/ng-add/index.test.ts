@@ -108,6 +108,161 @@ describe("ng-add", () => {
     expect(runner.tasks.some((t) => t.name === "node-package")).toBe(false);
   });
 
+  // ── S25: server.ts patch ────────────────────────────────────────────────
+
+  it("patches server.ts: mounts /mcp + asset router before the catch-all", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+
+    const server = result.readContent("/projects/fixture-app/src/server.ts");
+
+    // Imports inserted (insertImport emits single-quoted module specifiers).
+    expect(server).toContain("ng-mcp-ui/server");
+    expect(server).toContain("createMcpExpressRouter");
+    expect(server).toContain("createViewAssetRouter");
+    expect(server).toContain("./mcp/server");
+    expect(server).toContain("createMcpServer");
+    // mcp instance + routes.
+    expect(server).toContain("const mcp = createMcpServer();");
+    expect(server).toContain('app.use("/mcp", createMcpExpressRouter(mcp));');
+    expect(server).toContain('app.use(\n  "/assets/widgets",');
+    // The idempotency marker.
+    expect(server).toContain("// ng-mcp-ui:mcp-routes");
+
+    // Ordering: the MCP routes must come BEFORE the Angular SSR catch-all.
+    const markerIdx = server.indexOf("// ng-mcp-ui:mcp-routes");
+    // Anchor on the catch-all statement, not the earlier `angularApp` declaration,
+    // so a formatting change in the handler can't false-fail this.
+    const catchAllIdx = server.indexOf("app.use((req, res, next)");
+    expect(markerIdx).toBeGreaterThan(-1);
+    expect(catchAllIdx).toBeGreaterThan(-1);
+    expect(markerIdx).toBeLessThan(catchAllIdx);
+  });
+
+  // The @angular/ssr application-builder server.ts template is identical across
+  // the supported majors (v20–v22). We assert each pinned major produces the
+  // patched shape so the matrix is explicit.
+  for (const major of [20, 21, 22]) {
+    it(`patches a pristine v${major} server.ts shape`, async () => {
+      const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+      fixture.overwrite(
+        "/package.json",
+        pinAngularMajor(fixture.readContent("/package.json"), major),
+      );
+
+      const result = await runner.runSchematic(
+        "ng-add",
+        { skipInstall: true },
+        fixture,
+      );
+
+      const server = result.readContent("/projects/fixture-app/src/server.ts");
+      expect(server).toContain('app.use("/mcp", createMcpExpressRouter(mcp));');
+      expect(server).toContain("const mcp = createMcpServer();");
+      // catch-all still present and after the marker.
+      expect(server).toContain("angularApp");
+      expect(server.indexOf("// ng-mcp-ui:mcp-routes")).toBeLessThan(
+        server.lastIndexOf("app.use((req, res, next)"),
+      );
+    });
+  }
+
+  it("is idempotent — running twice produces no diff", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+
+    const once = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+    const afterFirst = once.readContent("/projects/fixture-app/src/server.ts");
+
+    const twice = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      once,
+    );
+    const afterSecond = twice.readContent(
+      "/projects/fixture-app/src/server.ts",
+    );
+
+    expect(afterSecond).toBe(afterFirst);
+    // Exactly one set of MCP routes — no duplication.
+    expect(afterSecond.match(/ng-mcp-ui:mcp-routes/g)?.length).toBe(1);
+    expect(
+      afterSecond.match(/app\.use\("\/mcp"/g)?.length,
+    ).toBe(1);
+  });
+
+  it("handles a wildcard-route catch-all (app.use('*', ...))", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+    const exotic = [
+      'import { AngularNodeAppEngine } from "@angular/ssr/node";',
+      'import express from "express";',
+      "",
+      "const app = express();",
+      "const angularApp = new AngularNodeAppEngine();",
+      "",
+      'app.use("*", (req, res, next) => {',
+      "  res.send(angularApp);",
+      "});",
+      "",
+    ].join("\n");
+    fixture.overwrite("/projects/fixture-app/src/server.ts", exotic);
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+
+    const server = result.readContent("/projects/fixture-app/src/server.ts");
+    expect(server).toContain("// ng-mcp-ui:mcp-routes");
+    expect(server.indexOf("// ng-mcp-ui:mcp-routes")).toBeLessThan(
+      server.indexOf('app.use("*"'),
+    );
+  });
+
+  it("bails gracefully on an unrecognized server.ts and prints manual steps", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+    const exotic = [
+      "// Some hand-rolled server that we cannot safely patch.",
+      'import http from "node:http";',
+      "",
+      "const server = http.createServer((req, res) => res.end('hi'));",
+      "server.listen(4000);",
+      "",
+    ].join("\n");
+    fixture.overwrite("/projects/fixture-app/src/server.ts", exotic);
+
+    const logs: string[] = [];
+    runner.logger.subscribe((entry) => logs.push(entry.message));
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+
+    // server.ts is left exactly as-is (no throw, no patch).
+    expect(result.readContent("/projects/fixture-app/src/server.ts")).toBe(
+      exotic,
+    );
+    expect(result.readContent("/projects/fixture-app/src/server.ts")).not.toContain(
+      "ng-mcp-ui:mcp-routes",
+    );
+    // The manual-patch instructions were logged.
+    const joined = logs.join("\n");
+    expect(joined).toContain("Could not automatically patch src/server.ts");
+    expect(joined).toContain('createMcpExpressRouter');
+    expect(joined).toContain('app.use("/mcp", createMcpExpressRouter(mcp));');
+  });
+
   it("rejects an Angular v19 workspace with a clear message", async () => {
     const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
     fixture.overwrite(
