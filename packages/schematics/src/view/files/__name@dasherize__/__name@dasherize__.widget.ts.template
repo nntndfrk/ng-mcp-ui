@@ -1,0 +1,58 @@
+import { ChangeDetectionStrategy, Component, computed } from "@angular/core";
+import {
+  DataLlmDirective,
+  injectToolInfo,
+  injectViewState,
+} from "ng-mcp-ui/web";
+
+/**
+ * The `<%= dasherize(name) %>` view. Reads live tool state from the host bridge
+ * via `injectToolInfo`, typed to the paired tool's input/output shape (edit the
+ * generic below to match your tool's `inputSchema`/`outputSchema`). Boots under
+ * `provideMcpUi()` (applied by `bootstrapWidget` in `widgets/main.ts`), so the
+ * `MCP_ADAPTOR` token is resolved from the shell-injected `window.mcpUi`.
+ *
+ * `injectViewState` persists a small piece of UI state on the host so it
+ * survives view remounts (here: a click counter). `[dataLlm]` surfaces the
+ * displayed message back to the model.
+ */
+@Component({
+  selector: "<%= dasherize(name) %>-widget",
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [DataLlmDirective],
+  template: `
+    <div id="<%= dasherize(name) %>">
+      <h1><%= classify(name) %></h1>
+      <p [dataLlm]="message()">{{ message() }}</p>
+      <button type="button" (click)="bump()">
+        Interacted {{ count() }} time(s)
+      </button>
+    </div>
+  `,
+})
+export default class <%= classify(name) %>Widget {
+  private readonly tool = injectToolInfo<{
+    input: { message: string };
+    output: { message: string };
+  }>();
+
+  // Persisted, host-backed UI state — survives remounts of this tool call.
+  private readonly state = injectViewState<{ count: number }>({ count: 0 });
+
+  protected readonly count = computed(() => this.state.value()?.count ?? 0);
+
+  protected readonly message = computed(() => {
+    const state = this.tool();
+    if (state.isSuccess) {
+      return state.output.message;
+    }
+    if (state.isPending) {
+      return state.input.message;
+    }
+    return "(waiting for tool output)";
+  });
+
+  protected bump(): void {
+    this.state.set((prev) => ({ count: (prev?.count ?? 0) + 1 }));
+  }
+}

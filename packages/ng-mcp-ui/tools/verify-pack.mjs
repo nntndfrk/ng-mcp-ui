@@ -101,6 +101,8 @@ try {
     for (const rel of [
       "dist/schematics/collection.json",
       "dist/schematics/ng-add/index.js",
+      "dist/schematics/view/index.js",
+      "dist/schematics/view/schema.json",
     ]) {
       const abs = join(pkgDir, rel);
       if (!existsSync(abs)) {
