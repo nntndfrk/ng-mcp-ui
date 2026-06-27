@@ -16,6 +16,11 @@
       "description": "Generate an MCP tool (registerTool with zod schemas, optionally linked to a view) and wire it into createMcpServer().",
       "factory": "./tool/index#tool",
       "schema": "./tool/schema.json"
+    },
+    "example": {
+      "description": "Scaffold a runnable example into the app — the Quick Poll demo (poll tool + interactive view) wired into createMcpServer() + the widget registry.",
+      "factory": "./example/index#example",
+      "schema": "./example/schema.json"
     }
   }
 }
