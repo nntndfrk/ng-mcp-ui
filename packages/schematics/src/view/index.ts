@@ -301,7 +301,18 @@ function maintainViewsDts(options: ViewOptions): Rule {
       return tree;
     }
 
-    const updated = `${content.slice(0, closeIdx)}${member}\n  ${content.slice(closeIdx)}`;
+    // Insert the member as its own clean line just BEFORE the brace's line —
+    // cutting at the newline that precedes the `}`'s indentation, so `member`'s
+    // own 4-space indent is preserved verbatim (slicing at `closeIdx` would keep
+    // the brace's leading `\n  `, prefixing it onto the member → over-indented).
+    const braceLineStart = content.lastIndexOf("\n", closeIdx);
+    if (braceLineStart === -1) {
+      // Closing brace on the very first line (hand-authored single-line shape) —
+      // append a fresh augmentation block rather than risk a bad splice.
+      tree.overwrite(dtsPath, ensureModule(content) + freshBlock);
+      return tree;
+    }
+    const updated = `${content.slice(0, braceLineStart)}\n${member}${content.slice(braceLineStart)}`;
     tree.overwrite(dtsPath, updated);
     return tree;
   };

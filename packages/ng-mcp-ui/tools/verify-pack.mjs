@@ -103,6 +103,13 @@ try {
       "dist/schematics/ng-add/index.js",
       "dist/schematics/view/index.js",
       "dist/schematics/view/schema.json",
+      // The generators read these template trees at RUNTIME, so a packaging
+      // regression that drops the files trees from the tarball would break ng
+      // generate / ng add even with the factories present. Assert a concrete
+      // template from each tree actually shipped (embed-schematics only checks
+      // the pre-pack dist; this checks the installed tarball).
+      "dist/schematics/ng-add/files/src/widgets/registry.ts.template",
+      "dist/schematics/view/files/__name@dasherize__/__name@dasherize__.widget.ts.template",
     ]) {
       const abs = join(pkgDir, rel);
       if (!existsSync(abs)) {

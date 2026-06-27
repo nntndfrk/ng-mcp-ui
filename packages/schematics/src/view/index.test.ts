@@ -113,6 +113,11 @@ describe("view", () => {
     const dts = twice.readContent(`${WIDGETS}/views.d.ts`);
     expect(dts).toContain("foo: true;");
     expect(dts).toContain("bar: true;");
+    // Both members sit at the interface's 4-space indent — the inserted member
+    // must NOT inherit the closing brace's indentation (over-indent regression).
+    expect(dts).toMatch(/\n {4}foo: true;\n/);
+    expect(dts).toMatch(/\n {4}bar: true;\n/);
+    expect(dts).not.toMatch(/\n {6}\w/);
     // Single interface block (members merged, not duplicated blocks).
     expect(dts.match(/interface ViewNameRegistry/g)?.length).toBe(1);
 
