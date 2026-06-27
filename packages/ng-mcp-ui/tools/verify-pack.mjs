@@ -113,6 +113,11 @@ try {
       "dist/schematics/tool/index.js",
       "dist/schematics/tool/schema.json",
       "dist/schematics/tool/files/__name@dasherize__.ts.template",
+      "dist/schematics/example/index.js",
+      "dist/schematics/example/schema.json",
+      // The example schematic ships a fixed demo template tree (no name token);
+      // assert a concrete leaf so a packaging regression that drops it fails.
+      "dist/schematics/example/files/src/widgets/poll/poll.widget.ts.template",
     ]) {
       const abs = join(pkgDir, rel);
       if (!existsSync(abs)) {

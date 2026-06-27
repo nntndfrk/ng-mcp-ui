@@ -481,4 +481,117 @@ describe("ng-add", () => {
       runner.runSchematic("ng-add", { skipInstall: true }, fixture),
     ).rejects.toThrow(/unsupported Angular version.*major 23/s);
   });
+
+  // ── S29: --example chaining ─────────────────────────────────────────────
+
+  it("--example=demo (default) chains the poll demo onto the echo baseline", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+
+    // No explicit example ⇒ schema default "demo".
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+
+    // The demo files landed.
+    expect(result.files).toContain(
+      "/projects/fixture-app/src/mcp/tools/poll.ts",
+    );
+    expect(result.files).toContain(
+      "/projects/fixture-app/src/widgets/poll/poll.widget.ts",
+    );
+    expect(result.files).toContain(
+      "/projects/fixture-app/src/widgets/poll/poll.css",
+    );
+
+    // The poll tools are wired into createMcpServer() before `return server;`,
+    // alongside the echo seed (Model 1 — additive).
+    const server = result.readContent(
+      "/projects/fixture-app/src/mcp/server.ts",
+    );
+    expect(server).toContain("registerPollTools(server);");
+    expect(server.indexOf("registerPollTools(server);")).toBeLessThan(
+      server.indexOf("return server;"),
+    );
+
+    // The poll view joins echo in the registry + views.d.ts.
+    const registry = result.readContent(
+      "/projects/fixture-app/src/widgets/registry.ts",
+    );
+    expect(registry).toContain('poll: () => import("./poll/poll.widget")');
+    expect(registry).toContain("echo: () => import(");
+    const dts = result.readContent(
+      "/projects/fixture-app/src/widgets/views.d.ts",
+    );
+    expect(dts).toContain("poll: true;");
+  });
+
+  it("--example=minimal leaves the echo-only baseline (no poll demo)", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true, example: "minimal" },
+      fixture,
+    );
+
+    expect(result.files).not.toContain(
+      "/projects/fixture-app/src/widgets/poll/poll.widget.ts",
+    );
+    expect(
+      result.readContent("/projects/fixture-app/src/mcp/server.ts"),
+    ).not.toContain("registerPollTools");
+  });
+
+  it("--example=none leaves the echo-only baseline (no poll demo)", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true, example: "none" },
+      fixture,
+    );
+
+    expect(result.files).not.toContain(
+      "/projects/fixture-app/src/mcp/tools/poll.ts",
+    );
+    expect(
+      result.readContent("/projects/fixture-app/src/mcp/server.ts"),
+    ).not.toContain("registerPollTools");
+  });
+
+  it("--example=demo chained via ng-add is idempotent on a re-run", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+
+    const once = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+    const serverAfterFirst = once.readContent(
+      "/projects/fixture-app/src/mcp/server.ts",
+    );
+    const registryAfterFirst = once.readContent(
+      "/projects/fixture-app/src/widgets/registry.ts",
+    );
+
+    const twice = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      once,
+    );
+
+    expect(twice.readContent("/projects/fixture-app/src/mcp/server.ts")).toBe(
+      serverAfterFirst,
+    );
+    expect(
+      twice.readContent("/projects/fixture-app/src/widgets/registry.ts"),
+    ).toBe(registryAfterFirst);
+    expect(
+      twice
+        .readContent("/projects/fixture-app/src/mcp/server.ts")
+        .match(/registerPollTools\(server\);/g)?.length,
+    ).toBe(1);
+  });
 });

@@ -1,0 +1,173 @@
+// The "Quick Poll" demo tools (S21, PLAN §10).
+//
+// Three tools over a single in-memory store exercise the full §10.2 capability
+// table:
+//   - `create_poll`  — view tool: creates a poll, renders the `poll` view.
+//   - `cast_vote`    — view→server: the view's vote buttons call this; the open
+//                       poll view re-renders bars from the returned snapshot.
+//   - `tally_votes`  — view→server: the view's "Tally" button (and a chat-driven
+//                       "tally the votes") refresh the standings.
+//
+// Only `create_poll` carries a `view` — the library enforces exactly one tool
+// per view (`enforceOneToolPerView`), and the §10.2 table maps tally/vote to
+// `injectCallTool` (view→server), not to separate renders. All three tools
+// return the SAME snapshot shape so the `poll` widget renders consistently.
+//
+// State lives in-memory and resets on restart — deliberately zero-dependency
+// (PLAN §10.1). `createMcpServer()` wires these in via `registerPollTools()`.
+
+import type { McpServer } from "ng-mcp-ui/server";
+import { z } from "zod";
+
+interface Poll {
+  id: string;
+  question: string;
+  options: string[];
+  /** option label → vote count. */
+  votes: Record<string, number>;
+}
+
+/** Demo store. Process-local; resets on server restart. */
+const polls = new Map<string, Poll>();
+let pollSeq = 0;
+
+/**
+ * The shape `create_poll` / `tally_votes` return (zod output schema). The poll
+ * widget's `injectToolInfo` is typed to its inferred form, so the two stay in
+ * lockstep.
+ */
+const snapshotShape = {
+  pollId: z.string(),
+  question: z.string(),
+  options: z.array(z.string()),
+  tally: z.array(z.object({ option: z.string(), count: z.number() })),
+  total: z.number(),
+} as const;
+
+/** Build the public snapshot of a poll (options always listed, counts default 0). */
+function snapshot(poll: Poll): {
+  pollId: string;
+  question: string;
+  options: string[];
+  tally: { option: string; count: number }[];
+  total: number;
+} {
+  const tally = poll.options.map((option) => ({
+    option,
+    count: poll.votes[option] ?? 0,
+  }));
+  const total = tally.reduce((sum, t) => sum + t.count, 0);
+  return {
+    pollId: poll.id,
+    question: poll.question,
+    options: poll.options,
+    tally,
+    total,
+  };
+}
+
+/** A short human/LLM-readable line summarizing the current standings. */
+function describeTally(poll: Poll): string {
+  const { tally, total } = snapshot(poll);
+  if (total === 0) {
+    return `No votes yet for "${poll.question}".`;
+  }
+  const parts = tally.map((t) => `${t.option}: ${t.count}`).join(", ");
+  return `"${poll.question}" — ${parts} (${total} total).`;
+}
+
+/**
+ * Register the Quick Poll demo tools on an {@link McpServer}. Called from
+ * `createMcpServer()`. The `poll` view component must be registered in
+ * `ViewNameRegistry` (done in `src/mcp/server.ts`) for `view.component` to
+ * typecheck.
+ */
+export function registerPollTools(server: McpServer): void {
+  server.registerTool(
+    {
+      name: "create_poll",
+      title: "Create poll",
+      description:
+        "Create a poll with a question and 2+ options, then render it as an " +
+        "interactive view the user can vote in.",
+      inputSchema: {
+        question: z.string().min(1),
+        options: z.array(z.string().min(1)).min(2),
+      },
+      outputSchema: snapshotShape,
+      view: {
+        component: "poll",
+        description: "Interactive poll: vote, tally, and discuss the results.",
+      },
+    },
+    (args) => {
+      const id = `poll-${++pollSeq}`;
+      const poll: Poll = {
+        id,
+        question: args.question,
+        options: args.options,
+        votes: {},
+      };
+      polls.set(id, poll);
+      return {
+        content: `Created poll "${poll.question}" with options: ${poll.options.join(", ")}.`,
+        structuredContent: snapshot(poll),
+      };
+    },
+  );
+
+  server.registerTool(
+    {
+      name: "cast_vote",
+      title: "Cast vote",
+      description:
+        "Record a vote for one option in a poll. Called by the poll view when " +
+        "the user clicks an option.",
+      inputSchema: {
+        pollId: z.string(),
+        option: z.string(),
+      },
+      outputSchema: snapshotShape,
+    },
+    (args) => {
+      const poll = polls.get(args.pollId);
+      if (!poll) {
+        throw new Error(`Unknown poll: ${args.pollId}`);
+      }
+      if (!poll.options.includes(args.option)) {
+        throw new Error(
+          `"${args.option}" is not an option in poll ${args.pollId}.`,
+        );
+      }
+      poll.votes[args.option] = (poll.votes[args.option] ?? 0) + 1;
+      return {
+        content: `Recorded a vote for "${args.option}". ${describeTally(poll)}`,
+        structuredContent: snapshot(poll),
+      };
+    },
+  );
+
+  server.registerTool(
+    {
+      name: "tally_votes",
+      title: "Tally votes",
+      description:
+        "Return the current vote tally for a poll. Called by the poll view's " +
+        "Tally button to refresh the standings.",
+      inputSchema: {
+        pollId: z.string(),
+      },
+      outputSchema: snapshotShape,
+    },
+    (args) => {
+      const poll = polls.get(args.pollId);
+      if (!poll) {
+        throw new Error(`Unknown poll: ${args.pollId}`);
+      }
+      return {
+        content: describeTally(poll),
+        structuredContent: snapshot(poll),
+      };
+    },
+  );
+}

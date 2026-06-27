@@ -11,6 +11,7 @@ import {
   filter,
   mergeWith,
   move,
+  schematic,
   url,
 } from "@angular-devkit/schematics";
 import { NodePackageInstallTask } from "@angular-devkit/schematics/tasks";
@@ -655,6 +656,26 @@ function addScripts(): Rule {
 }
 
 /**
+ * Step 8 — optionally chain the `example` generator to scaffold a runnable
+ * sample on top of the echo baseline (Model 1). `--example=demo` (the default)
+ * delegates to the sibling `example` schematic, which scaffolds the Quick Poll
+ * demo and wires it into the freshly-patched `server.ts` + widget registry.
+ * `--example=minimal` / `--example=none` leave the echo-only baseline alone (no
+ * chain). The resolved project is forwarded so the example targets the same app
+ * `ng add` just retrofitted. Idempotent: the `example` schematic's wiring steps
+ * each no-op when the demo is already present, so a re-run produces no diff.
+ */
+function maybeChainExample(options: NgAddOptions): Rule {
+  return async (tree: Tree) => {
+    if (options.example !== "demo") {
+      return tree;
+    }
+    const projectName = await resolveProjectName(tree, options);
+    return schematic("example", { variant: "demo", project: projectName });
+  };
+}
+
+/**
  * `ng add ng-mcp-ui` entry point.
  *
  * S24 (PLAN §7.1 steps 1–3): version guard (>=20 <23), ensure SSR (delegating
@@ -665,6 +686,8 @@ function addScripts(): Rule {
  * S26 (PLAN §7.1 steps 5–7): scaffold the MCP + widgets sources from the
  * `./files` templates, add the `build-widgets` Angular target, and wire the
  * `build:widgets`/`dev:mcp`/`tunnel` npm scripts.
+ * S29: when `--example=demo` (the default), chain the `example` generator to
+ * scaffold the Quick Poll demo on top of the echo baseline.
  */
 export function ngAdd(options: NgAddOptions): Rule {
   return chain([
@@ -675,5 +698,6 @@ export function ngAdd(options: NgAddOptions): Rule {
     scaffoldSources(options),
     addBuildWidgetsTarget(options),
     addScripts(),
+    maybeChainExample(options),
   ]);
 }

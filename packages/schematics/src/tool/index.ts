@@ -12,22 +12,11 @@ import {
   url,
 } from "@angular-devkit/schematics";
 import { strings } from "@angular-devkit/core";
-import { insertImport } from "@schematics/angular/utility/ast-utils";
-import {
-  type Change,
-  InsertChange,
-  applyToUpdateRecorder,
-} from "@schematics/angular/utility/change";
 import { getWorkspace } from "@schematics/angular/utility/workspace";
-import * as ts from "typescript";
+import { escapeRegExp, insertRegisterCall } from "../utils/wiring";
 import type { ToolOptions } from "./schema";
 
 const { camelize, classify, dasherize } = strings;
-
-/** Escape a string for embedding into a `RegExp`. */
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 /**
  * Resolve the target project name: the explicit `project` option, else the
@@ -200,146 +189,30 @@ async function resolveServerTsPath(
 }
 
 /**
- * Locate the `return <server>;` statement INSIDE `createMcpServer()` so we can
- * splice the tool registration call directly before it, and resolve the
- * McpServer instance identifier (`const <server> = new McpServer(...)`) so the
- * inserted call targets the right variable (e.g. `return mcp;` →
- * `registerXTool(mcp);`). Both scans are scoped to the `createMcpServer` body so
- * an unrelated `return server;` / `new McpServer` in another function can't
- * become the anchor. Returns `{ start, serverName }` (the statement's full-text
- * start + the resolved instance name), or `null` when the shape is unrecognized
- * (caller bails gracefully).
- */
-function findReturnServerStart(
-  source: ts.SourceFile,
-): { start: number; serverName: string } | null {
-  // Scope to the `createMcpServer` function body.
-  let body: ts.Block | null = null;
-  const visitFn = (node: ts.Node): void => {
-    if (
-      body === null &&
-      ts.isFunctionDeclaration(node) &&
-      node.name?.text === "createMcpServer" &&
-      node.body
-    ) {
-      body = node.body;
-      return;
-    }
-    ts.forEachChild(node, visitFn);
-  };
-  ts.forEachChild(source, visitFn);
-  if (body === null) {
-    return null;
-  }
-  const fnBody: ts.Block = body;
-
-  // The McpServer instance name (`const <server> = new McpServer(...)`).
-  let serverName: string | null = null;
-  const visitDecl = (node: ts.Node): void => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
-      const init = node.initializer;
-      if (
-        init &&
-        ts.isNewExpression(init) &&
-        ts.isIdentifier(init.expression) &&
-        init.expression.text === "McpServer"
-      ) {
-        serverName = node.name.text;
-      }
-    }
-    ts.forEachChild(node, visitDecl);
-  };
-  ts.forEachChild(fnBody, visitDecl);
-
-  // The matching `return <serverName>;` within the same body (falling back to a
-  // bare `server` when the declaration wasn't recognized).
-  const wanted: string = serverName ?? "server";
-  let found: number | null = null;
-  const visitReturn = (node: ts.Node): void => {
-    if (found !== null) {
-      return;
-    }
-    if (
-      ts.isReturnStatement(node) &&
-      node.expression &&
-      ts.isIdentifier(node.expression) &&
-      node.expression.text === wanted
-    ) {
-      found = node.getStart(source);
-      return;
-    }
-    ts.forEachChild(node, visitReturn);
-  };
-  ts.forEachChild(fnBody, visitReturn);
-
-  return found === null ? null : { start: found, serverName: wanted };
-}
-
-/**
  * Wire the generated tool into `src/mcp/server.ts`:
  *   - add `import { register<Cls>Tool } from "./tools/<dash>";`
- *   - insert `  register<Cls>Tool(server);` immediately before `return server;`
+ *   - insert `  register<Cls>Tool(<server>);` immediately before
+ *     `return <server>;`
  *
- * AST strategy mirrors S25's `patchServerTs`: `@schematics/angular`'s
- * `ast-utils.insertImport` + `InsertChange` + `applyToUpdateRecorder` (NO
- * ts-morph). Idempotent: guarded by `content.includes(registerCall)`. Graceful
- * bail: if `server.ts` is missing or its `createMcpServer()` / `return server;`
- * shape is unrecognized, we log the manual-wire snippet and return the tree
- * unchanged (the generated tool file is left in place) — we never throw.
- *
- * Inlined here (rather than extracted to `utils/wiring.ts`) to keep S28
- * self-contained; the shared `insertRegisterCall` extraction is the S29 wave.
+ * Delegates to the shared {@link insertRegisterCall} helper (S29
+ * `utils/wiring.ts`), which scopes the `return <server>;` / `new McpServer` scan
+ * to the `createMcpServer()` body and resolves the instance identifier so the
+ * inserted call targets the right variable (e.g. `return mcp;` →
+ * `register<Cls>Tool(mcp);`). Idempotent + graceful bail (logs the manual-wire
+ * snippet, leaves the generated tool file in place) are handled by the helper.
  */
 function wireIntoServer(options: ToolOptions): Rule {
   return async (tree: Tree, context: SchematicContext) => {
     const serverTsPath = await resolveServerTsPath(tree, options);
     const cls = classify(options.name);
     const dash = dasherize(options.name);
-    const importName = `register${cls}Tool`;
-    const importPath = `./tools/${dash}`;
-
-    if (!tree.exists(serverTsPath)) {
-      context.logger.warn(manualWireSnippet(options.name));
-      return tree;
-    }
-
-    const content = tree.readText(serverTsPath);
-
-    const source = ts.createSourceFile(
+    return insertRegisterCall(tree, context, {
       serverTsPath,
-      content,
-      ts.ScriptTarget.Latest,
-      /* setParentNodes */ true,
-    );
-
-    const target = findReturnServerStart(source);
-    if (target === null) {
-      // Unrecognized shape — bail gracefully with copy-pasteable instructions.
-      context.logger.warn(manualWireSnippet(options.name));
-      return tree;
-    }
-
-    // Target the resolved instance name so non-`server` apps still compile.
-    const registerCall = `${importName}(${target.serverName});`;
-
-    // Idempotency: the registration call is already present → no-op.
-    if (content.includes(registerCall)) {
-      return tree;
-    }
-
-    const changes: Change[] = [
-      insertImport(source, serverTsPath, importName, importPath),
-      // `target.start` is the `return` token's start (leading indent excluded by
-      // getStart), so the existing indent prefixes the inserted call and the
-      // trailing `\n\n  ` re-indents the return — preserving 2-space formatting.
-      new InsertChange(serverTsPath, target.start, `${registerCall}\n\n  `),
-    ];
-
-    const recorder = tree.beginUpdate(serverTsPath);
-    applyToUpdateRecorder(recorder, changes);
-    tree.commitUpdate(recorder);
-
-    return tree;
+      importName: `register${cls}Tool`,
+      importPath: `./tools/${dash}`,
+      buildRegisterCall: (serverName) => `register${cls}Tool(${serverName});`,
+      manualSnippet: manualWireSnippet(options.name),
+    });
   };
 }
 

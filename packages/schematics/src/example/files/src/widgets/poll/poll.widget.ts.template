@@ -1,0 +1,258 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  signal,
+} from "@angular/core";
+import {
+  DataLlmDirective,
+  injectCallTool,
+  injectDisplayMode,
+  injectLayout,
+  injectSendFollowUpMessage,
+  injectToolInfo,
+  injectViewState,
+} from "ng-mcp-ui/web";
+
+/** One option's running count. Mirrors `tally[]` from `src/mcp/tools/poll.ts`. */
+type TallyEntry = {
+  option: string;
+  count: number;
+};
+
+/**
+ * The snapshot shape `create_poll` / `tally_votes` / `cast_vote` all return
+ * (the zod `snapshotShape` in `src/mcp/tools/poll.ts`). Kept in lockstep with
+ * the server by hand — the demo deliberately avoids importing server code into
+ * the browser bundle.
+ *
+ * A `type` (not `interface`) so it satisfies the `Record<string, unknown>`
+ * constraint on `injectToolInfo` / `injectCallTool`'s generics — interfaces are
+ * open and don't get an implicit index signature.
+ */
+type PollSnapshot = {
+  pollId: string;
+  question: string;
+  options: string[];
+  tally: TallyEntry[];
+  total: number;
+};
+
+/**
+ * The Quick Poll demo view (S21, PLAN §10). A single standalone, zoneless,
+ * OnPush component that exercises the full §10.2 capability table:
+ *
+ * | Capability            | Surface here                                      |
+ * |-----------------------|---------------------------------------------------|
+ * | tool → view render    | `injectToolInfo` reads the rendering tool output  |
+ * | view → server call    | `injectCallTool('cast_vote' / 'tally_votes')`     |
+ * | persisted view state  | `injectViewState({ myVote })` survives reopen     |
+ * | LLM-visible context   | `[dataLlm]` surfaces "User voted: X" to the model |
+ * | drive the chat        | `injectSendFollowUpMessage()` ("Discuss")         |
+ * | theme / layout        | `injectLayout()` → theme class + safe-area padding |
+ * | display mode          | `injectDisplayMode()` ("Expand" → fullscreen)     |
+ *
+ * Both `create_poll` and `tally_votes` render this view and return the same
+ * snapshot, so it draws identically regardless of which tool produced the
+ * render; interactive `cast_vote` / `tally_votes` calls overlay a fresher
+ * snapshot via {@link PollWidget.live}.
+ */
+@Component({
+  selector: "poll-widget",
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [DataLlmDirective],
+  host: {
+    class: "poll-host",
+    "[class.poll-dark]": "theme() === 'dark'",
+    "[style.paddingBottom.px]": "safeAreaBottom()",
+  },
+  styleUrl: "./poll.css",
+  template: `
+    @let p = poll();
+    @if (p === null) {
+      <p class="poll-waiting">Waiting for the poll…</p>
+    } @else {
+      <section class="poll-card" [attr.aria-busy]="isBusy()">
+        <header class="poll-header">
+          <h1 id="poll-question">{{ p.question }}</h1>
+          <button
+            type="button"
+            class="poll-icon-btn"
+            (click)="toggleExpand()"
+            [attr.aria-pressed]="displayMode() === 'fullscreen'"
+          >
+            {{ displayMode() === 'fullscreen' ? 'Collapse' : 'Expand' }}
+          </button>
+        </header>
+
+        <div class="poll-options" role="group" aria-labelledby="poll-question">
+          @for (option of p.options; track option) {
+            <button
+              type="button"
+              class="poll-option"
+              [class.voted]="myVote() === option"
+              [attr.aria-pressed]="myVote() === option"
+              [disabled]="isBusy()"
+              (click)="vote(option)"
+            >
+              <span class="poll-option-label">{{ option }}</span>
+              @if (myVote() === option) {
+                <span class="poll-check" aria-hidden="true">✓</span>
+              }
+            </button>
+          }
+        </div>
+
+        <div class="poll-results">
+          @for (entry of p.tally; track entry.option) {
+            <div class="poll-bar-row">
+              <span class="poll-bar-label">{{ entry.option }}</span>
+              <div
+                class="poll-bar-track"
+                role="progressbar"
+                [attr.aria-valuenow]="entry.count"
+                [attr.aria-valuemin]="0"
+                [attr.aria-valuemax]="p.total || 1"
+                [attr.aria-label]="entry.option + ': ' + entry.count + ' votes'"
+              >
+                <div class="poll-bar-fill" [style.width.%]="pct(entry.count)"></div>
+              </div>
+              <span class="poll-bar-count">{{ entry.count }}</span>
+            </div>
+          }
+          <p class="poll-total">{{ p.total }} vote{{ p.total === 1 ? '' : 's' }}</p>
+        </div>
+
+        <footer class="poll-actions">
+          <button type="button" (click)="tally()" [disabled]="isBusy()">
+            Tally votes
+          </button>
+          <button type="button" (click)="discuss()" [disabled]="myVote() === null">
+            Discuss results
+          </button>
+        </footer>
+
+        <!-- LLM-visible context: the model learns what the user voted. -->
+        <p class="poll-sr-only" [dataLlm]="voteSummary()">{{ voteSummary() }}</p>
+      </section>
+    }
+  `,
+})
+export default class PollWidget {
+  private readonly tool = injectToolInfo<{
+    input: { question?: string; options?: string[]; pollId?: string };
+    output: PollSnapshot;
+  }>();
+
+  private readonly castVote = injectCallTool<
+    { pollId: string; option: string },
+    { structuredContent: PollSnapshot }
+  >("cast_vote");
+
+  private readonly tallyVotes = injectCallTool<
+    { pollId: string },
+    { structuredContent: PollSnapshot }
+  >("tally_votes");
+
+  private readonly viewState = injectViewState<{ myVote: string | null }>({
+    myVote: null,
+  });
+
+  private readonly followUp = injectSendFollowUpMessage();
+  private readonly layout = injectLayout();
+  private readonly display = injectDisplayMode();
+
+  /** A snapshot from an interactive call, overlaid on the rendered tool output. */
+  private readonly live = signal<PollSnapshot | null>(null);
+
+  protected readonly theme = computed(() => this.layout().theme);
+  protected readonly safeAreaBottom = computed(
+    () => this.layout().safeArea.insets.bottom,
+  );
+  protected readonly displayMode = this.display.displayMode;
+
+  /** The poll to render: freshest interactive snapshot, else the tool output. */
+  protected readonly poll = computed<PollSnapshot | null>(() => {
+    const fromCall = this.live();
+    if (fromCall) {
+      return fromCall;
+    }
+    const state = this.tool();
+    return state.isSuccess ? state.output : null;
+  });
+
+  protected readonly myVote = computed(() => this.viewState.value()?.myVote ?? null);
+
+  protected readonly isBusy = computed(
+    () =>
+      this.castVote.status() === "pending" ||
+      this.tallyVotes.status() === "pending",
+  );
+
+  protected readonly voteSummary = computed(() => {
+    const p = this.poll();
+    if (!p) {
+      return "";
+    }
+    const vote = this.myVote();
+    return vote
+      ? `User voted: ${vote}`
+      : `User is viewing the poll "${p.question}" but has not voted yet.`;
+  });
+
+  /** Percentage width of a bar, guarding against divide-by-zero. */
+  protected pct(count: number): number {
+    const total = this.poll()?.total ?? 0;
+    return total === 0 ? 0 : Math.round((count / total) * 100);
+  }
+
+  protected vote(option: string): void {
+    const p = this.poll();
+    if (!p) {
+      return;
+    }
+    this.castVote.callTool(
+      { pollId: p.pollId, option },
+      {
+        onSuccess: (data) => {
+          if (data.structuredContent) {
+            this.live.set(data.structuredContent);
+          }
+          this.viewState.set({ myVote: option });
+        },
+      },
+    );
+  }
+
+  protected tally(): void {
+    const p = this.poll();
+    if (!p) {
+      return;
+    }
+    this.tallyVotes.callTool(
+      { pollId: p.pollId },
+      {
+        onSuccess: (data) => {
+          if (data.structuredContent) {
+            this.live.set(data.structuredContent);
+          }
+        },
+      },
+    );
+  }
+
+  protected discuss(): void {
+    const p = this.poll();
+    if (!p) {
+      return;
+    }
+    void this.followUp(
+      `Summarize the outcome of the poll "${p.question}" and recommend a choice.`,
+    );
+  }
+
+  protected toggleExpand(): void {
+    const next = this.displayMode() === "fullscreen" ? "inline" : "fullscreen";
+    void this.display.setDisplayMode(next);
+  }
+}

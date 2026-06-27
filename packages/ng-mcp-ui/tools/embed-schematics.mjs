@@ -58,6 +58,9 @@ const required = [
   "tool/index.js",
   "tool/schema.json",
   "tool/files",
+  "example/index.js",
+  "example/schema.json",
+  "example/files",
 ];
 const missing = required.filter((rel) => !existsSync(join(dest, rel)));
 if (missing.length > 0) {
