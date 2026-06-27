@@ -13,6 +13,8 @@ import {
   getPackageJsonDependency,
 } from "@schematics/angular/utility/dependencies";
 import { getWorkspace } from "@schematics/angular/utility/workspace";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { NgAddOptions } from "./schema";
 
 /** Supported `@angular/core` major versions (inclusive). */
@@ -21,7 +23,27 @@ const MAX_ANGULAR_MAJOR = 22;
 
 /** Runtime package this schematic installs into the target app. */
 const NG_MCP_UI_PACKAGE = "ng-mcp-ui";
-const NG_MCP_UI_VERSION = "^0.0.0";
+
+/**
+ * Resolve the `ng-mcp-ui` version range to pin in the consumer's package.json.
+ */
+function resolveNgMcpUiVersion(): string {
+  // At `ng add` time this schematic runs from the copy embedded inside the lib
+  // at <app>/node_modules/ng-mcp-ui/dist/schematics/ng-add/index.js, so the
+  // lib's package.json is three directories up — pin the invoked version. Fall
+  // back to a caret default when that file isn't there (e.g. unit tests, where
+  // the schematic runs from its own package's dist).
+  try {
+    const pkgPath = join(__dirname, "..", "..", "..", "package.json");
+    const { version } = JSON.parse(readFileSync(pkgPath, "utf8"));
+    if (typeof version === "string" && version.length > 0) {
+      return `^${version}`;
+    }
+  } catch {
+    // fall through to the default
+  }
+  return "^0.0.0";
+}
 
 /**
  * Parse a semver major out of a package.json dependency RANGE.
@@ -172,7 +194,7 @@ function addDependencies(options: NgAddOptions): Rule {
     addPackageJsonDependency(tree, {
       type: NodeDependencyType.Default,
       name: NG_MCP_UI_PACKAGE,
-      version: NG_MCP_UI_VERSION,
+      version: resolveNgMcpUiVersion(),
       overwrite: false,
     });
 

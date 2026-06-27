@@ -2,8 +2,9 @@
   // Schematics MUST compile to CommonJS — the @angular-devkit/schematics
   // runtime `require()`s factory modules referenced from collection.json, so
   // ESM output would not load. We therefore override the ESM-oriented base
-  // (module/moduleResolution/verbatimModuleSyntax) with a Node CommonJS profile.
-  // node10 resolution is sufficient and matches the devkit's own emit.
+  // (module/moduleResolution/verbatimModuleSyntax) with a Node CommonJS profile:
+  // node16 module + node16 resolution emit the CommonJS modules the devkit
+  // runtime require()s, matching the devkit's own emit.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
