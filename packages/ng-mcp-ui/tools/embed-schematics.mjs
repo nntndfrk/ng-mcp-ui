@@ -52,6 +52,9 @@ const required = [
   "ng-add/index.js",
   "ng-add/schema.json",
   "ng-add/files",
+  "view/index.js",
+  "view/schema.json",
+  "view/files",
 ];
 const missing = required.filter((rel) => !existsSync(join(dest, rel)));
 if (missing.length > 0) {

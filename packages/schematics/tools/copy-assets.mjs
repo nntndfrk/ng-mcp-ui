@@ -10,7 +10,13 @@ const pkgRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const src = join(pkgRoot, "src");
 const dist = join(pkgRoot, "dist");
 
-const assets = ["collection.json", "ng-add/schema.json"];
+// collection.json + every schematic's `schema.json`. The schema list is
+// discovered dynamically (any `src/<schematic>/schema.json` ships), so a new
+// generator just drops its `schema.json` and needs no edit here.
+const schemaAssets = readdirSync(src, { withFileTypes: true })
+  .filter((e) => e.isDirectory() && existsSync(join(src, e.name, "schema.json")))
+  .map((e) => `${e.name}/schema.json`);
+const assets = ["collection.json", ...schemaAssets];
 
 for (const rel of assets) {
   const to = join(dist, rel);

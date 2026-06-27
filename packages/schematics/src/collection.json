@@ -6,6 +6,11 @@
       "factory": "./ng-add/index#ngAdd",
       "schema": "./ng-add/schema.json",
       "aliases": ["init"]
+    },
+    "view": {
+      "description": "Generate an MCP UI view (standalone widget component) and wire it into the widget registry + ViewNameRegistry.",
+      "factory": "./view/index#view",
+      "schema": "./view/schema.json"
     }
   }
 }
