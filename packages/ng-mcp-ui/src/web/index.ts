@@ -115,4 +115,11 @@ export {
   injectViewContext,
   VIEW_CONTEXT_KEY,
 } from "./helpers/state.js";
+// Asset-URL pipe — the first Angular declarable (Ivy `ɵɵngDeclarePipe` partial
+// emit). `mcpAsset` rewrites a relative asset path to an absolute URL on the MCP
+// server origin (`${serverUrl}/assets/widgets/${path}`), fixing the cross-origin
+// asset hazard inside the host iframe (PLAN §5.5). Empty `serverUrl` (dev)
+// returns the path unchanged. Injects `MCP_SERVER_URL` (THE RULE — no
+// `getAdaptor()`); the decorator-free resolver core stays internal.
+export { McpAssetPipe } from "./mcp-asset.pipe.js";
 export { NG_MCP_UI_VERSION } from "../version.js";
