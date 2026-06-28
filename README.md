@@ -5,17 +5,17 @@
 > ChatGPT, and other [MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
 > hosts.
 
-> ### Status: feature-complete RC — not yet on npm
+> ### Status: v0.1.0 — published on npm
 > The full public surface (`server` / `web` / `testing` / `tunnel` + the
 > schematics) **ships and is CI-green across Angular v20, v21, and v22** (a
 > cross-major fixture matrix builds a real retrofit app, AOT-builds the widget
-> bundle + SSR host, and probes `/mcp` on every push). Real-host **render** is
-> verified on Claude (poll widget renders in the host iframe, typed tool data
-> arrives, display-mode works) — see [`LIVE-HOST-VALIDATION.md`](./LIVE-HOST-VALIDATION.md);
-> interactive vote/tally rows + ChatGPT parity await human eyes-on sign-off.
-> The package is **not yet published to the npm registry** — `npm i ng-mcp-ui` /
-> `ng add ng-mcp-ui` are coming soon; today you install a packed tarball and run
-> the schematics via `ng generate ng-mcp-ui:ng-add` (see below).
+> bundle + SSR host, and probes `/mcp` on every push). Real-host validation is
+> **signed off**: render is machine-verified on Claude (poll widget renders in
+> the host iframe, typed tool data arrives, display-mode works) and the
+> interactive vote/tally rows plus ChatGPT parity are human-confirmed — see
+> [`LIVE-HOST-VALIDATION.md`](./LIVE-HOST-VALIDATION.md).
+> Install with **`npm i ng-mcp-ui`**, or retrofit an existing app with
+> **`ng add ng-mcp-ui`** (see below).
 >
 > See the [package README](./packages/ng-mcp-ui/README.md) for the full API
 > reference, and the [schematics README](./packages/schematics/README.md) for the
@@ -29,12 +29,10 @@ You have an Angular app. You want its features to show up as **interactive
 widgets inside an AI chat** — a poll the user can vote on, a chart, a form —
 served from your own app and driven by your own tools.
 
-`ng-mcp-ui` makes that essentially a single schematic. Today (pre-registry) you
-install the packed tarball and run:
+`ng-mcp-ui` makes that essentially a single schematic — install and retrofit:
 
 ```bash
-# coming soon: ng add ng-mcp-ui
-ng generate ng-mcp-ui:ng-add --example=demo
+ng add ng-mcp-ui --example=demo
 ```
 
 It mounts an [MCP](https://modelcontextprotocol.io) server into your app's
@@ -69,7 +67,7 @@ initial HTML. `ng-mcp-ui` is built around that reality:
 
 - `ng-add` retrofit for existing Angular apps (**Angular v20–v22**, CI-green)
 - One `Adaptor` interface, two host runtimes: the same widget targets **Claude**
-  and **ChatGPT** (render verified on Claude; ChatGPT parity pending sign-off)
+  and **ChatGPT** (live-host validation signed off on both)
 - Typed tool ⇄ view data flow (Zod schemas, inferred end to end via
   `typeof server` → `injectAppHelpers`)
 - View → server tool calls (`injectCallTool`), persisted view state

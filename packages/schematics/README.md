@@ -4,12 +4,12 @@ The `ng-mcp-ui` schematics: an `ng-add` retrofit plus `view` / `tool` /
 `example` generators that wire an Angular app up with
 [ng-mcp-ui](../ng-mcp-ui). This is an internal, `private` package compiled to
 CommonJS; at pack time its `dist/` is embedded into `ng-mcp-ui` under
-`dist/schematics/`, so users run a single `ng add ng-mcp-ui` (or, today,
-`ng generate ng-mcp-ui:<schematic>`).
+`dist/schematics/`, so users run a single `ng add ng-mcp-ui` to retrofit an app,
+then `ng generate ng-mcp-ui:<schematic>` for the individual generators.
 
-> Until `ng-mcp-ui` is published to npm, install the packed tarball into your app
-> first (`npm i ../path/to/ng-mcp-ui-*.tgz`), then invoke the schematics with
-> `ng generate ng-mcp-ui:<name>`.
+> `ng add ng-mcp-ui` installs the package and runs the `ng-add` retrofit in one
+> step. If `ng-mcp-ui` is already installed, run the same schematic directly with
+> `ng generate ng-mcp-ui:ng-add`.
 
 ## Generators
 

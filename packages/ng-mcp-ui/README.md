@@ -5,17 +5,15 @@ MCP servers whose tools render **interactive Angular widgets** inside Claude,
 ChatGPT, and other [MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
 hosts (Angular **v20–v22**).
 
-> ### Status: feature-complete RC — not yet on npm
+> ### Status: v0.1.0 — first npm release
 > The public API surface (`server` / `web` / `testing` / `tunnel` + the
 > schematics) is **complete and CI-green across Angular v20, v21, and v22** (a
 > cross-major fixture matrix builds a real retrofit app, AOT-builds the widget
-> bundle + SSR host, and probes `/mcp` on every push). Real-host **render** is
-> verified on Claude — the poll widget renders in the host iframe, typed tool
-> data arrives, and display-mode works (see
+> bundle + SSR host, and probes `/mcp` on every push). Real-host validation is
+> **signed off**: render is machine-verified on Claude — the poll widget renders
+> in the host iframe, typed tool data arrives, and display-mode works — and the
+> interactive vote/tally rows plus ChatGPT parity are human-confirmed (see
 > [`LIVE-HOST-VALIDATION.md`](https://github.com/nntndfrk/ng-mcp-ui/blob/main/LIVE-HOST-VALIDATION.md)).
-> Interactive vote/tally rows and ChatGPT parity await human eyes-on sign-off.
-> The package is **not yet published to the npm registry** (`npm i ng-mcp-ui`
-> is coming soon); install via the local tarball / `ng generate` path below.
 
 ## What it does
 
@@ -41,32 +39,27 @@ The package also ships the Angular **schematics** (`ng-add`, `view`, `tool`,
 
 ## Getting started
 
-### Install (today)
-
-Until the registry publish lands, install from a packed tarball built in this
-repo:
+### Install
 
 ```bash
-# in the ng-mcp-ui repo
-npm run build:pack --workspace ng-mcp-ui   # ngc + embed schematics
-npm pack --workspace ng-mcp-ui             # → ng-mcp-ui-0.0.0.tgz
-
-# in your Angular SSR app
-npm i ../path/to/ng-mcp-ui-0.0.0.tgz
+npm i ng-mcp-ui
 ```
 
-> **Coming soon:** `npm i ng-mcp-ui` and `ng add ng-mcp-ui` straight from the
-> registry. The schematics work identically today via `ng generate` (below).
+The fastest path is `ng add` (next section), which installs the package and
+retrofits your app in one step.
 
 ### Retrofit an app
 
-Run the `ng-add` schematic against an existing Angular app — it ensures SSR,
-mounts the MCP server before the SSR catch-all, adds a widgets build target, and
-(by default) scaffolds the runnable Quick Poll demo:
+Run `ng add` against an existing Angular app — it installs the package, ensures
+SSR, mounts the MCP server before the SSR catch-all, adds a widgets build target,
+and (by default) scaffolds the runnable Quick Poll demo:
 
 ```bash
-ng generate ng-mcp-ui:ng-add --example=demo
+ng add ng-mcp-ui --example=demo
 ```
+
+> Already installed? The same schematic runs via
+> `ng generate ng-mcp-ui:ng-add --example=demo`.
 
 See the [schematics README](https://github.com/nntndfrk/ng-mcp-ui/blob/main/packages/schematics/README.md)
 for the full generator + options reference.
@@ -316,9 +309,9 @@ the importable tunnel surface lands in the tunnel track.
 A single `Adaptor` interface abstracts the **OpenAI Apps SDK** (`window.openai`,
 ChatGPT) and the open **MCP-Apps** postMessage spec
 (`@modelcontextprotocol/ext-apps`, Claude & other MCP-Apps hosts) behind one
-API, so widget code is identical across hosts. Render is verified on Claude;
-ChatGPT parity and the interactive-call rows await human sign-off. **Gemini is
-not supported.**
+API, so widget code is identical across hosts. Live-host validation is signed
+off on both Claude and ChatGPT (render machine-verified, interactive-call rows
+human-confirmed). **Gemini is not supported.**
 
 ## Build tooling
 
