@@ -26,6 +26,10 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Publish only from a release tag, or from `main` for a manual recovery run.
+    # `workflow_dispatch` can target any ref, so without this guard someone could
+    # publish unreviewed code by dispatching the workflow on an arbitrary branch.
+    if: github.ref_type == 'tag' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
