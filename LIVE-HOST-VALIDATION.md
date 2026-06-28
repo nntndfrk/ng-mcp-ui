@@ -111,11 +111,27 @@ Record the result here once walked. The gate is: **MUST rows 1–5 + 10 green on
 BOTH Claude and ChatGPT.**
 
 ```
-Status: ⬜ NOT YET WALKED (production rebuild)
-Walked by: ____________________   Date: ____________
-Claude  (model: ______): MUST ____   NICE ____
-ChatGPT (mode:  ______): MUST ____   NICE ____
+Status: 🟡 PARTIAL — automated render walk PASSED on real Claude; in-iframe
+        interaction rows reserved for human eyes-on sign-off (see note).
+Walked by: agent (browser automation) + ____________________   Date: 2026-06-28
+Claude  (model: Opus 4.8): MUST 1,2 ✅ + 9 (NICE) ✅; rows 3,4,5,6,7,8,10 reserved
+ChatGPT (mode:  ______):   not yet walked
 Notes:
+  Automated walk via browser-use against real claude.ai over a live TryCloudflare
+  tunnel (npm run live-host, Angular-22 retrofit + --example=demo). PROVEN by eyes
+  on the real host iframe:
+    • Row 1 (tool→view render): "Create a poll … Sushi/Tacos/Salad" → Claude called
+      test-mcp-ui create_poll → interactive poll widget rendered in the host iframe.
+    • Row 2 (typed server→view data): question "Where should we have lunch?" + the
+      three options + initial 0/0/0 tally bars + "0 votes" all arrived in the view.
+    • Row 9 (NICE, display mode): Expand → fullscreen; Collapse → inline, both work.
+  NOT driveable by this automation (NOT a widget defect): the vote-option buttons,
+  Tally votes, and Discuss results live inside a SANDBOXED CROSS-ORIGIN iframe (the
+  trycloudflare origin). Index-based click can only address the host-level Expand/
+  Collapse chrome, not controls inside that iframe — so rows 3 (view→server call),
+  4 (persisted myVote), 5 (dataLlm context), 6 (follow-up), 7 (theme), 8 (safe-area),
+  and 10 (cross-runtime parity) still need a human clicking in the live view. The
+  tunnel + connector are set up and were left running to make that pass turnkey.
 ```
 
 > Provenance: the draft demo (`.claude/draft/examples/dev-app/E2E.md`) was
