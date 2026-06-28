@@ -5,11 +5,21 @@
 > ChatGPT, and other [MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
 > hosts.
 
-> ### 🚧 Status: early development
-> This repository is being built **step by step into a production-ready release**.
-> It is **not yet published to npm**, and the public API may change. A complete,
-> real-host-verified MVP prototype exists and is the reference the production
-> build is reconstructed from. Watch the repo for the first tagged release.
+> ### Status: feature-complete RC — not yet on npm
+> The full public surface (`server` / `web` / `testing` / `tunnel` + the
+> schematics) **ships and is CI-green across Angular v20, v21, and v22** (a
+> cross-major fixture matrix builds a real retrofit app, AOT-builds the widget
+> bundle + SSR host, and probes `/mcp` on every push). Real-host **render** is
+> verified on Claude (poll widget renders in the host iframe, typed tool data
+> arrives, display-mode works) — see [`LIVE-HOST-VALIDATION.md`](./LIVE-HOST-VALIDATION.md);
+> interactive vote/tally rows + ChatGPT parity await human eyes-on sign-off.
+> The package is **not yet published to the npm registry** — `npm i ng-mcp-ui` /
+> `ng add ng-mcp-ui` are coming soon; today you install a packed tarball and run
+> the schematics via `ng generate ng-mcp-ui:ng-add` (see below).
+>
+> See the [package README](./packages/ng-mcp-ui/README.md) for the full API
+> reference, and the [schematics README](./packages/schematics/README.md) for the
+> generators.
 
 ---
 
@@ -19,11 +29,12 @@ You have an Angular app. You want its features to show up as **interactive
 widgets inside an AI chat** — a poll the user can vote on, a chart, a form —
 served from your own app and driven by your own tools.
 
-`ng-mcp-ui` makes that a single `ng add`:
+`ng-mcp-ui` makes that essentially a single schematic. Today (pre-registry) you
+install the packed tarball and run:
 
 ```bash
-# (planned API — not yet on npm)
-ng add ng-mcp-ui
+# coming soon: ng add ng-mcp-ui
+ng generate ng-mcp-ui:ng-add --example=demo
 ```
 
 It mounts an [MCP](https://modelcontextprotocol.io) server into your app's
@@ -54,26 +65,30 @@ initial HTML. `ng-mcp-ui` is built around that reality:
 - **A schematic does the wiring.** `ng add` retrofits SSR + the MCP server + a
   widgets build target; generators scaffold new views and tools.
 
-## Target capabilities
+## Capabilities
 
-- `ng add` retrofit for existing Angular apps (**Angular v20–v22**)
-- Cross-host parity: the same widget renders in **Claude** and **ChatGPT**
-- Typed tool ⇄ view data flow (Zod schemas, inferred end to end)
-- View → server tool calls, persisted view state, LLM-visible context
-- Theme / display-mode / safe-area adaptation
+- `ng-add` retrofit for existing Angular apps (**Angular v20–v22**, CI-green)
+- One `Adaptor` interface, two host runtimes: the same widget targets **Claude**
+  and **ChatGPT** (render verified on Claude; ChatGPT parity pending sign-off)
+- Typed tool ⇄ view data flow (Zod schemas, inferred end to end via
+  `typeof server` → `injectAppHelpers`)
+- View → server tool calls (`injectCallTool`), persisted view state
+  (`injectViewState` / `injectViewStore`), LLM-visible context (`[dataLlm]`)
+- Theme / display-mode / safe-area adaptation (`injectLayout` /
+  `injectDisplayMode`)
 - Zero-auth dev tunnel (`cloudflared`) for live iteration against real hosts
-- A testing harness (mock host adaptor) for unit-testing widgets
+- A testing harness (`MockAdaptor` / `provideMockMcpUi`) for unit-testing widgets
 
 ## Packages
 
-Published as a single package with subpath exports (planned):
+Shipped as a single package with subpath exports:
 
 | Import | Purpose |
 | --- | --- |
 | `ng-mcp-ui/server` | Framework-neutral MCP server: `McpServer`, Express router, view resources |
 | `ng-mcp-ui/web` | Angular bridge: `provideMcpUi`, `bootstrapWidget`, the `inject*` API, declarables |
 | `ng-mcp-ui/testing` | `MockAdaptor` + `provideMockMcpUi` test harness |
-| `ng-mcp-ui/tunnel` | `cloudflared` dev-tunnel manager |
+| `ng-mcp-ui/tunnel` | Slot for the `cloudflared` dev-tunnel manager (skeleton today; the live walk runs via `npm run live-host`) |
 
 Plus the Angular schematics (`ng-add`, `view`, `tool`, `example`) shipped in the
 same package.
@@ -88,7 +103,12 @@ npm run lint        # Biome
 npm run typecheck   # tsc
 npm test            # Vitest
 npm run build       # build all workspace packages
+npm run test:types  # Vitest type tests
 ```
+
+To exercise the real schematic output against a live host over a zero-auth
+`cloudflared` tunnel, run `npm run live-host` and follow
+[`LIVE-HOST-VALIDATION.md`](./LIVE-HOST-VALIDATION.md).
 
 Requires the Node version in [`.nvmrc`](./.nvmrc).
 
