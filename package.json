@@ -18,7 +18,8 @@
     "test": "vitest run --passWithNoTests",
     "test:types": "vitest run --typecheck.only",
     "ci:fixture": "node tools/ci-fixture.mjs",
-    "live-host": "node tools/ci-fixture.mjs --serve --tunnel"
+    "live-host": "node tools/ci-fixture.mjs --serve --tunnel",
+    "check:version": "node tools/check-version.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",

@@ -1,6 +1,6 @@
 {
   "name": "ng-mcp-ui",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Angular library that retrofits Angular apps with MCP interactive UI views (server + web bridge)",
   "license": "MIT",
   "author": "nntndfrk",

@@ -1,0 +1,62 @@
+name: Release
+
+# Publishes `ng-mcp-ui` to the npm registry. Triggered by pushing a semver tag:
+#
+#   npm run check:version          # locally confirm version.ts === package.json
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# The version gate (tools/check-version.mjs) refuses to publish unless the tag,
+# package.json#version, and the exported NG_MCP_UI_VERSION all agree, so a
+# mistagged or drifted release fails fast instead of shipping. `workflow_dispatch`
+# republishes the current package.json version (no tag check) for recovery runs.
+#
+# Requires the `NPM_TOKEN` Actions secret (an npm automation token with publish
+# rights). Provenance is attested via OIDC (`id-token: write`).
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # npm provenance attestation
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Publish only from a release tag, or from `main` for a manual recovery run.
+    # `workflow_dispatch` can target any ref, so without this guard someone could
+    # publish unreviewed code by dispatching the workflow on an arbitrary branch.
+    if: github.ref_type == 'tag' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        run: npm ci
+
+      - name: Version gate
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            node tools/check-version.mjs --tag "${GITHUB_REF_NAME}"
+          else
+            node tools/check-version.mjs
+          fi
+
+      - name: Build (ngc + embed schematics)
+        run: npm run build:pack --workspace ng-mcp-ui
+
+      - name: Verify pack (subpaths resolve)
+        run: npm run verify:pack --workspace ng-mcp-ui
+
+      - name: Publish to npm
+        run: npm publish --workspace ng-mcp-ui --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
