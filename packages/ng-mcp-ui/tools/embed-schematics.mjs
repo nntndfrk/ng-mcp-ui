@@ -34,6 +34,11 @@ rmSync(dest, { recursive: true, force: true });
 mkdirSync(dirname(dest), { recursive: true });
 cpSync(schematicsDist, dest, { recursive: true });
 
+// 2-bis. Drop tsc's incremental build cache — it's a local artifact (~100kB)
+//        with no runtime use, and the `files: ["dist"]` allowlist would otherwise
+//        ship it to npm. Remove it from the embedded tree.
+rmSync(join(dest, ".tsbuildinfo"), { force: true });
+
 // 2a. The schematics are CommonJS (`@angular-devkit/schematics` require()s the
 //     factory modules), but this lib package is ESM (`"type": "module"`). Without
 //     an override, Node would treat the embedded `.js` as ESM and the CJS

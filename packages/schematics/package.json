@@ -1,6 +1,6 @@
 {
   "name": "ng-mcp-ui-schematics",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Angular schematics (ng-add + generators) for ng-mcp-ui",
   "license": "MIT",
   "private": true,

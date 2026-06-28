@@ -7,13 +7,26 @@
 // plain Node context). The schematics-embedding assertions return with the M7
 // single-package merge. Scratch lives in the OS tmp dir, never inside the repo.
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const pkgRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const scratch = mkdtempSync(join(tmpdir(), "ng-mcp-ui-pack-"));
+
+// The exported NG_MCP_UI_VERSION must equal the version we're packing — read it
+// from package.json rather than hardcoding, so a version bump doesn't break this
+// smoke test (and a drifted version.ts constant is caught here too).
+const expectedVersion = JSON.parse(
+  readFileSync(join(pkgRoot, "package.json"), "utf8"),
+).version;
 
 function run(cmd, args, cwd) {
   const r = spawnSync(cmd, args, { cwd, stdio: "inherit", encoding: "utf8" });
@@ -67,8 +80,8 @@ try {
   // 3. Resolve the subpath exports.
   const probe = `
     const { NG_MCP_UI_VERSION: server } = await import("ng-mcp-ui/server");
-    if (server !== "0.0.0") {
-      throw new Error("unexpected /server version: " + server);
+    if (server !== ${JSON.stringify(expectedVersion)}) {
+      throw new Error("unexpected /server version: " + server + " (expected ${expectedVersion})");
     }
     for (const entry of ["web", "testing", "tunnel"]) {
       const url = import.meta.resolve("ng-mcp-ui/" + entry);
