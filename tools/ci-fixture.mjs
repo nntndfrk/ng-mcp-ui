@@ -55,7 +55,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 // ---- args -----------------------------------------------------------------
 function parseArgs(argv) {
-  const out = { ngVersion: "", port: "4400", keep: false };
+  const out = { ngVersion: "", port: "4400", keep: false, serve: false, tunnel: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--ng-version") {
@@ -64,12 +64,24 @@ function parseArgs(argv) {
       out.port = argv[++i];
     } else if (a === "--keep") {
       out.keep = true;
+    } else if (a === "--serve") {
+      // Live-host mode: build the demo, then keep it serving (instead of
+      // probe-and-teardown) for a manual real-host walk. See LIVE-HOST-VALIDATION.md.
+      out.serve = true;
+    } else if (a === "--tunnel") {
+      // With --serve: also spawn a cloudflared zero-auth TryCloudflare tunnel.
+      out.tunnel = true;
     }
   }
   return out;
 }
 
-const { ngVersion, port, keep } = parseArgs(process.argv.slice(2));
+const args = parseArgs(process.argv.slice(2));
+const { port, serve, tunnel } = args;
+// --serve is for a local live walk; default to the host major when unspecified.
+const ngVersion = args.ngVersion || (serve ? "22" : "");
+// Serving requires the built app to stay on disk, so --serve implies --keep.
+const keep = args.keep || serve;
 if (!/^\d+$/.test(ngVersion)) {
   console.error(
     "ci-fixture: --ng-version <major> is required, e.g. --ng-version 22",
@@ -407,6 +419,93 @@ async function probe() {
   console.log(`\n${tag} probe: ALL /mcp CHECKS PASSED`);
 }
 
+// ---- serve (live-host validation) -----------------------------------------
+// Boot the built fixture and KEEP it serving (optionally behind a cloudflared
+// zero-auth TryCloudflare tunnel) for a manual real-host walk on Claude /
+// ChatGPT. Unlike probe(), the server is not torn down — it runs until Ctrl-C.
+// This is the `bootstrapWidget` live-host gate the unit/inspector/fixture gates
+// structurally cannot cover (does the widget RENDER + BEHAVE in a real host).
+async function liveServe() {
+  const bundle = findServerBundle();
+  const localBase = `http://localhost:${port}`;
+  const mcpUrl = `${localBase}/mcp`;
+
+  const server = spawn("node", [bundle], {
+    cwd: fixtureDir,
+    env: { ...process.env, PORT: port },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  server.on("error", (e) =>
+    fail("serve", `failed to spawn SSR server (${bundle}): ${e.message}`),
+  );
+  server.stdout.on("data", (d) => process.stderr.write(`[server] ${d}`));
+  server.stderr.on("data", (d) => process.stderr.write(`[server] ${d}`));
+
+  await waitForServer(mcpUrl);
+  console.log(`\n${tag} ✅ demo SSR host serving at ${localBase}`);
+  console.log(`${tag}    MCP endpoint (local): ${mcpUrl}`);
+  console.log(`${tag}    fixture app: ${fixtureDir}`);
+
+  let tunnelProc = null;
+  if (tunnel) {
+    tunnelProc = spawn("cloudflared", ["tunnel", "--url", localBase], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    tunnelProc.on("error", (e) =>
+      console.error(
+        `${tag} cloudflared failed (${e.message}). Start it yourself: cloudflared tunnel --url ${localBase}`,
+      ),
+    );
+    const onTunnelData = (d) => {
+      const s = String(d);
+      process.stderr.write(`[tunnel] ${s}`);
+      const m = s.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/i);
+      if (m) {
+        console.log(`\n${tag} 🌐 PUBLIC URL: ${m[0]}`);
+        console.log(
+          `${tag} 👉 paste THIS into the host connector: ${m[0]}/mcp\n`,
+        );
+      }
+    };
+    tunnelProc.stdout.on("data", onTunnelData);
+    tunnelProc.stderr.on("data", onTunnelData);
+  } else {
+    console.log(
+      `\n${tag} to expose publicly (zero-auth): cloudflared tunnel --url ${localBase}`,
+    );
+    console.log(
+      `${tag} then paste <public-url>/mcp into the host connector (see LIVE-HOST-VALIDATION.md).`,
+    );
+  }
+  console.log(`\n${tag} press Ctrl-C to stop.\n`);
+
+  // Keep alive until interrupted; clean up children on the way out.
+  await new Promise((resolveExit) => {
+    const shutdown = () => {
+      console.log(`\n${tag} shutting down…`);
+      try {
+        server.kill("SIGKILL");
+      } catch {
+        // ignore
+      }
+      if (tunnelProc) {
+        try {
+          tunnelProc.kill("SIGKILL");
+        } catch {
+          // ignore
+        }
+      }
+      resolveExit();
+    };
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+    server.on("exit", (code) => {
+      console.error(`${tag} SSR server exited (code ${code}).`);
+      shutdown();
+    });
+  });
+}
+
 // ---- main -----------------------------------------------------------------
 async function main() {
   const started = process.hrtime.bigint();
@@ -475,10 +574,17 @@ async function main() {
   run("build:widgets", "npm", ["run", "build:widgets"], { cwd: fixtureDir });
   run("build", ngBin(), ["build"], { cwd: fixtureDir });
 
-  // 6. probe the running /mcp.
-  await probe();
-
   const secs = Number(process.hrtime.bigint() - started) / 1e9;
+
+  // 6a. live-host mode — keep the built demo serving for a manual real-host walk.
+  if (serve) {
+    console.log(`\n${tag} BUILD COMPLETE in ${secs.toFixed(0)}s — entering live-host serve mode.`);
+    await liveServe();
+    return; // liveServe() owns the rest of the lifecycle (and we keep the app).
+  }
+
+  // 6b. CI mode — probe the running /mcp, then tear down (unless --keep).
+  await probe();
   console.log(`\n${tag} ALL STEPS PASSED in ${secs.toFixed(0)}s`);
 
   if (keep) {

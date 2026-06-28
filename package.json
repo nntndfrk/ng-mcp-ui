@@ -17,7 +17,8 @@
     "pretest": "npm run build --workspace ng-mcp-ui-schematics",
     "test": "vitest run --passWithNoTests",
     "test:types": "vitest run --typecheck.only",
-    "ci:fixture": "node tools/ci-fixture.mjs"
+    "ci:fixture": "node tools/ci-fixture.mjs",
+    "live-host": "node tools/ci-fixture.mjs --serve --tunnel"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
