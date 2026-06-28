@@ -77,4 +77,3 @@ ng generate ng-mcp-ui:example --variant=minimal
 | --- | --- | --- | --- |
 | `--variant` | `demo` \| `minimal` \| `none` | `demo` | Which example app to scaffold. |
 | `--project` | string | current project | Target project name. |
-</content>

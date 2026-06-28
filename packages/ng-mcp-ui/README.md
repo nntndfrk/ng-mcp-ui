@@ -112,7 +112,7 @@ identical across Claude / ChatGPT / MCP-Apps hosts.
 | `injectDownload` | `(): DownloadFn` | Trigger a host-mediated download. |
 | `injectSetOpenInAppUrl` | `(): SetOpenInAppUrlFn` | Set the "open in app" deep link. |
 | `injectRegisterViewTool` | `(): RegisterViewToolHandle` | Register a view-scoped tool with the host. |
-| `injectAppHelpers` | `<typeof server>()` | Typed sugar: tool-name-narrowed `injectCallTool` / `injectToolInfo`, inferred from the server's `$types` registry. |
+| `injectAppHelpers` | `<AppType = never>()` — call as `injectAppHelpers<typeof server>()` | Typed sugar: tool-name-narrowed `injectCallTool` / `injectToolInfo`, inferred from the server's `$types` registry. |
 
 ### Declarables
 
@@ -345,5 +345,3 @@ npm run verify:pack  # pack into a scratch project and assert the subpaths resol
 ## License
 
 [MIT](https://github.com/nntndfrk/ng-mcp-ui/blob/main/LICENSE)
-</content>
-</invoke>

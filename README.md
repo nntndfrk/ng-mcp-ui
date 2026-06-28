@@ -88,7 +88,7 @@ Shipped as a single package with subpath exports:
 | `ng-mcp-ui/server` | Framework-neutral MCP server: `McpServer`, Express router, view resources |
 | `ng-mcp-ui/web` | Angular bridge: `provideMcpUi`, `bootstrapWidget`, the `inject*` API, declarables |
 | `ng-mcp-ui/testing` | `MockAdaptor` + `provideMockMcpUi` test harness |
-| `ng-mcp-ui/tunnel` | `cloudflared` dev-tunnel manager |
+| `ng-mcp-ui/tunnel` | Slot for the `cloudflared` dev-tunnel manager (skeleton today; the live walk runs via `npm run live-host`) |
 
 Plus the Angular schematics (`ng-add`, `view`, `tool`, `example`) shipped in the
 same package.
