@@ -30,7 +30,10 @@ adds the eyes-on-host dimension.
 
 ## 1. Boot + expose (one command)
 
-`cloudflared` must be on `PATH` (zero-auth TryCloudflare; already installed here).
+`cloudflared` must be on `PATH` (`brew install cloudflared` / see Cloudflare docs).
+TryCloudflare tunnels are **zero-auth and unauthenticated** — anyone with the random
+URL can reach your local server while it's up, so only run this for a short dev walk
+and Ctrl-C it when done.
 
 ```bash
 npm run live-host

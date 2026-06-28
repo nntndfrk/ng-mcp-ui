@@ -78,6 +78,13 @@ function parseArgs(argv) {
 
 const args = parseArgs(process.argv.slice(2));
 const { port, serve, tunnel } = args;
+// --tunnel only does anything in serve mode (probe mode tears the server down
+// before a tunnel could matter); fail loudly rather than silently no-op so a
+// caller isn't left waiting for a public URL that will never print.
+if (tunnel && !serve) {
+  console.error("ci-fixture: --tunnel requires --serve (try: npm run live-host)");
+  process.exit(2);
+}
 // --serve is for a local live walk; default to the host major when unspecified.
 const ngVersion = args.ngVersion || (serve ? "22" : "");
 // Serving requires the built app to stay on disk, so --serve implies --keep.
@@ -441,7 +448,14 @@ async function liveServe() {
   server.stdout.on("data", (d) => process.stderr.write(`[server] ${d}`));
   server.stderr.on("data", (d) => process.stderr.write(`[server] ${d}`));
 
-  await waitForServer(mcpUrl);
+  try {
+    await waitForServer(mcpUrl);
+  } catch (e) {
+    // waitForServer threw before any shutdown handler was installed — reap the
+    // child so a failed boot doesn't leave an orphaned SSR server holding $PORT.
+    server.kill("SIGKILL");
+    fail("serve", e.message);
+  }
   console.log(`\n${tag} ✅ demo SSR host serving at ${localBase}`);
   console.log(`${tag}    MCP endpoint (local): ${mcpUrl}`);
   console.log(`${tag}    fixture app: ${fixtureDir}`);
