@@ -41,6 +41,38 @@ function jsonRpcError(code: number, message: string) {
 }
 
 /**
+ * Default a missing `params.arguments` to `{}` on `tools/call` messages
+ * (mutates `body` in place; tolerates single messages and arrays).
+ *
+ * The MCP spec allows hosts to omit `arguments` entirely — and real hosts do —
+ * but the SDK validates `params.arguments` against the tool's input schema,
+ * and `z.object(…).safeParse(undefined)` fails, so any tool registered with an
+ * input schema rejects such calls with `-32602` (#45). Defaulting here keeps
+ * hosts that omit `arguments` working for every schema shape (empty, zod
+ * object instances, all-optional fields).
+ */
+function normalizeToolCallArguments(body: unknown): void {
+  const messages = Array.isArray(body) ? body : [body];
+  for (const message of messages) {
+    if (typeof message !== "object" || message === null) {
+      continue;
+    }
+    const { method, params } = message as {
+      method?: unknown;
+      params?: { arguments?: unknown };
+    };
+    if (
+      method !== "tools/call" ||
+      typeof params !== "object" ||
+      params === null
+    ) {
+      continue;
+    }
+    params.arguments ??= {};
+  }
+}
+
+/**
  * The default error handler appended after the `/` (POST) handler. Logs, then
  * returns a JSON-RPC `-32603` "Internal server error" with HTTP 500 (unless
  * headers were already sent).
@@ -135,6 +167,7 @@ export function createMcpExpressRouter(
       // Restore it so the SDK builds the correct requestInfo.url, which
       // `resolveViewRequestContext` relies on for Claude domain hashing.
       req.url = req.originalUrl;
+      normalizeToolCallArguments(req.body);
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
       next(error);

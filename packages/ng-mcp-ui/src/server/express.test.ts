@@ -93,6 +93,35 @@ describe("createMcpExpressRouter", () => {
     ]);
   });
 
+  it("(b2) POST tools/call without `arguments` is normalized to {} (#45)", async () => {
+    const server = new McpServer({ name: "t", version: "0.0.0" });
+    // All-optional schema: registration keeps the inputSchema, so this
+    // isolates the router-level `arguments ??= {}` normalization (the
+    // zero-input registration path is covered in server.test.ts).
+    server.registerTool(
+      { name: "greet", inputSchema: { name: z.string().optional() } },
+      (args) => ({
+        content: [{ type: "text", text: `hi ${args.name ?? "anon"}` }],
+      }),
+    );
+
+    const res = await request(appFor(server))
+      .post("/mcp")
+      .set("Accept", ACCEPT_BOTH)
+      .send({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "greet" }, // spec-legal: no `arguments` key
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.error).toBeUndefined();
+    expect(res.body.result.content).toEqual([
+      { type: "text", text: "hi anon" },
+    ]);
+  });
+
   it("(c) resources/read returns the shell HTML for a view", async () => {
     const server = new McpServer({ name: "t", version: "0.0.0" });
     server.registerTool(
@@ -184,7 +213,12 @@ describe("createMcpExpressRouter", () => {
     const res = await request(appFor(server))
       .post("/mcp")
       .set("Accept", ACCEPT_BOTH)
-      .send({ jsonrpc: "2.0", id: 1, method: "initialize", params: INIT_PARAMS });
+      .send({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: INIT_PARAMS,
+      });
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({
@@ -216,7 +250,12 @@ describe("createMcpExpressRouter", () => {
     )
       .post("/mcp")
       .set("Accept", ACCEPT_BOTH)
-      .send({ jsonrpc: "2.0", id: 1, method: "initialize", params: INIT_PARAMS });
+      .send({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: INIT_PARAMS,
+      });
 
     expect(calls).toEqual(["error-handler"]);
     expect(res.status).toBe(503);
@@ -228,13 +267,10 @@ describe("createMcpExpressRouter", () => {
     const server = new McpServer({ name: "concurrent", version: "0.0.0" });
     // Slow tool keeps the transport bound long enough to overlap, exposing any
     // shared-server race in connectStatelessTransport.
-    server.registerTool(
-      { name: "slow", description: "slow" },
-      async () => {
-        await new Promise((r) => setTimeout(r, 50));
-        return { content: [{ type: "text", text: "done" }] };
-      },
-    );
+    server.registerTool({ name: "slow", description: "slow" }, async () => {
+      await new Promise((r) => setTimeout(r, 50));
+      return { content: [{ type: "text", text: "done" }] };
+    });
 
     const app = appFor(server);
     const N = 10;
