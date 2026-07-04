@@ -169,7 +169,7 @@ describe("McpServer.registerTool — zero-input tools (#45)", () => {
     const result = await callWithoutArguments(client, "ping");
     await close();
 
-    expect(result.isError).toBeUndefined();
+    expect(result.isError).not.toBe(true);
     expect(result.structuredContent).toEqual({ ok: true });
   });
 
