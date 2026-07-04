@@ -68,7 +68,12 @@ function normalizeToolCallArguments(body: unknown): void {
     ) {
       continue;
     }
-    params.arguments ??= {};
+    // Strictly `undefined` (absent key): an explicit `"arguments": null` is
+    // invalid per spec and must keep surfacing the SDK's -32602, not be
+    // silently coerced to `{}`.
+    if (params.arguments === undefined) {
+      params.arguments = {};
+    }
   }
 }
 

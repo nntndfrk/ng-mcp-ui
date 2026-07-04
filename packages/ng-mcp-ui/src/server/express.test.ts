@@ -122,6 +122,34 @@ describe("createMcpExpressRouter", () => {
     ]);
   });
 
+  it("(b3) POST tools/call with explicit `arguments: null` still fails validation", async () => {
+    const server = new McpServer({ name: "t", version: "0.0.0" });
+    server.registerTool(
+      { name: "greet", inputSchema: { name: z.string().optional() } },
+      (args) => ({
+        content: [{ type: "text", text: `hi ${args.name ?? "anon"}` }],
+      }),
+    );
+
+    const res = await request(appFor(server))
+      .post("/mcp")
+      .set("Accept", ACCEPT_BOTH)
+      .send({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        // `null` is NOT an omitted key — it's an invalid value and must keep
+        // surfacing the SDK's -32602, not be coerced to `{}`.
+        params: { name: "greet", arguments: null },
+      });
+
+    expect(res.status).toBe(200);
+    // The exact code is SDK-internal (request-schema rejection); the contract
+    // that matters is: an error, never a silently-coerced success.
+    expect(res.body.error).toBeDefined();
+    expect(res.body.result).toBeUndefined();
+  });
+
   it("(c) resources/read returns the shell HTML for a view", async () => {
     const server = new McpServer({ name: "t", version: "0.0.0" });
     server.registerTool(
