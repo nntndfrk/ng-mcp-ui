@@ -570,6 +570,26 @@ export class McpServer<
     );
   }
 
+  /**
+   * True when a tool declares zero inputs: `inputSchema` absent entirely, or
+   * an empty **raw shape** (`{}`). Zod schema instances (e.g. `z.object({})`)
+   * are class instances, so the plain-object prototype check can never
+   * mistake one for a raw shape.
+   */
+  private static isZeroInputSchema(inputSchema: unknown): boolean {
+    if (inputSchema === undefined) {
+      return true;
+    }
+    if (typeof inputSchema !== "object" || inputSchema === null) {
+      return false;
+    }
+    const proto = Object.getPrototypeOf(inputSchema) as object | null;
+    return (
+      (proto === Object.prototype || proto === null) &&
+      Object.keys(inputSchema).length === 0
+    );
+  }
+
   private wrapHandler<InputArgs extends ZodRawShapeCompat>(
     cb: ToolHandler<InputArgs>,
     { attachViewUUID }: { attachViewUUID: boolean },
@@ -681,7 +701,28 @@ export class McpServer<
 
     const wrappedCb = this.wrapHandler(cb, { attachViewUUID: Boolean(view) });
 
-    baseFn.call(this, name, { ...toolFields, _meta: toolMeta }, wrappedCb);
+    if (McpServer.isZeroInputSchema(toolFields.inputSchema)) {
+      // Zero-input tool (#45). Register WITHOUT `inputSchema`:
+      //   * With an empty shape the SDK would validate `params.arguments`
+      //     against `z.object({})`, rejecting spec-legal calls that omit
+      //     `arguments` (-32602). Without a schema it skips validation, and
+      //     `tools/list` advertises the identical empty object schema either
+      //     way (the SDK falls back to EMPTY_OBJECT_JSON_SCHEMA).
+      //   * Schema-less tools use the SDK's ONE-argument calling convention
+      //     — `cb(extra)`, not `cb(args, extra)` — so bridge it to keep the
+      //     public `ToolHandler` signature truthful: `args` is `{}`.
+      const { inputSchema: _emptyShape, ...schemaLessFields } = toolFields;
+      const oneArgCb = (extra: Parameters<ToolHandler<ZodRawShapeCompat>>[1]) =>
+        wrappedCb({}, extra);
+      baseFn.call(
+        this,
+        name,
+        { ...schemaLessFields, _meta: toolMeta },
+        oneArgCb,
+      );
+    } else {
+      baseFn.call(this, name, { ...toolFields, _meta: toolMeta }, wrappedCb);
+    }
 
     return this;
   }

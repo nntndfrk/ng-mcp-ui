@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { afterEach, describe, expect, it } from "vitest";
 import * as z from "zod";
 import { McpServer } from "./server.js";
@@ -105,10 +106,10 @@ describe("McpServer.registerTool — tools/list", () => {
     const server = new McpServer(
       { name: "test", version: "1.0.0" },
       { capabilities: {} },
-    ).registerTool(
-      { name: "v", view: view("poll") },
-      async () => ({ content: "ok", structuredContent: {} }),
-    );
+    ).registerTool({ name: "v", view: view("poll") }, async () => ({
+      content: "ok",
+      structuredContent: {},
+    }));
 
     const { client, close } = await connect(server);
     const first = await client.callTool({ name: "v", arguments: {} });
@@ -127,9 +128,10 @@ describe("McpServer.registerTool — tools/list", () => {
     const server = new McpServer(
       { name: "test", version: "1.0.0" },
       { capabilities: {} },
-    ).registerTool({ name: "echo", inputSchema: { msg: z.string() } }, async ({
-      msg,
-    }) => ({ content: msg }));
+    ).registerTool(
+      { name: "echo", inputSchema: { msg: z.string() } },
+      async ({ msg }) => ({ content: msg }),
+    );
 
     const { client, close } = await connect(server);
     const result = await client.callTool({
@@ -139,6 +141,95 @@ describe("McpServer.registerTool — tools/list", () => {
     await close();
 
     expect((result._meta as Record<string, unknown>)?.viewUUID).toBeUndefined();
+  });
+});
+
+describe("McpServer.registerTool — zero-input tools (#45)", () => {
+  /** `tools/call` WITHOUT `params.arguments` — spec-legal, real hosts do it.
+   * `client.callTool` can't express this, so send the raw request. */
+  const callWithoutArguments = (
+    client: Awaited<ReturnType<typeof connect>>["client"],
+    name: string,
+  ) =>
+    client.request(
+      { method: "tools/call", params: { name } },
+      CallToolResultSchema,
+    );
+
+  it("inputSchema: {} accepts a call that omits `arguments`", async () => {
+    const server = new McpServer(
+      { name: "test", version: "1.0.0" },
+      { capabilities: {} },
+    ).registerTool(
+      { name: "ping", inputSchema: {}, outputSchema: { ok: z.boolean() } },
+      async () => ({ content: "pong", structuredContent: { ok: true } }),
+    );
+
+    const { client, close } = await connect(server);
+    const result = await callWithoutArguments(client, "ping");
+    await close();
+
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent).toEqual({ ok: true });
+  });
+
+  it("schema-less tools get args = {} and the real `extra` (not the SDK one-arg mixup)", async () => {
+    let seenArgs: unknown = "unset";
+    let seenExtra: unknown = "unset";
+    const server = new McpServer(
+      { name: "test", version: "1.0.0" },
+      { capabilities: {} },
+    ).registerTool({ name: "whoami" }, async (args, extra) => {
+      seenArgs = args;
+      seenExtra = extra;
+      return { content: "me" };
+    });
+
+    const { client, close } = await connect(server);
+    await callWithoutArguments(client, "whoami");
+    await close();
+
+    // Before the fix the SDK's one-argument convention put `extra` in the
+    // `args` slot and left `extra` undefined.
+    expect(seenArgs).toEqual({});
+    const extra = seenExtra as { requestId?: unknown; signal?: unknown };
+    expect(extra.requestId).toBeDefined();
+    expect(extra.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("tools/list still advertises an object inputSchema for empty-shape tools", async () => {
+    const server = new McpServer(
+      { name: "test", version: "1.0.0" },
+      { capabilities: {} },
+    ).registerTool({ name: "ping", inputSchema: {} }, async () => ({
+      content: "pong",
+    }));
+
+    const { client, close } = await connect(server);
+    const { tools } = await client.listTools();
+    await close();
+
+    // Dropping the empty shape at registration must be invisible on the wire:
+    // the SDK falls back to the same empty object schema.
+    expect(tools[0]?.inputSchema).toMatchObject({ type: "object" });
+  });
+
+  it("zero-input view-backed tools still get a viewUUID", async () => {
+    const server = new McpServer(
+      { name: "test", version: "1.0.0" },
+      { capabilities: {} },
+    ).registerTool(
+      { name: "show", inputSchema: {}, view: view("status") },
+      async () => ({ content: "ok", structuredContent: {} }),
+    );
+
+    const { client, close } = await connect(server);
+    const result = await callWithoutArguments(client, "show");
+    await close();
+
+    expect(typeof (result._meta as Record<string, unknown>)?.viewUUID).toBe(
+      "string",
+    );
   });
 });
 
