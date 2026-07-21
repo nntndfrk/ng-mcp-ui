@@ -5,9 +5,11 @@ MCP servers whose tools render **interactive Angular widgets** inside Claude,
 ChatGPT, and other [MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
 hosts (Angular **v20–v22**).
 
-> ### Status: v0.1.0 — first npm release
-> The public API surface (`server` / `web` / `testing` / `tunnel` + the
-> schematics) is **complete and CI-green across Angular v20, v21, and v22** (a
+> ### Status: published on npm — production-ready
+> (The version you are reading about is shown at the top of this page; the repo
+> tags each release `vX.Y.Z`.) The public API surface (`server` / `web` /
+> `testing` / `tunnel` + the schematics and the `ng-mcp-ui:build-widgets`
+> builder) is **complete and CI-green across Angular v20, v21, and v22** (a
 > cross-major fixture matrix builds a real retrofit app, AOT-builds the widget
 > bundle + SSR host, and probes `/mcp` on every push). Real-host validation is
 > **signed off**: render is machine-verified on Claude — the poll widget renders

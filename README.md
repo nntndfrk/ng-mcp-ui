@@ -5,9 +5,11 @@
 > ChatGPT, and other [MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
 > hosts.
 
-> ### Status: v0.1.0 — published on npm
-> The full public surface (`server` / `web` / `testing` / `tunnel` + the
-> schematics) **ships and is CI-green across Angular v20, v21, and v22** (a
+> ### Status: published on npm — production-ready
+> (Latest version: see the [npm page](https://www.npmjs.com/package/ng-mcp-ui)
+> or the repo's `vX.Y.Z` tags.) The full public surface (`server` / `web` /
+> `testing` / `tunnel` + the schematics and the `ng-mcp-ui:build-widgets`
+> builder) **ships and is CI-green across Angular v20, v21, and v22** (a
 > cross-major fixture matrix builds a real retrofit app, AOT-builds the widget
 > bundle + SSR host, and probes `/mcp` on every push). Real-host validation is
 > **signed off**: render is machine-verified on Claude (poll widget renders in
