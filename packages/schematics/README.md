@@ -32,6 +32,7 @@ ng generate ng-mcp-ui:ng-add
 | `--tunnelProvider` | `cloudflare` \| `localtunnel` \| `untun` | `cloudflare` | Zero-auth dev tunnel provider. |
 | `--example` | `demo` \| `minimal` \| `none` | `demo` | Which example app to scaffold. |
 | `--skipInstall` | boolean | `false` | Skip installing dependencies. |
+| `--migrateBuildScript` | boolean | `true` | On a legacy install, delete the scaffolded `tools/build-widgets.mjs` + repoint `build:widgets`. `false` keeps a customized copy. |
 
 ### `view` — generate a widget view
 
@@ -107,4 +108,6 @@ Before this builder existed, `ng add` copied the same validation into each app
 as `tools/build-widgets.mjs`. Re-running `ng generate ng-mcp-ui:ng-add` on such
 an app migrates it: the target is rewritten onto the builder, the scaffolded
 script (identified by its header marker) is deleted, and the `build:widgets`
-npm script is repointed.
+npm script is repointed. Pass `--migrate-build-script=false` to keep a
+customized copy of the script — the target is still rewritten, which the legacy
+script tolerates (it `ng run`s the target and re-validates the same output).

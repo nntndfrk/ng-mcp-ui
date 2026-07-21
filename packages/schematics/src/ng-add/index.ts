@@ -527,13 +527,14 @@ const BUILD_WIDGETS_TARGET = {
 } as const;
 
 /**
- * The builder-owned options {@link migrateBuildWidgets} grafts onto a legacy
+ * The builder-owned options {@link addBuildWidgetsTarget} grafts onto a legacy
  * plain-`@angular/build:application` target when rewriting it to the
- * `ng-mcp-ui:build-widgets` builder.
+ * `ng-mcp-ui:build-widgets` builder. Derived (not restated) from the canonical
+ * target above so a changed default path is a single edit.
  */
 const BUILDER_OWNED_OPTIONS = {
-  registry: "src/widgets/registry.ts",
-  manifestOut: "src/mcp/views.manifest.json",
+  registry: BUILD_WIDGETS_TARGET.options.registry,
+  manifestOut: BUILD_WIDGETS_TARGET.options.manifestOut,
 } as const;
 
 /**
@@ -659,9 +660,20 @@ const LEGACY_SCRIPT_COMMAND = "node tools/build-widgets.mjs";
  * marker (a user-authored or customized script without the marker is kept),
  * and rewrite a `build:widgets` npm script that still points at it to run the
  * builder-backed target instead. No-op on fresh installs.
+ *
+ * `--migrate-build-script=false` is the opt-out (the spec's "offer to
+ * delete" — schematics run non-interactively, so the offer is a flag): the
+ * script and npm script are kept as-is for users who customized a scaffolded
+ * copy. Safe either way, because the target rewrite in
+ * {@link addBuildWidgetsTarget} is compatible with the legacy script: the
+ * script `ng run`s the target, which now builds AND validates; the script's
+ * own re-validation then reads the same output shape it always did.
  */
 function migrateLegacyBuildScript(options: NgAddOptions): Rule {
   return async (tree: Tree, context: SchematicContext) => {
+    if (options.migrateBuildScript === false) {
+      return tree;
+    }
     const projectName = await resolveProjectName(tree, options);
     const { root } = await resolveProjectPaths(tree, options);
     const scriptPath = `/${root ? `${root}/` : ""}tools/build-widgets.mjs`;

@@ -38,6 +38,11 @@
       "type": "boolean",
       "description": "Skip installing dependencies.",
       "default": false
+    },
+    "migrateBuildScript": {
+      "type": "boolean",
+      "description": "On a legacy install, delete the previously scaffolded tools/build-widgets.mjs and repoint the build:widgets npm script at the ng-mcp-ui:build-widgets builder target. Pass false to keep a customized copy of the script (the target is still migrated; the script keeps working against it).",
+      "default": true
     }
   },
   "required": [],

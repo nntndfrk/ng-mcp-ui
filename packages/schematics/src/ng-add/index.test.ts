@@ -507,6 +507,29 @@ describe("ng-add", () => {
     );
   });
 
+  it("--migrate-build-script=false keeps the legacy script but still migrates the target", async () => {
+    const fixture = await createLegacyTree();
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true, migrateBuildScript: false },
+      fixture,
+    );
+
+    // The opt-out (the spec's "offer to delete", declined): script + npm
+    // script stay exactly as the app had them…
+    expect(
+      result.readContent("/projects/fixture-app/tools/build-widgets.mjs"),
+    ).toContain("POST-BUILD WIDGETS MANIFEST GENERATOR");
+    const pkg = JSON.parse(result.readContent("/package.json"));
+    expect(pkg.scripts["build:widgets"]).toBe("node tools/build-widgets.mjs");
+    // …while the target rewrite (compatible with the legacy script) proceeds.
+    const target = JSON.parse(result.readContent("/angular.json")).projects[
+      "fixture-app"
+    ].architect["build-widgets"];
+    expect(target.builder).toBe("ng-mcp-ui:build-widgets");
+  });
+
   it("leaves a user-authored tools/build-widgets.mjs and custom script alone", async () => {
     const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
     // No scaffold marker → user-owned; a custom script body → user-owned.

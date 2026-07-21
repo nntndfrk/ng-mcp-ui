@@ -12,7 +12,7 @@ import {
   validateWidgetsOutput,
   writeManifest,
 } from "./manifest";
-import type { BuildWidgetsOptions } from "./schema";
+import { BUILDER_OWNED_KEYS, type BuildWidgetsOptions } from "./schema";
 
 /**
  * The delegate builder. Resolved from the CONSUMER's workspace (the app that
@@ -35,8 +35,14 @@ export async function buildWidgets(
   options: BuildWidgetsOptions,
   context: BuilderContext,
 ): Promise<BuilderOutput> {
-  const { registry, manifestOut, failOnMissingView, ...applicationOptions } =
-    options;
+  const { registry, manifestOut, failOnMissingView } = options;
+  // Strip by the shared key list (not an inline destructure-rest) so the
+  // passthrough set can't drift from schema.json when an owned option is added.
+  const applicationOptions = Object.fromEntries(
+    Object.entries(options).filter(
+      ([key]) => !(BUILDER_OWNED_KEYS as readonly string[]).includes(key),
+    ),
+  );
 
   // Delegate the actual build. Passing `target` through lets the application
   // builder resolve project metadata (sourceRoot, cache dir) exactly as if it

@@ -17,6 +17,14 @@
 // registry-shape couplings are internal library details that evolve with the
 // library instead of drifting in stale per-app copies.
 //
+// Why derive from the emitted FILES rather than "the build result through the
+// builder API" (issue #48's sketch): the delegation runs via
+// `context.scheduleBuilder`, whose contract is only `BuilderOutput`
+// ({ success }) — `@angular/build` exposes its per-file bundle graph (the
+// `Result` API) solely through `buildApplicationInternal`, which is explicitly
+// internal/experimental. Reading the output dir keeps us on public API; the
+// couplings below are the cost, and they are now versioned WITH the library.
+//
 // The hash regexes are base64url-aware (`[A-Za-z0-9_-]`), matching the
 // `outputHashing: all` build setting.
 

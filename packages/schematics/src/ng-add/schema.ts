@@ -21,4 +21,10 @@ export interface NgAddOptions {
   example?: ExampleVariant;
   /** Skip installing dependencies. */
   skipInstall?: boolean;
+  /**
+   * On a legacy install, delete the previously scaffolded
+   * `tools/build-widgets.mjs` and repoint the `build:widgets` npm script at
+   * the builder target. `false` keeps a customized copy of the script.
+   */
+  migrateBuildScript?: boolean;
 }

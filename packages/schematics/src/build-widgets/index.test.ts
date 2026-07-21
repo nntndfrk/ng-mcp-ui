@@ -14,12 +14,13 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { JsonObject } from "@angular-devkit/core";
-import buildWidgetsBuilder from "./index";
-import optionSchema from "./schema.json" with { type: "json" };
+import { BUILDER_OWNED_KEYS } from "./schema";
 
 // Integration harness: run the REAL ng-mcp-ui:build-widgets builder through
 // architect (schema validation + defaults included), with a FAKE
@@ -27,6 +28,27 @@ import optionSchema from "./schema.json" with { type: "json" };
 // minimal-but-shape-accurate widgets output. This pins the delegation contract
 // (option stripping/passthrough, failure propagation) without paying for a real
 // Angular build.
+//
+// Like the schematic suites (see ng-add/index.test.ts), the builder under test
+// is loaded from the BUILT dist, not from src: we resolve dist/builders.json →
+// its `implementation`/`schema` entries and require() the factory with the
+// same CJS default-export interop the architect node host uses. That way the
+// packaged resolution path (`builders` field → builders.json → the node16 CJS
+// emit of ./build-widgets/index) is covered here, not only by the slow
+// ci-fixture. (`npm run build` — the root pretest — must have run.)
+const here = dirname(fileURLToPath(import.meta.url));
+const distRoot = join(here, "..", "..", "dist"); // src/build-widgets → pkg root → dist
+const requireDist = createRequire(import.meta.url);
+const buildersManifest = JSON.parse(
+  readFileSync(join(distRoot, "builders.json"), "utf8"),
+);
+const builderEntry = buildersManifest.builders["build-widgets"];
+const implModule = requireDist(join(distRoot, builderEntry.implementation));
+const buildWidgetsBuilder =
+  "default" in implModule ? implModule.default : implModule;
+const optionSchema = JSON.parse(
+  readFileSync(join(distRoot, builderEntry.schema), "utf8"),
+);
 
 let workspaceRoot: string;
 let architect: Architect;
@@ -57,6 +79,18 @@ function writeWidgetsOutput(root: string, views: string[]): void {
   );
 }
 
+/** Write a scaffold-shaped registry with the given view names. */
+function writeRegistryFile(views: string[]): void {
+  const entries = views
+    .map((v) => `  "${v}": () => import("./${v}/${v}.widget"),`)
+    .join("\n");
+  writeFileSync(
+    join(workspaceRoot, "src", "widgets", "registry.ts"),
+    `export const registry = {\n${entries}\n} as const;\n`,
+    "utf8",
+  );
+}
+
 beforeEach(async () => {
   workspaceRoot = mkdtempSync(join(tmpdir(), "ng-mcp-ui-builder-"));
   receivedAppOptions = null;
@@ -64,11 +98,7 @@ beforeEach(async () => {
 
   // The scaffolded registry the validator reads.
   mkdirSync(join(workspaceRoot, "src", "widgets"), { recursive: true });
-  writeFileSync(
-    join(workspaceRoot, "src", "widgets", "registry.ts"),
-    'export const registry = {\n  echo: () => import("./echo/echo.widget"),\n} as const;\n',
-    "utf8",
-  );
+  writeRegistryFile(["echo"]);
 
   const registry = new schema.CoreSchemaRegistry();
   registry.addPostTransform(schema.transforms.addUndefinedDefaults);
@@ -178,15 +208,16 @@ describe("ng-mcp-ui:build-widgets", () => {
     expect(result.success).toBe(true);
   });
 
-  it("fails when a registered view emitted no chunk, naming the view", async () => {
-    writeFileSync(
-      join(workspaceRoot, "src", "widgets", "registry.ts"),
-      "export const registry = {\n" +
-        '  echo: () => import("./echo/echo.widget"),\n' +
-        '  ghost: () => import("./ghost/ghost.widget"),\n' +
-        "} as const;\n",
-      "utf8",
+  it("BUILDER_OWNED_KEYS stays in lockstep with the shipped schema's properties", () => {
+    // The builder strips exactly these keys before delegating; the delegate
+    // hard-fails on unknown options, so drift here breaks every consumer.
+    expect([...BUILDER_OWNED_KEYS].sort()).toEqual(
+      Object.keys(optionSchema.properties).sort(),
     );
+  });
+
+  it("fails when a registered view emitted no chunk, naming the view", async () => {
+    writeRegistryFile(["echo", "ghost"]);
 
     const result = await runBuilder(TARGET_OPTIONS);
 
@@ -200,14 +231,7 @@ describe("ng-mcp-ui:build-widgets", () => {
   });
 
   it("failOnMissingView: false downgrades a missing view to a warning", async () => {
-    writeFileSync(
-      join(workspaceRoot, "src", "widgets", "registry.ts"),
-      "export const registry = {\n" +
-        '  echo: () => import("./echo/echo.widget"),\n' +
-        '  ghost: () => import("./ghost/ghost.widget"),\n' +
-        "} as const;\n",
-      "utf8",
-    );
+    writeRegistryFile(["echo", "ghost"]);
 
     const result = await runBuilder({
       ...TARGET_OPTIONS,

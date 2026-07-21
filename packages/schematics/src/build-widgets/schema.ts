@@ -19,3 +19,15 @@ export type BuildWidgetsOptions = JsonObject & {
   /** Fail the build when a registered view emitted no chunk (default true). */
   failOnMissingView: boolean;
 };
+
+/**
+ * Every builder-owned option key. The delegate re-validates the forwarded
+ * options against the application schema (unknown keys hard-fail every
+ * consumer build), so a new owned option MUST be added here in lockstep with
+ * `schema.json` — a test asserts this list equals the schema's `properties`.
+ */
+export const BUILDER_OWNED_KEYS = [
+  "registry",
+  "manifestOut",
+  "failOnMissingView",
+] as const satisfies readonly (keyof BuildWidgetsOptions)[];
