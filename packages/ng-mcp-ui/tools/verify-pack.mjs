@@ -111,8 +111,18 @@ try {
     if (pkg.schematics !== "./dist/schematics/collection.json") {
       throw new Error("unexpected schematics field: " + pkg.schematics);
     }
+    if (pkg.builders !== "./dist/schematics/builders.json") {
+      throw new Error("unexpected builders field: " + pkg.builders);
+    }
     for (const rel of [
       "dist/schematics/collection.json",
+      // The ng-mcp-ui:build-widgets builder (issue #48) resolves through the
+      // package's builders field; a packaging regression here breaks every
+      // consumer's build-widgets target. (No backticks in these comments —
+      // this probe source lives inside a template literal.)
+      "dist/schematics/builders.json",
+      "dist/schematics/build-widgets/index.js",
+      "dist/schematics/build-widgets/schema.json",
       "dist/schematics/ng-add/index.js",
       "dist/schematics/view/index.js",
       "dist/schematics/view/schema.json",

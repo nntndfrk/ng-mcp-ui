@@ -88,8 +88,10 @@ Shipped as a single package with subpath exports:
 | `ng-mcp-ui/testing` | `MockAdaptor` + `provideMockMcpUi` test harness |
 | `ng-mcp-ui/tunnel` | Slot for the `cloudflared` dev-tunnel manager (skeleton today; the live walk runs via `npm run live-host`) |
 
-Plus the Angular schematics (`ng-add`, `view`, `tool`, `example`) shipped in the
-same package.
+Plus the Angular schematics (`ng-add`, `view`, `tool`, `example`) and the
+`ng-mcp-ui:build-widgets` builder (bundles the widgets, validates every
+registered view emitted a code-split chunk, derives `views.manifest.json`)
+shipped in the same package.
 
 ## Development
 

@@ -16,7 +16,9 @@ const dist = join(pkgRoot, "dist");
 const schemaAssets = readdirSync(src, { withFileTypes: true })
   .filter((e) => e.isDirectory() && existsSync(join(src, e.name, "schema.json")))
   .map((e) => `${e.name}/schema.json`);
-const assets = ["collection.json", ...schemaAssets];
+// builders.json is the architect counterpart of collection.json (the
+// `ng-mcp-ui:build-widgets` builder, issue #48).
+const assets = ["collection.json", "builders.json", ...schemaAssets];
 
 for (const rel of assets) {
   const to = join(dist, rel);

@@ -272,7 +272,6 @@ describe("ng-add", () => {
     "/projects/fixture-app/src/widgets/registry.ts",
     "/projects/fixture-app/src/widgets/index.html",
     "/projects/fixture-app/src/widgets/echo/echo.widget.ts",
-    "/projects/fixture-app/tools/build-widgets.mjs",
     "/projects/fixture-app/tsconfig.widgets.json",
   ];
 
@@ -321,12 +320,11 @@ describe("ng-add", () => {
     );
     expect(JSON.parse(tsconfig).include).toEqual(["src/widgets/**/*.ts"]);
 
-    const buildWidgets = result.readContent(
+    // The build/validation pipeline is the ng-mcp-ui:build-widgets builder now
+    // (issue #48) — no per-app script is scaffolded anymore.
+    expect(result.files).not.toContain(
       "/projects/fixture-app/tools/build-widgets.mjs",
     );
-    // The `ng run <project>:build-widgets` target name was interpolated.
-    expect(buildWidgets).toContain("fixture-app:build-widgets");
-    expect(buildWidgets).toContain("views.manifest.json");
   });
 
   it("adds the `build-widgets` Angular target with the verified config", async () => {
@@ -342,7 +340,7 @@ describe("ng-add", () => {
     const target =
       angularJson.projects["fixture-app"].architect["build-widgets"];
     expect(target).toBeDefined();
-    expect(target.builder).toBe("@angular/build:application");
+    expect(target.builder).toBe("ng-mcp-ui:build-widgets");
     expect(target.options).toEqual({
       browser: "src/widgets/main.ts",
       index: "src/widgets/index.html",
@@ -351,6 +349,8 @@ describe("ng-add", () => {
       namedChunks: true,
       outputHashing: "all",
       styles: [],
+      registry: "src/widgets/registry.ts",
+      manifestOut: "src/mcp/views.manifest.json",
     });
     expect(target.configurations.production).toEqual({ outputHashing: "all" });
     expect(target.configurations.development).toEqual({
@@ -370,7 +370,9 @@ describe("ng-add", () => {
     );
 
     const pkg = JSON.parse(result.readContent("/package.json"));
-    expect(pkg.scripts["build:widgets"]).toBe("node tools/build-widgets.mjs");
+    expect(pkg.scripts["build:widgets"]).toBe(
+      "ng run fixture-app:build-widgets",
+    );
     expect(pkg.scripts["dev:mcp"]).toBe("ng serve");
     expect(pkg.scripts.tunnel).toContain("localhost:4200");
   });
@@ -435,6 +437,146 @@ describe("ng-add", () => {
     expect(widget.match(/export default class EchoWidget/g)?.length).toBe(1);
   });
 
+  // ── issue #48: migration of legacy script-based installs ─────────────────
+
+  /** Rig a fixture like an app retrofitted BEFORE the builder existed. */
+  async function createLegacyTree() {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+
+    const angularJson = JSON.parse(fixture.readContent("/angular.json"));
+    angularJson.projects["fixture-app"].architect["build-widgets"] = {
+      builder: "@angular/build:application",
+      options: {
+        browser: "src/widgets/main.ts",
+        index: "src/widgets/index.html",
+        outputPath: "dist/widgets",
+        tsConfig: "tsconfig.widgets.json",
+        namedChunks: true,
+        outputHashing: "all",
+        // An app-customized option that must survive the migration.
+        styles: ["src/widgets/theme.css"],
+      },
+      configurations: {
+        production: { outputHashing: "all" },
+        development: { optimization: false, sourceMap: true },
+      },
+      defaultConfiguration: "production",
+    };
+    fixture.overwrite("/angular.json", JSON.stringify(angularJson, null, 2));
+
+    fixture.create(
+      "/projects/fixture-app/tools/build-widgets.mjs",
+      "#!/usr/bin/env node\n// POST-BUILD WIDGETS MANIFEST GENERATOR — legacy scaffolded copy\n",
+    );
+
+    const pkg = JSON.parse(fixture.readContent("/package.json"));
+    pkg.scripts ??= {};
+    pkg.scripts["build:widgets"] = "node tools/build-widgets.mjs";
+    fixture.overwrite("/package.json", JSON.stringify(pkg, null, 2));
+
+    return fixture;
+  }
+
+  it("migrates a legacy install: target → builder, script deleted, npm script rewritten", async () => {
+    const fixture = await createLegacyTree();
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+
+    const target = JSON.parse(result.readContent("/angular.json")).projects[
+      "fixture-app"
+    ].architect["build-widgets"];
+    expect(target.builder).toBe("ng-mcp-ui:build-widgets");
+    // Builder-owned options grafted on; app-customized options preserved.
+    expect(target.options.registry).toBe("src/widgets/registry.ts");
+    expect(target.options.manifestOut).toBe("src/mcp/views.manifest.json");
+    expect(target.options.styles).toEqual(["src/widgets/theme.css"]);
+    expect(target.options.outputPath).toBe("dist/widgets");
+
+    // The marker-identified scaffolded script is retired…
+    expect(result.files).not.toContain(
+      "/projects/fixture-app/tools/build-widgets.mjs",
+    );
+    // …and the npm script now runs the builder-backed target.
+    const pkg = JSON.parse(result.readContent("/package.json"));
+    expect(pkg.scripts["build:widgets"]).toBe(
+      "ng run fixture-app:build-widgets",
+    );
+  });
+
+  it("--migrate-build-script=false keeps the legacy script but still migrates the target", async () => {
+    const fixture = await createLegacyTree();
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true, migrateBuildScript: false },
+      fixture,
+    );
+
+    // The opt-out (the spec's "offer to delete", declined): script + npm
+    // script stay exactly as the app had them…
+    expect(
+      result.readContent("/projects/fixture-app/tools/build-widgets.mjs"),
+    ).toContain("POST-BUILD WIDGETS MANIFEST GENERATOR");
+    const pkg = JSON.parse(result.readContent("/package.json"));
+    expect(pkg.scripts["build:widgets"]).toBe("node tools/build-widgets.mjs");
+    // …while the target rewrite (compatible with the legacy script) proceeds.
+    const target = JSON.parse(result.readContent("/angular.json")).projects[
+      "fixture-app"
+    ].architect["build-widgets"];
+    expect(target.builder).toBe("ng-mcp-ui:build-widgets");
+  });
+
+  it("leaves a user-authored tools/build-widgets.mjs and custom script alone", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+    // No scaffold marker → user-owned; a custom script body → user-owned.
+    const userScript = "#!/usr/bin/env node\n// my own widget build helper\n";
+    fixture.create("/projects/fixture-app/tools/build-widgets.mjs", userScript);
+    const pkgBefore = JSON.parse(fixture.readContent("/package.json"));
+    pkgBefore.scripts ??= {};
+    pkgBefore.scripts["build:widgets"] = "node tools/build-widgets.mjs --custom";
+    fixture.overwrite("/package.json", JSON.stringify(pkgBefore, null, 2));
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+
+    expect(
+      result.readContent("/projects/fixture-app/tools/build-widgets.mjs"),
+    ).toBe(userScript);
+    const pkg = JSON.parse(result.readContent("/package.json"));
+    expect(pkg.scripts["build:widgets"]).toBe(
+      "node tools/build-widgets.mjs --custom",
+    );
+  });
+
+  it("does not touch a build-widgets target on a foreign builder", async () => {
+    const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
+    const angularJson = JSON.parse(fixture.readContent("/angular.json"));
+    angularJson.projects["fixture-app"].architect["build-widgets"] = {
+      builder: "@custom/builder:thing",
+      options: { flag: true },
+    };
+    fixture.overwrite("/angular.json", JSON.stringify(angularJson, null, 2));
+
+    const result = await runner.runSchematic(
+      "ng-add",
+      { skipInstall: true },
+      fixture,
+    );
+
+    const target = JSON.parse(result.readContent("/angular.json")).projects[
+      "fixture-app"
+    ].architect["build-widgets"];
+    expect(target.builder).toBe("@custom/builder:thing");
+    expect(target.options).toEqual({ flag: true });
+  });
+
   it("--ssr=false still scaffolds widgets but skips the server patch", async () => {
     const fixture = await createWorkspaceTree("fixture-app", { ssr: false });
 
@@ -455,7 +597,9 @@ describe("ng-add", () => {
       angularJson.projects["fixture-app"].architect["build-widgets"],
     ).toBeDefined();
     const pkg = JSON.parse(result.readContent("/package.json"));
-    expect(pkg.scripts["build:widgets"]).toBe("node tools/build-widgets.mjs");
+    expect(pkg.scripts["build:widgets"]).toBe(
+      "ng run fixture-app:build-widgets",
+    );
   });
 
   it("rejects an Angular v19 workspace with a clear message", async () => {

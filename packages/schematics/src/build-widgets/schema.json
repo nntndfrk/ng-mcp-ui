@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "title": "ng-mcp-ui build-widgets builder",
+  "description": "Builds the MCP widgets bundle by delegating to @angular/build:application, then validates that every registered view emitted a code-split chunk and optionally derives views.manifest.json. Only the options below are owned by this builder; all other options are passed through verbatim to @angular/build:application.",
+  "type": "object",
+  "properties": {
+    "registry": {
+      "type": "string",
+      "description": "Workspace-root-relative path to the widget registry source file (the `registry = { ... } as const` literal) whose view names are validated against the emitted bundle graph.",
+      "default": "src/widgets/registry.ts"
+    },
+    "manifestOut": {
+      "type": "string",
+      "description": "Workspace-root-relative path to write the derived views manifest JSON ({ entry, styles, views }). Omit to skip manifest emission; validation still runs."
+    },
+    "failOnMissingView": {
+      "type": "boolean",
+      "description": "Fail the build when a registered view has no emitted code-split chunk on disk. When false, missing views are logged as warnings and left out of the manifest.",
+      "default": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -6,6 +6,7 @@
   "private": true,
   "type": "commonjs",
   "schematics": "./dist/collection.json",
+  "builders": "./dist/builders.json",
   "files": [
     "dist",
     "README.md"
@@ -18,6 +19,7 @@
     "clean": "node tools/clean.mjs"
   },
   "dependencies": {
+    "@angular-devkit/architect": "^0.2200.0",
     "@angular-devkit/core": "^22.0.0",
     "@angular-devkit/schematics": "^22.0.0",
     "@schematics/angular": "^22.0.0",

@@ -1,0 +1,10 @@
+{
+  "$schema": "../../../node_modules/@angular-devkit/architect/src/builders-schema.json",
+  "builders": {
+    "build-widgets": {
+      "implementation": "./build-widgets/index",
+      "schema": "./build-widgets/schema.json",
+      "description": "Build the MCP widgets bundle (delegates to @angular/build:application), validate that every registered view emitted a code-split chunk, and optionally emit views.manifest.json."
+    }
+  }
+}

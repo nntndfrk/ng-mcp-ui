@@ -54,6 +54,9 @@ writeFileSync(
 //    pack instead.
 const required = [
   "collection.json",
+  "builders.json",
+  "build-widgets/index.js",
+  "build-widgets/schema.json",
   "ng-add/index.js",
   "ng-add/schema.json",
   "ng-add/files",
