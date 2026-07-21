@@ -27,6 +27,7 @@
   "type": "module",
   "sideEffects": false,
   "schematics": "./dist/schematics/collection.json",
+  "builders": "./dist/schematics/builders.json",
   "engines": {
     "node": ">=22.0.0"
   },
@@ -60,6 +61,7 @@
     "verify:pack": "node tools/verify-pack.mjs"
   },
   "dependencies": {
+    "@angular-devkit/architect": "^0.2200.0",
     "@angular-devkit/core": "^22.0.0",
     "@angular-devkit/schematics": "^22.0.0",
     "@schematics/angular": "^22.0.0",

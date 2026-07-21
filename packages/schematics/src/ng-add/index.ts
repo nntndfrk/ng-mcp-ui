@@ -486,11 +486,13 @@ function patchServerTs(options: NgAddOptions): Rule {
  * The `build-widgets` Angular target — mirrors the bundling-spike-verified
  * widgets config (PLAN §5.1/§5.5; not committed to `examples/dev-app/angular.json`,
  * which is the server-track host and carries no widgets target). Single supported
- * ("lazy" code-split) bundling path: `@angular/build:application` over
+ * ("lazy" code-split) bundling path: the `ng-mcp-ui:build-widgets` builder
+ * (issue #48) delegates to `@angular/build:application` over
  * `src/widgets/main.ts` with `src/widgets/index.html` as the shell, `namedChunks` +
  * `outputHashing: all` so each registry view code-splits into a name-stable hashed
- * chunk that the post-build manifest generator (`tools/build-widgets.mjs`) can
- * resolve.
+ * chunk — then post-validates the emitted bundle graph against `registry` and
+ * derives `manifestOut` in-process (this used to be a ~200-line
+ * `tools/build-widgets.mjs` script copied into every app).
  *
  * `outputPath: dist/widgets` is workspace-root-anchored (one widgets bundle per
  * workspace), matching the runtime resolver in `views.manifest.ts` which climbs
@@ -503,8 +505,9 @@ function patchServerTs(options: NgAddOptions): Rule {
  * value is ignored for now.
  */
 const BUILD_WIDGETS_TARGET = {
-  builder: "@angular/build:application",
+  builder: "ng-mcp-ui:build-widgets",
   options: {
+    // Passthrough to @angular/build:application.
     browser: "src/widgets/main.ts",
     index: "src/widgets/index.html",
     outputPath: "dist/widgets",
@@ -512,12 +515,25 @@ const BUILD_WIDGETS_TARGET = {
     namedChunks: true,
     outputHashing: "all",
     styles: [] as string[],
+    // Owned by the ng-mcp-ui:build-widgets builder.
+    registry: "src/widgets/registry.ts",
+    manifestOut: "src/mcp/views.manifest.json",
   },
   configurations: {
     production: { outputHashing: "all" },
     development: { optimization: false, sourceMap: true },
   },
   defaultConfiguration: "production",
+} as const;
+
+/**
+ * The builder-owned options {@link migrateBuildWidgets} grafts onto a legacy
+ * plain-`@angular/build:application` target when rewriting it to the
+ * `ng-mcp-ui:build-widgets` builder.
+ */
+const BUILDER_OWNED_OPTIONS = {
+  registry: "src/widgets/registry.ts",
+  manifestOut: "src/mcp/views.manifest.json",
 } as const;
 
 /**
@@ -544,11 +560,12 @@ async function resolveProjectPaths(
  * Step 5 — scaffold the MCP + widgets source from `./files` templates.
  *
  * The template tree mirrors the verified dev-app layout: `src/mcp/*`,
- * `src/widgets/**`, `tools/build-widgets.mjs` and `tsconfig.widgets.json`. We
- * `move(...)` the whole tree under the target project's ROOT — so `src/...`
- * lands at `<root>/src/...` (which equals the project `sourceRoot` in the
- * standard `<root>/src` layout) and `tools/`+`tsconfig.widgets.json` land at the
- * project root, matching the verified dev-app placement.
+ * `src/widgets/**` and `tsconfig.widgets.json`. We `move(...)` the whole tree
+ * under the target project's ROOT — so `src/...` lands at `<root>/src/...`
+ * (which equals the project `sourceRoot` in the standard `<root>/src` layout)
+ * and `tsconfig.widgets.json` lands at the project root, matching the verified
+ * dev-app placement. (The widgets build/validation pipeline is NOT scaffolded:
+ * it ships as the `ng-mcp-ui:build-widgets` builder, issue #48.)
  *
  * Idempotency / respect for pre-existing files: we `filter` out any template
  * whose resolved target path already exists in the host tree BEFORE merging, so
@@ -562,8 +579,8 @@ async function resolveProjectPaths(
  *
  * Templating: only `*.template` files are EJS-processed (`applyTemplates` is
  * scoped to that suffix in this devkit version) and have the suffix stripped on
- * output — `server.ts.template` and `tools/build-widgets.mjs.template` use
- * `<%= projectName %>`. The remaining files are fixed scaffolds copied verbatim.
+ * output — `server.ts.template` uses `<%= projectName %>`. The remaining files
+ * are fixed scaffolds copied verbatim.
  */
 function scaffoldSources(options: NgAddOptions): Rule {
   return async (tree: Tree) => {
@@ -590,21 +607,86 @@ function scaffoldSources(options: NgAddOptions): Rule {
 
 /**
  * Step 6 — add the `build-widgets` target to the resolved project. Idempotent:
- * skips when the target already exists (a second run is a no-op).
+ * a target already on the `ng-mcp-ui:build-widgets` builder is left untouched.
+ *
+ * Migration (issue #48): a pre-existing target still on the plain
+ * `@angular/build:application` builder is a legacy install whose validation
+ * lived in the scaffolded `tools/build-widgets.mjs`; rewrite it to the
+ * `ng-mcp-ui:build-widgets` builder, preserving the app's options and grafting
+ * on the builder-owned `registry`/`manifestOut`. A target on any OTHER builder
+ * is user-owned and left alone.
  */
 function addBuildWidgetsTarget(options: NgAddOptions): Rule {
   return async (tree: Tree) => {
     const projectName = await resolveProjectName(tree, options);
     return updateWorkspace((workspace) => {
       const project = workspace.projects.get(projectName);
-      if (!project || project.targets.has("build-widgets")) {
+      if (!project) {
         return;
       }
-      project.targets.add({
-        name: "build-widgets",
-        ...structuredClone(BUILD_WIDGETS_TARGET),
-      });
+      const existing = project.targets.get("build-widgets");
+      if (!existing) {
+        project.targets.add({
+          name: "build-widgets",
+          ...structuredClone(BUILD_WIDGETS_TARGET),
+        });
+        return;
+      }
+      if (existing.builder === "@angular/build:application") {
+        existing.builder = BUILD_WIDGETS_TARGET.builder;
+        existing.options = {
+          ...structuredClone(BUILDER_OWNED_OPTIONS),
+          ...(existing.options ?? {}),
+        };
+      }
     });
+  };
+}
+
+/**
+ * The header marker of the legacy scaffolded script — present verbatim in every
+ * copy `ng add` ever minted, so it safely distinguishes our stale copies from a
+ * user-authored tool of the same name.
+ */
+const LEGACY_SCRIPT_MARKER = "POST-BUILD WIDGETS MANIFEST GENERATOR";
+
+/** The npm script body the legacy scaffold wired up. */
+const LEGACY_SCRIPT_COMMAND = "node tools/build-widgets.mjs";
+
+/**
+ * Step 6-bis (issue #48 migration) — retire a legacy scaffolded
+ * `tools/build-widgets.mjs`: delete the file when it carries the scaffold
+ * marker (a user-authored or customized script without the marker is kept),
+ * and rewrite a `build:widgets` npm script that still points at it to run the
+ * builder-backed target instead. No-op on fresh installs.
+ */
+function migrateLegacyBuildScript(options: NgAddOptions): Rule {
+  return async (tree: Tree, context: SchematicContext) => {
+    const projectName = await resolveProjectName(tree, options);
+    const { root } = await resolveProjectPaths(tree, options);
+    const scriptPath = `/${root ? `${root}/` : ""}tools/build-widgets.mjs`;
+
+    if (
+      tree.exists(scriptPath) &&
+      tree.readText(scriptPath).includes(LEGACY_SCRIPT_MARKER)
+    ) {
+      tree.delete(scriptPath);
+      context.logger.info(
+        `ng-mcp-ui: removed legacy ${scriptPath} — its build validation now ` +
+          "runs inside the `ng-mcp-ui:build-widgets` builder.",
+      );
+    }
+
+    const pkgPath = "/package.json";
+    if (tree.exists(pkgPath)) {
+      const pkg = JSON.parse(tree.readText(pkgPath));
+      if (pkg.scripts?.["build:widgets"] === LEGACY_SCRIPT_COMMAND) {
+        pkg.scripts["build:widgets"] = `ng run ${projectName}:build-widgets`;
+        tree.overwrite(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+      }
+    }
+
+    return tree;
   };
 }
 
@@ -613,8 +695,9 @@ function addBuildWidgetsTarget(options: NgAddOptions): Rule {
  * overwrites an existing script of the same name.
  *
  * Script bodies:
- *   - `build:widgets` — runs the post-build manifest generator, which itself
- *     builds the `build-widgets` target then derives `views.manifest.json`.
+ *   - `build:widgets` — runs the `build-widgets` target; its
+ *     `ng-mcp-ui:build-widgets` builder bundles the widgets, validates every
+ *     registered view emitted a chunk, and derives `views.manifest.json`.
  *   - `dev:mcp` — serves the SSR app (`ng serve`); the mounted `/mcp` router and
  *     `/assets/widgets` are then reachable from a host for local development.
  *   - `tunnel` — a thin, dependency-free wrapper documenting the manual step:
@@ -623,17 +706,18 @@ function addBuildWidgetsTarget(options: NgAddOptions): Rule {
  *     body with your chosen tunnel command (e.g. `cloudflared tunnel --url
  *     http://localhost:4200`).
  */
-function addScripts(): Rule {
-  return (tree: Tree) => {
+function addScripts(options: NgAddOptions): Rule {
+  return async (tree: Tree) => {
     const path = "/package.json";
     if (!tree.exists(path)) {
       return tree;
     }
+    const projectName = await resolveProjectName(tree, options);
     const pkg = JSON.parse(tree.readText(path));
     pkg.scripts ??= {};
 
     const scripts: Record<string, string> = {
-      "build:widgets": "node tools/build-widgets.mjs",
+      "build:widgets": `ng run ${projectName}:build-widgets`,
       "dev:mcp": "ng serve",
       tunnel:
         'echo "Expose http://localhost:4200 with your tunnel of choice, e.g. ' +
@@ -697,7 +781,8 @@ export function ngAdd(options: NgAddOptions): Rule {
     patchServerTs(options),
     scaffoldSources(options),
     addBuildWidgetsTarget(options),
-    addScripts(),
+    migrateLegacyBuildScript(options),
+    addScripts(options),
     maybeChainExample(options),
   ]);
 }

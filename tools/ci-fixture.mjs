@@ -18,7 +18,9 @@
 //                resolves by the lib's package name via its `"schematics"` field;
 //                `ng add` itself needs the package on a registry, so the offline
 //                fixture invokes the collection directly with `ng generate`.
-//   5. build   — `npm run build:widgets` (AOT widget bundle + manifest) then
+//   5. build   — `npm run build:widgets` (`ng run <app>:build-widgets` — the
+//                `ng-mcp-ui:build-widgets` builder: AOT widget bundle +
+//                registry↔chunk validation + views manifest, issue #48) then
 //                `ng build` (SSR host). The widget build is the real cross-major
 //                gate: it AOT-consumes ng-mcp-ui's ngc-partial declarables and
 //                rejects (NG2012) if the partial-linker metadata is wrong for
