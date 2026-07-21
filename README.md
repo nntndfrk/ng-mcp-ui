@@ -5,9 +5,8 @@
 > ChatGPT, and other [MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
 > hosts.
 
-> ### Status: published on npm — production-ready
-> (Latest version: see the [npm page](https://www.npmjs.com/package/ng-mcp-ui)
-> or the repo's `vX.Y.Z` tags.) The full public surface (`server` / `web` /
+> ### Status: [published on npm](https://www.npmjs.com/package/ng-mcp-ui) — production-ready
+> The full public surface (`server` / `web` /
 > `testing` / `tunnel` + the schematics and the `ng-mcp-ui:build-widgets`
 > builder) **ships and is CI-green across Angular v20, v21, and v22** (a
 > cross-major fixture matrix builds a real retrofit app, AOT-builds the widget
@@ -106,6 +105,7 @@ npm run typecheck   # tsc
 npm test            # Vitest
 npm run build       # build all workspace packages
 npm run test:types  # Vitest type tests
+npm run ci:fixture -- --ng-version 22   # real e2e: ng new + ng add + build + /mcp probe
 ```
 
 To exercise the real schematic output against a live host over a zero-auth
