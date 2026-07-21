@@ -25,6 +25,12 @@ asserted against `package.json` by `src/version.test.ts` and `verify:pack`.
    - `packages/ng-mcp-ui/package.json#version`
    - `NG_MCP_UI_VERSION` in `packages/ng-mcp-ui/src/version.ts`
 
+   Also re-read `packages/ng-mcp-ui/README.md` — it ships in the tarball and
+   **becomes the npm page for this version, permanently** (npm never re-renders
+   a published version). Keep its wording version-agnostic; a hardcoded
+   "Status: vX.Y.Z" line went stale on the npm page once already (shipped
+   stale in 0.1.1/0.2.0; fixed in 0.2.1).
+
 2. **Confirm locally** that everything agrees and the package is publishable:
 
    ```bash

@@ -5,9 +5,10 @@ MCP servers whose tools render **interactive Angular widgets** inside Claude,
 ChatGPT, and other [MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
 hosts (Angular **v20–v22**).
 
-> ### Status: v0.1.0 — first npm release
+> ### Status: published on npm — production-ready
 > The public API surface (`server` / `web` / `testing` / `tunnel` + the
-> schematics) is **complete and CI-green across Angular v20, v21, and v22** (a
+> schematics and the `ng-mcp-ui:build-widgets` builder) is **complete and
+> CI-green across Angular v20, v21, and v22** (a
 > cross-major fixture matrix builds a real retrofit app, AOT-builds the widget
 > bundle + SSR host, and probes `/mcp` on every push). Real-host validation is
 > **signed off**: render is machine-verified on Claude — the poll widget renders
@@ -35,7 +36,9 @@ that is identical across hosts.
 | `ng-mcp-ui/tunnel` | `cloudflared` dev-tunnel marker (live surface lands in the tunnel track) |
 
 The package also ships the Angular **schematics** (`ng-add`, `view`, `tool`,
-`example`), embedded under `dist/schematics/` at pack time.
+`example`) and the **`ng-mcp-ui:build-widgets` builder** (bundles the widgets,
+validates every registered view emitted a code-split chunk, derives
+`views.manifest.json`), embedded under `dist/schematics/` at pack time.
 
 ## Getting started
 
@@ -63,6 +66,25 @@ ng add ng-mcp-ui --example=demo
 
 See the [schematics README](https://github.com/nntndfrk/ng-mcp-ui/blob/main/packages/schematics/README.md)
 for the full generator + options reference.
+
+### Run it
+
+`ng add` wired three npm scripts; the dev loop is:
+
+```bash
+npm run build:widgets   # ng run <app>:build-widgets — AOT-builds the widget
+                        # bundle, validates every registered view emitted its
+                        # code-split chunk (fails loudly if one is broken),
+                        # and derives src/mcp/views.manifest.json
+npm run dev:mcp         # ng serve — /mcp and /assets/widgets are now live
+npm run tunnel          # expose it, e.g. cloudflared tunnel --url http://localhost:4200
+```
+
+Then add the tunnel URL + `/mcp` as a custom connector in the host
+(Claude: Settings → Connectors; ChatGPT: developer-mode connectors) and ask the
+model to use your tool. Re-run `build:widgets` after changing a widget;
+generate more views/tools with `ng generate ng-mcp-ui:view <name>` /
+`ng generate ng-mcp-ui:tool <name>`.
 
 ## `web` API reference
 

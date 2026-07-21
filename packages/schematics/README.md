@@ -28,8 +28,8 @@ ng generate ng-mcp-ui:ng-add
 | --- | --- | --- | --- |
 | `--project` | string | current project | Target project name. |
 | `--ssr` | boolean | `true` | Ensure Angular SSR is set up (adds it if absent). |
-| `--bundling` | `lazy` \| `targets` \| `esbuild` | `lazy` | How widget views are bundled. |
-| `--tunnelProvider` | `cloudflare` \| `localtunnel` \| `untun` | `cloudflare` | Zero-auth dev tunnel provider. |
+| `--bundling` | `lazy` \| `targets` \| `esbuild` | `lazy` | Reserved. Only the default `lazy` (code-split) path is implemented; other values are currently ignored. |
+| `--tunnelProvider` | `cloudflare` \| `localtunnel` \| `untun` | `cloudflare` | Reserved. Currently inert — the scaffolded `tunnel` npm script prints guidance instead of hard-wiring a provider CLI. |
 | `--example` | `demo` \| `minimal` \| `none` | `demo` | Which example app to scaffold. |
 | `--skipInstall` | boolean | `false` | Skip installing dependencies. |
 | `--migrateBuildScript` | boolean | `true` | On a legacy install, delete the scaffolded `tools/build-widgets.mjs` + repoint `build:widgets`. `false` keeps a customized copy. |
