@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ng-mcp-ui — interactive Angular views for MCP hosts</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="An Angular schematic and signals-native library that retrofits an existing Angular app with MCP views that render inside Claude, ChatGPT, and any MCP-Apps host."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <script>
+      // Applied before first paint so a reload in light mode never flashes dark.
+      (function () {
+        try {
+          var stored = localStorage.getItem("ng-mcp-ui-docs-theme");
+          var theme =
+            stored ||
+            (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+          if (theme === "light") {
+            document.documentElement.setAttribute("data-theme", "light");
+          }
+        } catch (_) {
+          /* private mode / SSR — fall through to the dark default */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <app-root></app-root>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

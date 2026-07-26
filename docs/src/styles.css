@@ -1,0 +1,367 @@
+/* ng-mcp-ui docs — design tokens.
+ *
+ * The custom properties below are ported verbatim from the approved comp
+ * ("ng-mcp-ui Docs"): a dark default with a `[data-theme="light"]` override on
+ * <html>, flipped by the header toggle (see app/site/theme.ts). Everything else
+ * in the site reads these tokens — no component hard-codes a colour.
+ */
+
+@import "@fontsource-variable/inter/index.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/700.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #09090b;
+  --bg2: #0e0e12;
+  --panel: #111114;
+  --nav: rgba(9, 9, 11, 0.78);
+  --border: rgba(255, 255, 255, 0.07);
+  --border2: rgba(255, 255, 255, 0.09);
+  --surface: rgba(255, 255, 255, 0.03);
+  --surface2: rgba(255, 255, 255, 0.07);
+  --surface3: rgba(255, 255, 255, 0.045);
+  --active: rgba(255, 255, 255, 0.09);
+  --text: #f5f5f7;
+  --muted: #a1a1aa;
+  --faint: #71717a;
+  --dim: #52525b;
+  --code: #d4d4d8;
+  --body: #d4d4d8;
+  --hoverBorder: rgba(255, 255, 255, 0.22);
+  --hoverText: #ffffff;
+  --accent: #e4004f;
+  --pink: #ff4d95;
+  --magenta: #c6009b;
+  --violet: #7b3fe4;
+  --kw: #7b6fe4;
+  --str: #ff4d95;
+  --cmt: #52525b;
+  --glowA: rgba(226, 0, 116, 0.2);
+  --glowB: rgba(123, 63, 228, 0.1);
+  --tint: rgba(226, 0, 116, 0.12);
+  --tintBorder: rgba(226, 0, 116, 0.28);
+  --dot: #3f3f46;
+  --ok: #16a34a;
+
+  --font-sans: "Inter Variable", Inter, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --nav-h: 60px;
+  --page-max: 1200px;
+}
+
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --bg2: #fafafa;
+  --panel: #f4f4f5;
+  --nav: rgba(255, 255, 255, 0.82);
+  --border: rgba(9, 9, 11, 0.09);
+  --border2: rgba(9, 9, 11, 0.12);
+  --surface: rgba(9, 9, 11, 0.028);
+  --surface2: rgba(9, 9, 11, 0.06);
+  --surface3: rgba(9, 9, 11, 0.04);
+  --active: #ffffff;
+  --text: #18181b;
+  --muted: #52525b;
+  --faint: #71717a;
+  --dim: #a1a1aa;
+  --code: #3f3f46;
+  --body: #3f3f46;
+  --hoverBorder: rgba(9, 9, 11, 0.3);
+  --hoverText: #000000;
+  --kw: #6d28d9;
+  --str: #be185d;
+  --cmt: #a1a1aa;
+  --glowA: rgba(226, 0, 116, 0.13);
+  --glowB: rgba(123, 63, 228, 0.09);
+  --tint: rgba(226, 0, 116, 0.08);
+  --tintBorder: rgba(226, 0, 116, 0.3);
+  --dot: #d4d4d8;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+::selection {
+  background: rgba(226, 0, 116, 0.28);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  /* Overriding every component's own transition is the whole point here, so
+     these two genuinely need to win the cascade. */
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: must beat component styles */
+    transition-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: must beat component styles */
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* Shared primitives ------------------------------------------------------- */
+
+.shell {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gradient-mark {
+  border-radius: 6px;
+  background: linear-gradient(135deg, #e4004f, #c6009b 55%, #7b3fe4);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Markdown prose ---------------------------------------------------------- */
+
+.prose {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.7;
+  min-width: 0;
+}
+
+.prose > :first-child {
+  margin-top: 0;
+}
+
+.prose h2 {
+  margin: 48px 0 0;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  color: var(--text);
+  scroll-margin-top: calc(var(--nav-h) + 20px);
+}
+
+.prose h3 {
+  margin: 34px 0 0;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+  color: var(--text);
+  scroll-margin-top: calc(var(--nav-h) + 20px);
+}
+
+.prose h4 {
+  margin: 26px 0 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--text);
+  scroll-margin-top: calc(var(--nav-h) + 20px);
+}
+
+.prose p {
+  margin: 14px 0 0;
+  text-wrap: pretty;
+}
+
+.prose strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.prose a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--tintBorder);
+}
+
+.prose a:hover {
+  text-decoration-color: var(--accent);
+}
+
+.prose ul,
+.prose ol {
+  margin: 14px 0 0;
+  padding-left: 22px;
+}
+
+.prose li {
+  margin: 7px 0;
+}
+
+.prose li::marker {
+  color: var(--faint);
+}
+
+.prose hr {
+  margin: 44px 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+.prose blockquote {
+  margin: 22px 0 0;
+  padding: 14px 18px;
+  border: 1px solid var(--tintBorder);
+  border-radius: 10px;
+  background: var(--tint);
+  color: var(--body);
+}
+
+.prose blockquote p {
+  margin: 6px 0 0;
+}
+
+.prose blockquote > :first-child {
+  margin-top: 0;
+}
+
+.prose :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  color: var(--text);
+  background: var(--surface2);
+  border-radius: 5px;
+  padding: 2px 5px;
+}
+
+.prose table {
+  width: 100%;
+  margin: 22px 0 0;
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 14.5px;
+  display: table;
+}
+
+.prose thead th {
+  background: var(--surface3);
+  color: var(--faint);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  text-align: left;
+  padding: 13px 18px;
+}
+
+.prose tbody td {
+  border-top: 1px solid var(--border);
+  padding: 14px 18px;
+  vertical-align: top;
+}
+
+.prose tbody td:first-child {
+  white-space: nowrap;
+}
+
+.prose img {
+  max-width: 100%;
+  border-radius: 12px;
+}
+
+.prose .table-scroll,
+.prose > div:has(> table) {
+  overflow-x: auto;
+}
+
+/* Code blocks ------------------------------------------------------------- */
+
+.prose pre {
+  margin: 22px 0 0;
+  padding: 18px 20px;
+  border-radius: 11px;
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  overflow-x: auto;
+  font-size: 13.5px;
+  line-height: 1.85;
+}
+
+.prose pre code {
+  font-family: var(--font-mono);
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* Shiki dual themes. `defaultColor: false` writes --shiki-light/--shiki-dark on
+   every token instead of baking one palette in, so the toggle switches code
+   colours with the rest of the page. */
+.shiki,
+.shiki span {
+  color: var(--shiki-dark);
+  background-color: transparent;
+  font-style: var(--shiki-dark-font-style);
+  font-weight: var(--shiki-dark-font-weight);
+  text-decoration: var(--shiki-dark-text-decoration);
+}
+
+:root[data-theme="light"] .shiki,
+:root[data-theme="light"] .shiki span {
+  color: var(--shiki-light);
+  font-style: var(--shiki-light-font-style);
+  font-weight: var(--shiki-light-font-weight);
+  text-decoration: var(--shiki-light-text-decoration);
+}

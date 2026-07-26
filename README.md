@@ -5,6 +5,11 @@
 > ChatGPT, and other [MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
 > hosts.
 
+**📖 [Documentation](https://nntndfrk.github.io/ng-mcp-ui/)** ·
+[Quickstart](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/quickstart) ·
+[Schematics](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/ng-add) ·
+[API reference](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web)
+
 > ### Status: [published on npm](https://www.npmjs.com/package/ng-mcp-ui) — production-ready
 > The full public surface (`server` / `web` /
 > `testing` / `tunnel` + the schematics and the `ng-mcp-ui:build-widgets`

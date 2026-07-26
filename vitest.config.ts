@@ -11,6 +11,9 @@ export default defineConfig({
       ".claude/**",
       "spike/**",
       "examples/**",
+      // The docs site is built (and type-checked) by its own Angular/Vite
+      // build in .github/workflows/docs.yml; it carries no vitest suites.
+      "docs/**",
       // Compile-time type tests run only via the dedicated `test:types` script
       // (`vitest run --typecheck.only`), never as a runtime suite.
       "**/*.test-d.ts",

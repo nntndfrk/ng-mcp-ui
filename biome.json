@@ -6,7 +6,19 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/node_modules", "!**/dist", "!**/.angular", "!**/coverage", "!spike", "!.claude", "!examples/**/*.html"]
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/.angular",
+      "!**/coverage",
+      "!spike",
+      "!.claude",
+      "!examples/**/*.html",
+      "!docs/.nitro",
+      "!docs/.analog",
+      "!docs/index.html"
+    ]
   },
   "formatter": {
     "enabled": true,
