@@ -55,10 +55,12 @@ jobs:
         run: npm ci
 
       - name: Configure Pages
+        # Reads the repo's Pages config to derive base_path. Deliberately no
+        # `enablement: true` — creating a Pages site needs repo-admin rights,
+        # which GITHUB_TOKEN never has, so that flag can only ever fail the
+        # job. Pages is enabled once, out of band (see the header comment).
         id: pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Build docs
         # The project site is served from /<repo>/, so the whole app — assets,
