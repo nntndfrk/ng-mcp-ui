@@ -5,6 +5,12 @@ node_modules/
 dist/
 .angular/
 *.tsbuildinfo
+out-tsc/
+
+# Docs site (AnalogJS / Nitro) intermediates
+docs/.nitro/
+docs/.analog/
+docs/.vite/
 
 # Test output
 coverage/

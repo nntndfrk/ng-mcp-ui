@@ -54,6 +54,11 @@ asserted against `package.json` by `src/version.test.ts` and `verify:pack`.
 The workflow then runs the version gate (`check-version --tag`), `build:pack`,
 `verify:pack`, and `npm publish --access public --provenance`.
 
+Landing the bump in step 3 also republishes the [documentation
+site](https://nntndfrk.github.io/ng-mcp-ui/): its hero badge is injected from
+`packages/ng-mcp-ui/package.json` at build time, and that path is in the docs
+workflow's trigger filter for exactly this reason. Nothing to do by hand.
+
 ## What the workflow needs
 
 - **`NPM_TOKEN`** — an npm **automation** token with publish rights to `ng-mcp-ui`,

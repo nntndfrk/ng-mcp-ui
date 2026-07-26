@@ -1,0 +1,6 @@
+# Build output
+dist/
+.nitro/
+.analog/
+.angular/
+out-tsc/
