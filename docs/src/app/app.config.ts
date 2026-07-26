@@ -20,6 +20,15 @@ export const appConfig: ApplicationConfig = {
     // GitHub Pages serves this site from /ng-mcp-ui/. Vite's `base` lands in
     // import.meta.env.BASE_URL, and Angular needs the same value to generate and
     // match URLs — see the "custom URL prefix" recipe in the Analog docs.
+    //
+    // This provider is the *only* place the prefix is declared: index.html
+    // deliberately ships without a <base> element. Vite already rewrites every
+    // asset URL and RouterLink already prefixes every route, so the tag added
+    // nothing — but it broke every fragment link on the site. Per the HTML spec
+    // a bare `#anchor` href resolves against the document *base* URL, so under
+    // `<base href="/ng-mcp-ui/">` the "On this page" table of contents and the
+    // "Skip to content" link navigated to the landing page instead of scrolling
+    // in place. Don't reintroduce the tag.
     { provide: APP_BASE_HREF, useValue: import.meta.env.BASE_URL || "/" },
     provideFileRouter(
       withInMemoryScrolling({ anchorScrolling: "enabled", scrollPositionRestoration: "enabled" }),
