@@ -8,9 +8,9 @@ name: Docs
 # Both triggers are path-filtered so a library-only change doesn't rebuild the
 # site, and a docs-only change doesn't drag the Angular matrix along with it.
 #
-# One-time setup: Settings → Pages → Source must be "GitHub Actions".
-# `configure-pages` attempts this via the API, but the repo setting can still
-# need flipping by hand.
+# One-time setup, already done on this repo: Settings → Pages → Source =
+# "GitHub Actions" (build_type: workflow). This cannot be automated from here —
+# creating a Pages site needs repo-admin rights, which GITHUB_TOKEN lacks.
 
 on:
   push:
@@ -21,6 +21,11 @@ on:
       - ".github/workflows/docs.yml"
       - "package.json"
       - "package-lock.json"
+      # The hero badge is injected from the library's version at build time, so
+      # a release has to republish the site or the badge goes stale. The bump
+      # commit doesn't reliably touch package-lock.json — v0.2.1 changed only
+      # this file and src/version.ts.
+      - "packages/ng-mcp-ui/package.json"
   pull_request:
     paths:
       - "docs/**"
@@ -28,6 +33,11 @@ on:
       - ".github/workflows/docs.yml"
       - "package.json"
       - "package-lock.json"
+      # The hero badge is injected from the library's version at build time, so
+      # a release has to republish the site or the badge goes stale. The bump
+      # commit doesn't reliably touch package-lock.json — v0.2.1 changed only
+      # this file and src/version.ts.
+      - "packages/ng-mcp-ui/package.json"
   workflow_dispatch:
 
 permissions:
