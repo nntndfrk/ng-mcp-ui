@@ -60,16 +60,6 @@ function markdownLinksUnderBase(): Plugin {
   };
 }
 
-/** Vite rewrites asset URLs for `base`, but leaves the <base> tag alone. */
-function baseHrefTag(): Plugin {
-  return {
-    name: "docs-base-href-tag",
-    transformIndexHtml(html) {
-      return prefix ? html.replace('<base href="/" />', `<base href="${base}" />`) : html;
-    },
-  };
-}
-
 export default defineConfig(() => ({
   base,
   build: { target: ["es2022"] },
@@ -79,7 +69,6 @@ export default defineConfig(() => ({
   },
   plugins: [
     markdownLinksUnderBase(),
-    baseHrefTag(),
     analog({
       // `static` skips the Nitro server build and emits prerendered pages only;
       // `ssr` must stay on for those pages to render at all.
