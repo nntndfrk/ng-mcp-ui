@@ -1,9 +1,12 @@
 # ng-mcp-ui
 
-Angular library that retrofits Angular apps with **MCP interactive UI views** —
-MCP servers whose tools render **interactive Angular widgets** inside Claude,
-ChatGPT, and other [MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
-hosts (Angular **v20–v22**).
+> Angular schematic + library for MCP interactive UI views.
+
+**📖 [Documentation](https://nntndfrk.github.io/ng-mcp-ui/)** ·
+[Quickstart](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/quickstart) ·
+[How it works](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/how-it-works) ·
+[Schematics](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/ng-add) ·
+[API reference](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web)
 
 > ### Status: published on npm — production-ready
 > The public API surface (`server` / `web` / `testing` / `tunnel` + the
@@ -16,7 +19,12 @@ hosts (Angular **v20–v22**).
 > interactive vote/tally rows plus ChatGPT parity are human-confirmed (see
 > [`LIVE-HOST-VALIDATION.md`](https://github.com/nntndfrk/ng-mcp-ui/blob/main/LIVE-HOST-VALIDATION.md)).
 
-## What it does
+## Description
+
+MCP servers whose tools render **interactive Angular widgets** inside Claude,
+ChatGPT, and other
+[MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
+hosts, retrofitted into an existing Angular app (**v20–v22**).
 
 You have an Angular app. You want its features to show up as **interactive
 widgets inside an AI chat** — a poll the user can vote on, a chart, a form —
@@ -356,6 +364,17 @@ npm run build        # ngc -p tsconfig.json — compile all four entries into di
 npm run build:pack   # build + embed the schematics under dist/schematics/
 npm run verify:pack  # pack into a scratch project and assert the subpaths resolve
 ```
+
+## Documentation
+
+Full docs, searchable, at **<https://nntndfrk.github.io/ng-mcp-ui/>**.
+
+| | |
+| --- | --- |
+| **Getting started** | [Introduction](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/introduction) · [Quickstart](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/quickstart) · [How it works](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/how-it-works) |
+| **Guides** | [Typed tool data](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/typed-tool-data) · [View state](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/view-state) · [Theme and display mode](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/theme-display-mode) · [Host bridge and adaptors](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/host-bridge) · [Testing widgets](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/testing-widgets) |
+| **Schematics** | [ng add](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/ng-add) · [generate view](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/generate-view) · [generate tool](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/generate-tool) · [build-widgets](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/build-widgets) |
+| **API reference** | [`ng-mcp-ui/web`](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web) · [`ng-mcp-ui/server`](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/server) · [`ng-mcp-ui/testing`](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/testing) |
 
 ## License
 
