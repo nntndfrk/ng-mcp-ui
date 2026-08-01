@@ -2,64 +2,35 @@
 
 > Angular schematic + library for MCP interactive UI views.
 
+[![npm](https://img.shields.io/npm/v/ng-mcp-ui)](https://www.npmjs.com/package/ng-mcp-ui)
+[![CI matrix](https://github.com/nntndfrk/ng-mcp-ui/actions/workflows/ci-matrix.yml/badge.svg)](https://github.com/nntndfrk/ng-mcp-ui/actions/workflows/ci-matrix.yml)
+[![Angular](https://img.shields.io/badge/Angular-v20%20%7C%20v21%20%7C%20v22-dd0031)](https://github.com/nntndfrk/ng-mcp-ui/actions/workflows/ci-matrix.yml)
+[![license](https://img.shields.io/npm/l/ng-mcp-ui)](https://github.com/nntndfrk/ng-mcp-ui/blob/main/LICENSE)
+
 **📖 [Documentation](https://nntndfrk.github.io/ng-mcp-ui/)** ·
 [Quickstart](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/quickstart) ·
 [How it works](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/how-it-works) ·
 [Schematics](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/ng-add) ·
 [API reference](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web)
 
-> ### Status: published on npm — production-ready
-> The public API surface (`server` / `web` / `testing` / `tunnel` + the
-> schematics and the `ng-mcp-ui:build-widgets` builder) is **complete and
-> CI-green across Angular v20, v21, and v22** (a
-> cross-major fixture matrix builds a real retrofit app, AOT-builds the widget
-> bundle + SSR host, and probes `/mcp` on every push). Real-host validation is
-> **signed off**: render is machine-verified on Claude — the poll widget renders
-> in the host iframe, typed tool data arrives, and display-mode works — and the
-> interactive vote/tally rows plus ChatGPT parity are human-confirmed (see
-> [`LIVE-HOST-VALIDATION.md`](https://github.com/nntndfrk/ng-mcp-ui/blob/main/LIVE-HOST-VALIDATION.md)).
+<!-- TODO(readme): drop the live-host capture here — the Quick Poll widget
+     rendering in Claude and a vote being cast. Highest-value addition to this
+     page; everything below is text arguing for what this would just show. -->
 
 ## Description
 
-MCP servers whose tools render **interactive Angular widgets** inside Claude,
-ChatGPT, and other
-[MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
-hosts, retrofitted into an existing Angular app (**v20–v22**).
-
 You have an Angular app. You want its features to show up as **interactive
 widgets inside an AI chat** — a poll the user can vote on, a chart, a form —
-served from your own app and driven by your own tools. `ng-mcp-ui` mounts an
-[MCP](https://modelcontextprotocol.io) server into your app's Angular SSR
-`server.ts`, ships client-bootstrapped Angular widgets that hydrate from
-host-pushed tool data, and gives you a signal-based, zoneless-friendly view API
-that is identical across hosts.
+served from your own app and driven by your own tools.
 
-## Subpath exports
+`ng-mcp-ui` mounts an [MCP](https://modelcontextprotocol.io) server into your
+app's Angular SSR `server.ts`, ships client-bootstrapped Angular widgets that
+hydrate from host-pushed tool data, and gives you a signal-based,
+zoneless-friendly view API that is identical across Claude, ChatGPT, and other
+[MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
+hosts. Retrofits an existing app on **Angular v20–v22**.
 
-| Import | Purpose |
-| --- | --- |
-| `ng-mcp-ui/server` | Framework-neutral MCP server: `McpServer`, the mountable Express router, content/`FileRef` helpers, view-resource shells, auth |
-| `ng-mcp-ui/web` | Angular host bridge: `provideMcpUi`, `bootstrapWidget`, the `inject*` signal API, the `[dataLlm]` directive + `mcpAsset` pipe |
-| `ng-mcp-ui/testing` | `MockAdaptor` + `provideMockMcpUi` test/Storybook harness |
-| `ng-mcp-ui/tunnel` | `cloudflared` dev-tunnel marker (live surface lands in the tunnel track) |
-
-The package also ships the Angular **schematics** (`ng-add`, `view`, `tool`,
-`example`) and the **`ng-mcp-ui:build-widgets` builder** (bundles the widgets,
-validates every registered view emitted a code-split chunk, derives
-`views.manifest.json`), embedded under `dist/schematics/` at pack time.
-
-## Getting started
-
-### Install
-
-```bash
-npm i ng-mcp-ui
-```
-
-The fastest path is `ng add` (next section), which installs the package and
-retrofits your app in one step.
-
-### Retrofit an app
+## Quickstart
 
 Run `ng add` against an existing Angular app — it installs the package, ensures
 SSR, mounts the MCP server before the SSR catch-all, adds a widgets build target,
@@ -69,15 +40,10 @@ and (by default) scaffolds the runnable Quick Poll demo:
 ng add ng-mcp-ui --example=demo
 ```
 
-> Already installed? The same schematic runs via
+> Already installed (`npm i ng-mcp-ui`)? The same schematic runs via
 > `ng generate ng-mcp-ui:ng-add --example=demo`.
 
-See the [schematics README](https://github.com/nntndfrk/ng-mcp-ui/blob/main/packages/schematics/README.md)
-for the full generator + options reference.
-
-### Run it
-
-`ng add` wired three npm scripts; the dev loop is:
+`ng add` wires three npm scripts; the dev loop is:
 
 ```bash
 npm run build:widgets   # ng run <app>:build-widgets — AOT-builds the widget
@@ -94,58 +60,49 @@ model to use your tool. Re-run `build:widgets` after changing a widget;
 generate more views/tools with `ng generate ng-mcp-ui:view <name>` /
 `ng generate ng-mcp-ui:tool <name>`.
 
-## `web` API reference
+See the [schematics reference](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/ng-add)
+for the full generator + options reference.
 
-All of the following come from `ng-mcp-ui/web`. Every `inject*` function must be
+## Subpath exports
+
+| Import | Purpose |
+| --- | --- |
+| `ng-mcp-ui/server` | Framework-neutral MCP server: `McpServer`, the mountable Express router, content/`FileRef` helpers, view-resource shells, auth |
+| `ng-mcp-ui/web` | Angular host bridge: `provideMcpUi`, `bootstrapWidget`, the `inject*` signal API, the `[dataLlm]` directive + `mcpAsset` pipe |
+| `ng-mcp-ui/testing` | `MockAdaptor` + `provideMockMcpUi` test/Storybook harness |
+
+The package also ships the Angular **schematics** (`ng-add`, `view`, `tool`,
+`example`) and the **`ng-mcp-ui:build-widgets` builder** (bundles the widgets,
+validates every registered view emitted a code-split chunk, derives
+`views.manifest.json`), embedded under `dist/schematics/` at pack time.
+
+> A fourth subpath, `ng-mcp-ui/tunnel`, is reserved for the `cloudflared`
+> dev-tunnel manager but **is not implemented yet** — today the live tunnel walk
+> runs through the repo's `npm run live-host` harness. Don't import it.
+
+## `web` API
+
+Everything below comes from `ng-mcp-ui/web`. Every `inject*` function must be
 called from an Angular **injection context**; each resolves the host adaptor from
 the `MCP_ADAPTOR` DI token (provided by `provideMcpUi()`), so widget code is
 identical across Claude / ChatGPT / MCP-Apps hosts.
 
-### Setup
+| Symbol | Purpose |
+| --- | --- |
+| `provideMcpUi` / `bootstrapWidget` | Zoneless setup + the host-derived tokens; boot a standalone widget into the host shell |
+| `injectToolInfo` | The rendering tool's typed input/output as an idle/pending/success state signal |
+| `injectCallTool` | `{ callTool, callToolAsync, status, data, error }` — invoke a server tool from the view |
+| `injectViewState` / `injectViewStore` | Host-persisted, bidirectionally-synced view state (signal, or store-style with debounced writes) |
+| `injectLayout` / `injectDisplayMode` | Host theme, safe-area insets, max height; read + request `inline` / `fullscreen` / `pip` |
+| `injectAppHelpers` | Typed sugar: tool-name-narrowed helpers inferred from `typeof server` |
+| `[dataLlm]` / `\| mcpAsset` | Surface in-view content to the model; rewrite asset paths to the server origin |
 
-| Symbol | Signature | Purpose |
-| --- | --- | --- |
-| `provideMcpUi` | `(): EnvironmentProviders` | Zoneless change detection + the two host-derived tokens (`MCP_SERVER_URL`, `MCP_ADAPTOR`) + the mcp-app modal service. |
-| `bootstrapWidget` | `(component: Type<unknown>, providers?: Array<Provider \| EnvironmentProviders>): Promise<ApplicationRef>` | Boots a standalone widget into the host shell's `#root` with `provideMcpUi()` applied first. |
-| `MCP_ADAPTOR` / `MCP_SERVER_URL` | `InjectionToken<…>` | The host bridge + server-origin tokens; provide `MCP_ADAPTOR` yourself to use a custom/mock adaptor. |
+Also exported: `injectUser`, `injectFiles`, `injectHostContext`,
+`injectSendFollowUpMessage`, `injectOpenExternal`, `injectRequestModal`,
+`injectRequestSize`, `injectRequestClose`, `injectDownload`,
+`injectSetOpenInAppUrl`, `injectRegisterViewTool`, and the mcp-app modal surface.
 
-### Reading host + tool state (signal-returning)
-
-| Symbol | Signature | Purpose |
-| --- | --- | --- |
-| `injectToolInfo` | `<…>(): Signal<ToolState<…>>` | The rendering tool's input/output/metadata as an idle/pending/success state signal. |
-| `injectLayout` | `(): Signal<LayoutState>` | Host theme, display mode, safe-area insets, max height. |
-| `injectUser` | `(): Signal<UserState>` | The host-provided user info, when available. |
-| `injectViewState` | `<T>(default?): InjectViewStateResult<T>` | `{ value, set }` over the host's persisted, bidirectionally-synced view state. |
-| `injectViewStore` | `<…>(options?): InjectViewStore<…>` | Store-style view state: `state` signal + `set`/`update`/`patch`/`select`/`flush` (debounced host writes, conflict guard). |
-| `injectDisplayMode` | `(): InjectDisplayModeResult` | `{ displayMode, setDisplayMode }` — read + request `inline` / `fullscreen` / `pip`. |
-| `injectFiles` | `(): InjectFilesResult` | Host-shared files as a signal. |
-| `injectHostContext` | `(): HostContextSignals` | Low-level: a readonly signal per raw host-context key. |
-
-### Calling the server + driving the host (callable)
-
-| Symbol | Signature | Purpose |
-| --- | --- | --- |
-| `injectCallTool` | `<Args, Resp>(name: string): InjectCallToolResult<…>` | `{ callTool, callToolAsync, status, data, error }` to invoke a server tool from the view and track its lifecycle. |
-| `injectSendFollowUpMessage` | `(): SendFollowUpMessageFn` | Send a follow-up prompt into the conversation. |
-| `injectOpenExternal` | `(): OpenExternalFn` | Ask the host to open an external URL. |
-| `injectRequestModal` | `(): InjectRequestModalResult` | Request a host modal (mcp-app). |
-| `injectRequestSize` | `(): RequestSizeFn` | Request a new iframe size. |
-| `injectRequestClose` | `(): RequestCloseFn` | Ask the host to close the view. |
-| `injectDownload` | `(): DownloadFn` | Trigger a host-mediated download. |
-| `injectSetOpenInAppUrl` | `(): SetOpenInAppUrlFn` | Set the "open in app" deep link. |
-| `injectRegisterViewTool` | `(): RegisterViewToolHandle` | Register a view-scoped tool with the host. |
-| `injectAppHelpers` | `<AppType = never>()` — call as `injectAppHelpers<typeof server>()` | Typed sugar: tool-name-narrowed `injectCallTool` / `injectToolInfo`, inferred from the server's `$types` registry. |
-
-### Declarables
-
-| Symbol | Use | Purpose |
-| --- | --- | --- |
-| `DataLlmDirective` | `[dataLlm]="content"` | Surfaces in-view content to the model (persisted on the host's `viewState`) so the LLM can read it — no extra tool call. |
-| `McpAssetPipe` | `path \| mcpAsset` | Rewrites a relative asset path to an absolute URL on the MCP server origin, fixing the cross-origin asset hazard inside the host iframe. |
-
-The mcp-app modal surface (`provideMcpModal`, `createMcpModal`, `MCP_MODAL`,
-`MCP_MODAL_ENABLED`, `McpModal`) is also exported for advanced callers.
+**→ Full signatures and options: [`ng-mcp-ui/web` API reference](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web)**
 
 ### Example widget
 
@@ -326,44 +283,13 @@ adaptor.pushHostContext("toolOutput", { question: "Lunch?", options: [] });
 // … assert against the widget, then read adaptor.calls
 ```
 
-## `tunnel`
-
-`ng-mcp-ui/tunnel` is the slot for the `cloudflared` zero-auth dev-tunnel
-manager used to expose a local server to a real host during development. Today
-the live tunnel walk runs through the repo's `npm run live-host` harness (see
-[`LIVE-HOST-VALIDATION.md`](https://github.com/nntndfrk/ng-mcp-ui/blob/main/LIVE-HOST-VALIDATION.md));
-the importable tunnel surface lands in the tunnel track.
-
 ## Host compatibility
 
 A single `Adaptor` interface abstracts the **OpenAI Apps SDK** (`window.openai`,
 ChatGPT) and the open **MCP-Apps** postMessage spec
 (`@modelcontextprotocol/ext-apps`, Claude & other MCP-Apps hosts) behind one
-API, so widget code is identical across hosts. Live-host validation is signed
-off on both Claude and ChatGPT (render machine-verified, interactive-call rows
-human-confirmed). **Gemini is not supported.**
-
-## Build tooling
-
-Built with the Angular compiler **`ngc` in *partial* compilation mode** — one
-`tsconfig.json` over all four entry dirs — **not** ng-packagr.
-
-- The Node-only entries (`server`, `tunnel`) emit as plain TypeScript.
-- The Angular entries (`web`, `testing`) emit Ivy **partial** declarations
-  (`ɵɵngDeclare*`) for the directive/pipe, so a consuming app's Angular linker
-  (built into `@angular/build`) finalizes them at AOT build time — the
-  published-Angular-library contract.
-- `package.json#exports` maps each subpath to its `dist` `types` + `default`.
-
-ng-packagr is a poor fit here: this is a **hybrid** package whose `server` /
-`tunnel` entries import `express`, `node:http`, and the MCP SDK. `ngc` partial
-fits the hand-mapped `exports` layout and keeps the Node entries as plain TS.
-
-```bash
-npm run build        # ngc -p tsconfig.json — compile all four entries into dist/
-npm run build:pack   # build + embed the schematics under dist/schematics/
-npm run verify:pack  # pack into a scratch project and assert the subpaths resolve
-```
+API, so widget code is identical across hosts. Both are supported and exercised
+against real hosts during development. **Gemini is not supported.**
 
 ## Documentation
 

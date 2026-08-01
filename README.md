@@ -5,27 +5,20 @@
 > ChatGPT, and other [MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
 > hosts.
 
+[![npm](https://img.shields.io/npm/v/ng-mcp-ui)](https://www.npmjs.com/package/ng-mcp-ui)
+[![CI matrix](https://github.com/nntndfrk/ng-mcp-ui/actions/workflows/ci-matrix.yml/badge.svg)](https://github.com/nntndfrk/ng-mcp-ui/actions/workflows/ci-matrix.yml)
+[![Angular](https://img.shields.io/badge/Angular-v20%20%7C%20v21%20%7C%20v22-dd0031)](https://github.com/nntndfrk/ng-mcp-ui/actions/workflows/ci-matrix.yml)
+[![license](https://img.shields.io/npm/l/ng-mcp-ui)](./LICENSE)
+
 **📖 [Documentation](https://nntndfrk.github.io/ng-mcp-ui/)** ·
 [Quickstart](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/quickstart) ·
 [Schematics](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/ng-add) ·
 [API reference](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web)
 
-> ### Status: [published on npm](https://www.npmjs.com/package/ng-mcp-ui) — production-ready
-> The full public surface (`server` / `web` /
-> `testing` / `tunnel` + the schematics and the `ng-mcp-ui:build-widgets`
-> builder) **ships and is CI-green across Angular v20, v21, and v22** (a
-> cross-major fixture matrix builds a real retrofit app, AOT-builds the widget
-> bundle + SSR host, and probes `/mcp` on every push). Real-host validation is
-> **signed off**: render is machine-verified on Claude (poll widget renders in
-> the host iframe, typed tool data arrives, display-mode works) and the
-> interactive vote/tally rows plus ChatGPT parity are human-confirmed — see
-> [`LIVE-HOST-VALIDATION.md`](./LIVE-HOST-VALIDATION.md).
-> Install with **`npm i ng-mcp-ui`**, or retrofit an existing app with
-> **`ng add ng-mcp-ui`** (see below).
->
-> See the [package README](./packages/ng-mcp-ui/README.md) for the full API
-> reference, and the [schematics README](./packages/schematics/README.md) for the
-> generators.
+Install with **`npm i ng-mcp-ui`**, or retrofit an existing app with
+**`ng add ng-mcp-ui`** (see below). See the
+[package README](./packages/ng-mcp-ui/README.md) for the API reference and the
+[schematics README](./packages/schematics/README.md) for the generators.
 
 ---
 
@@ -73,7 +66,7 @@ initial HTML. `ng-mcp-ui` is built around that reality:
 
 - `ng-add` retrofit for existing Angular apps (**Angular v20–v22**, CI-green)
 - One `Adaptor` interface, two host runtimes: the same widget targets **Claude**
-  and **ChatGPT** (live-host validation signed off on both)
+  and **ChatGPT**
 - Typed tool ⇄ view data flow (Zod schemas, inferred end to end via
   `typeof server` → `injectAppHelpers`)
 - View → server tool calls (`injectCallTool`), persisted view state
@@ -92,12 +85,15 @@ Shipped as a single package with subpath exports:
 | `ng-mcp-ui/server` | Framework-neutral MCP server: `McpServer`, Express router, view resources |
 | `ng-mcp-ui/web` | Angular bridge: `provideMcpUi`, `bootstrapWidget`, the `inject*` API, declarables |
 | `ng-mcp-ui/testing` | `MockAdaptor` + `provideMockMcpUi` test harness |
-| `ng-mcp-ui/tunnel` | Slot for the `cloudflared` dev-tunnel manager (skeleton today; the live walk runs via `npm run live-host`) |
 
 Plus the Angular schematics (`ng-add`, `view`, `tool`, `example`) and the
 `ng-mcp-ui:build-widgets` builder (bundles the widgets, validates every
 registered view emitted a code-split chunk, derives `views.manifest.json`)
 shipped in the same package.
+
+A fourth subpath, `ng-mcp-ui/tunnel`, is reserved for the `cloudflared`
+dev-tunnel manager but is **not implemented yet** — the live walk runs via
+`npm run live-host`.
 
 ## Development
 
@@ -113,11 +109,40 @@ npm run test:types  # Vitest type tests
 npm run ci:fixture -- --ng-version 22   # real e2e: ng new + ng add + build + /mcp probe
 ```
 
-To exercise the real schematic output against a live host over a zero-auth
-`cloudflared` tunnel, run `npm run live-host` and follow
-[`LIVE-HOST-VALIDATION.md`](./LIVE-HOST-VALIDATION.md).
+To exercise the real schematic output against a live host, run
+`npm run live-host` — it packs the library, generates a fresh SSR app at Angular
+22, retrofits it with `--example=demo`, builds, serves, and opens a `cloudflared`
+tunnel, printing a public `…/mcp` URL. Add that URL as a custom connector
+(Claude: Settings → Connectors; ChatGPT: developer-mode connectors) and drive the
+demo from the chat.
+
+> Requires `cloudflared` on `PATH`. TryCloudflare tunnels are **zero-auth and
+> unauthenticated** — anyone with the URL can reach your local server while it is
+> up, so keep the walk short and Ctrl-C when done.
 
 Requires the Node version in [`.nvmrc`](./.nvmrc).
+
+### How the library is built
+
+Built with the Angular compiler **`ngc` in *partial* compilation mode** — one
+`tsconfig.json` over all four entry dirs — **not** ng-packagr.
+
+- The Node-only entries (`server`, `tunnel`) emit as plain TypeScript.
+- The Angular entries (`web`, `testing`) emit Ivy **partial** declarations
+  (`ɵɵngDeclare*`) for the directive/pipe, so a consuming app's Angular linker
+  (built into `@angular/build`) finalizes them at AOT build time — the
+  published-Angular-library contract.
+- `package.json#exports` maps each subpath to its `dist` `types` + `default`.
+
+ng-packagr is a poor fit here: this is a **hybrid** package whose `server` /
+`tunnel` entries import `express`, `node:http`, and the MCP SDK. `ngc` partial
+fits the hand-mapped `exports` layout and keeps the Node entries as plain TS.
+
+```bash
+npm run build --workspace ng-mcp-ui        # ngc -p tsconfig.json — compile all four entries
+npm run build:pack --workspace ng-mcp-ui   # build + embed the schematics under dist/schematics/
+npm run verify:pack --workspace ng-mcp-ui  # pack into a scratch project and assert the subpaths resolve
+```
 
 ## Acknowledgements
 

@@ -68,7 +68,7 @@ function parseArgs(argv) {
       out.keep = true;
     } else if (a === "--serve") {
       // Live-host mode: build the demo, then keep it serving (instead of
-      // probe-and-teardown) for a manual real-host walk. See LIVE-HOST-VALIDATION.md.
+      // probe-and-teardown) for a manual real-host walk.
       out.serve = true;
     } else if (a === "--tunnel") {
       // With --serve: also spawn a cloudflared zero-auth TryCloudflare tunnel.
@@ -490,7 +490,7 @@ async function liveServe() {
       `\n${tag} to expose publicly (zero-auth): cloudflared tunnel --url ${localBase}`,
     );
     console.log(
-      `${tag} then paste <public-url>/mcp into the host connector (see LIVE-HOST-VALIDATION.md).`,
+      `${tag} then paste <public-url>/mcp into the host connector.`,
     );
   }
   console.log(`\n${tag} press Ctrl-C to stop.\n`);
