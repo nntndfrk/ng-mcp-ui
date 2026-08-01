@@ -155,11 +155,14 @@ function parseStyles(indexHtml: string): string | null {
 function findViewChunk(mainJs: string, view: string): string | null {
   // View name may contain regex metachars in theory; escape it defensively.
   const safe = view.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // Accept any of the three JS quote styles and require the pair to match:
+  // Angular 22's esbuild minifies dynamic imports to template literals
+  // (import(`./x.widget-HASH.js`)) where v20/v21 emitted double quotes.
   const re = new RegExp(
-    `import\\(\\s*["'](\\.\\/${safe}\\.widget-[A-Za-z0-9_-]+\\.js)["']\\s*\\)`,
+    `import\\(\\s*(["'\`])(\\.\\/${safe}\\.widget-[A-Za-z0-9_-]+\\.js)\\1\\s*\\)`,
   );
   const m = mainJs.match(re);
-  return m ? basename(m[1]) : null;
+  return m ? basename(m[2]) : null;
 }
 
 /**
