@@ -283,6 +283,12 @@ adaptor.pushHostContext("toolOutput", { question: "Lunch?", options: [] });
 // … assert against the widget, then read adaptor.calls
 ```
 
+The same `providers` go to a Storybook `applicationConfig` decorator, and the
+widget renders with no host and no iframe. A runnable example is in the
+repository at
+[`examples/storybook`](https://github.com/nntndfrk/ng-mcp-ui/tree/main/examples/storybook),
+and CI builds it.
+
 ## Host compatibility
 
 A single `Adaptor` interface hides the **OpenAI Apps SDK** (`window.openai`,
