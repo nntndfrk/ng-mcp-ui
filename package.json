@@ -26,6 +26,7 @@
     "check:version": "node tools/check-version.mjs"
   },
   "devDependencies": {
+    "@angular/language-server": "^22.1.1",
     "@biomejs/biome": "2.5.0",
     "@types/node": "^25.9.2",
     "typescript": "~6.0.3",
