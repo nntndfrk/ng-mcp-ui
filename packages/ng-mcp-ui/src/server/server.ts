@@ -443,9 +443,10 @@ export class McpServer<
    * {@link resolveConnectDomains} (request-context) and
    * {@link computeClaudeContentDomain} (view-hashing).
    *
-   * There is no `x-alpic-forwarded-url` precedence: this library self-hosts /
-   * tunnels rather than deploying on Alpic, so the Claude content domain is the
-   * hash of the resolved `${serverUrl}${pathname}` directly.
+   * There is no vendor-specific forwarded-URL header precedence: this library
+   * self-hosts / tunnels rather than deploying behind a managed hosting edge,
+   * so the Claude content domain is the hash of the resolved
+   * `${serverUrl}${pathname}` directly.
    */
   private resolveViewRequestContext(extra: McpExtra | undefined): {
     serverUrl: string;

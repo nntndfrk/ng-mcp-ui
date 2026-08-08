@@ -9,17 +9,16 @@ import { createHash } from "node:crypto";
  * connector, built as `${serverUrl}${pathname}` — `serverUrl` being the
  * `x-forwarded-host`-aware origin from `resolveServerUrl` (request-context).
  *
- * There is deliberately **no** `x-alpic-forwarded-url` precedence here. The
- * upstream Skybridge reference reads that header because it deploys behind
- * Alpic's hosting edge (which proxies the public connector URL and re-sends it
- * via that header); this library self-hosts / tunnels instead (PLAN §6), so the
- * header is never set and reading it would be dead weight.
+ * There is deliberately **no** vendor-specific forwarded-URL header precedence
+ * here. Managed hosting edges sometimes proxy the public connector URL and
+ * re-send it via a custom header; this library self-hosts / tunnels instead
+ * (PLAN §6), so no such header is ever set and reading one would be dead weight.
  *
  * Trust note: the hashed URL is only as trustworthy as the edge terminating the
  * request. `serverUrl` derives from `x-forwarded-host` / `-proto`, which are
  * themselves client-settable — so the deployment's edge (the Cloudflare tunnel,
  * or a reverse proxy) MUST overwrite inbound forwarded headers for the resulting
- * domain to be authoritative. Dropping the Alpic header narrows trust to that
+ * domain to be authoritative. Honouring no extra header narrows trust to that
  * single, edge-governed forwarded chain; it does not by itself make the hash
  * spoof-proof.
  *

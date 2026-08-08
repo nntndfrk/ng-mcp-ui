@@ -144,11 +144,6 @@ npm run build:pack --workspace ng-mcp-ui   # build + embed the schematics under 
 npm run verify:pack --workspace ng-mcp-ui  # pack into a scratch project and assert the subpaths resolve
 ```
 
-## Acknowledgements
-
-The design is informed by OpenAI's Skybridge reference implementation;
-`ng-mcp-ui` is an independent, original Angular implementation.
-
 ## License
 
 [MIT](./LICENSE) © 2026 nntndfrk
