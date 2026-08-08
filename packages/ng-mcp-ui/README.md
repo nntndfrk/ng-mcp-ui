@@ -13,44 +13,44 @@
 [Schematics](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/ng-add) ·
 [API reference](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web)
 
-<!-- TODO(readme): drop the live-host capture here — the Quick Poll widget
-     rendering in Claude and a vote being cast. Highest-value addition to this
-     page; everything below is text arguing for what this would just show. -->
+<!-- TODO(readme): drop the live-host capture here: the Quick Poll widget in
+     Claude, and a vote as it is cast. Highest-value addition to this page.
+     Everything below is text that argues for what this would simply show. -->
 
 ## Description
 
-You have an Angular app. You want its features to show up as **interactive
-widgets inside an AI chat** — a poll the user can vote on, a chart, a form —
-served from your own app and driven by your own tools.
+You have an Angular app. You want its features to show as **interactive widgets
+in an AI chat**: a poll that the user can vote on, a chart, or a form. Your own
+app serves them, and your own tools drive them.
 
 `ng-mcp-ui` mounts an [MCP](https://modelcontextprotocol.io) server into your
-app's Angular SSR `server.ts`, ships client-bootstrapped Angular widgets that
-hydrate from host-pushed tool data, and gives you a signal-based,
-zoneless-friendly view API that is identical across Claude, ChatGPT, and other
+app's Angular SSR `server.ts`. It ships client-bootstrapped Angular widgets that
+hydrate from host-pushed tool data. It also gives you a signal-based,
+zoneless-friendly view API that is the same for Claude, for ChatGPT and for other
 [MCP-Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)
-hosts. Retrofits an existing app on **Angular v20–v22**.
+hosts. You add all of this to an existing app on **Angular v20–v22**.
 
 ## Quickstart
 
-Run `ng add` against an existing Angular app — it installs the package, ensures
-SSR, mounts the MCP server before the SSR catch-all, adds a widgets build target,
-and (by default) scaffolds the runnable Quick Poll demo:
+Run `ng add` against an existing Angular app. It installs the package, adds SSR
+if the app does not have it, mounts the MCP server before the SSR catch-all, adds
+a widgets build target, and by default scaffolds the runnable Quick Poll demo:
 
 ```bash
 ng add ng-mcp-ui --example=demo
 ```
 
-> Already installed (`npm i ng-mcp-ui`)? The same schematic runs via
+> Already installed (`npm i ng-mcp-ui`)? The same schematic runs with
 > `ng generate ng-mcp-ui:ng-add --example=demo`.
 
 `ng add` wires three npm scripts; the dev loop is:
 
 ```bash
-npm run build:widgets   # ng run <app>:build-widgets — AOT-builds the widget
+npm run build:widgets   # ng run <app>:build-widgets: AOT-builds the widget
                         # bundle, validates every registered view emitted its
                         # code-split chunk (fails loudly if one is broken),
                         # and derives src/mcp/views.manifest.json
-npm run dev:mcp         # ng serve — /mcp and /assets/widgets are now live
+npm run dev:mcp         # ng serve: /mcp and /assets/widgets are now live
 npm run tunnel          # expose it, e.g. cloudflared tunnel --url http://localhost:4200
 ```
 
@@ -77,8 +77,8 @@ validates every registered view emitted a code-split chunk, derives
 `views.manifest.json`), embedded under `dist/schematics/` at pack time.
 
 > A fourth subpath, `ng-mcp-ui/tunnel`, is reserved for the `cloudflared`
-> dev-tunnel manager but **is not implemented yet** — today the live tunnel walk
-> runs through the repo's `npm run live-host` harness. Don't import it.
+> dev-tunnel manager but **is not implemented yet**. Today the live tunnel walk
+> runs through the repo's `npm run live-host` harness. Do not import it.
 
 ## `web` API
 
@@ -91,7 +91,7 @@ identical across Claude / ChatGPT / MCP-Apps hosts.
 | --- | --- |
 | `provideMcpUi` / `bootstrapWidget` | Zoneless setup + the host-derived tokens; boot a standalone widget into the host shell |
 | `injectToolInfo` | The rendering tool's typed input/output as an idle/pending/success state signal |
-| `injectCallTool` | `{ callTool, callToolAsync, status, data, error }` — invoke a server tool from the view |
+| `injectCallTool` | `{ callTool, callToolAsync, status, data, error }` to invoke a server tool from the view |
 | `injectViewState` / `injectViewStore` | Host-persisted, bidirectionally-synced view state (signal, or store-style with debounced writes) |
 | `injectLayout` / `injectDisplayMode` | Host theme, safe-area insets, max height; read + request `inline` / `fullscreen` / `pip` |
 | `injectAppHelpers` | Typed sugar: tool-name-narrowed helpers inferred from `typeof server` |
@@ -257,16 +257,16 @@ server type, so `typeof server` carries enough type information for the
 `injectAppHelpers<typeof server>()` web helper to produce fully-typed,
 tool-name-narrowed hooks.
 
-Content helpers — `text`, `image`, `audio`, `resourceLink`, `embeddedResource`,
-and the `FileRef` schema — build well-formed MCP content blocks for tool
-results. Auth helpers (`requireBearerAuth`, `optionalBearerAuth`,
+Content helpers build well-formed MCP content blocks for tool results: `text`,
+`image`, `audio`, `resourceLink`, `embeddedResource`, and the `FileRef` schema.
+Auth helpers (`requireBearerAuth`, `optionalBearerAuth`,
 `mcpAuthMetadataRouter`) and protocol-level `mcpMiddleware(...)` cover bearer
 auth and cross-cutting concerns.
 
 ## `testing`
 
 `ng-mcp-ui/testing` gives unit tests and Storybook a pure provider override that
-mirrors `provideMcpUi()` — no `window.mcpUi`, no real host. `provideMockMcpUi()`
+mirrors `provideMcpUi()`. It needs no `window.mcpUi` and no real host. `provideMockMcpUi()`
 binds `MCP_ADAPTOR` to an in-memory `MockAdaptor` and returns `{ providers,
 adaptor }` so the test can drive host pushes and inspect the call log:
 
@@ -285,11 +285,11 @@ adaptor.pushHostContext("toolOutput", { question: "Lunch?", options: [] });
 
 ## Host compatibility
 
-A single `Adaptor` interface abstracts the **OpenAI Apps SDK** (`window.openai`,
+A single `Adaptor` interface hides the **OpenAI Apps SDK** (`window.openai`,
 ChatGPT) and the open **MCP-Apps** postMessage spec
-(`@modelcontextprotocol/ext-apps`, Claude & other MCP-Apps hosts) behind one
-API, so widget code is identical across hosts. Both are supported and exercised
-against real hosts during development. **Gemini is not supported.**
+(`@modelcontextprotocol/ext-apps`, Claude and other MCP-Apps hosts) behind one
+API. Therefore your widget code is the same for each host. We support both, and
+we test both against real hosts. **Gemini is not supported.**
 
 ## Documentation
 

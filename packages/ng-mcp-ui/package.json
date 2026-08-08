@@ -1,7 +1,7 @@
 {
   "name": "ng-mcp-ui",
   "version": "0.2.5",
-  "description": "Retrofit an Angular app into an MCP server whose tools render interactive Angular widgets inside Claude and ChatGPT — one ng add.",
+  "description": "Add an MCP server to your Angular app with one ng add. Its tools show interactive Angular widgets in Claude and ChatGPT.",
   "license": "MIT",
   "author": "nntndfrk",
   "homepage": "https://nntndfrk.github.io/ng-mcp-ui/",
