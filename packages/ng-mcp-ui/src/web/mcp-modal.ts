@@ -81,7 +81,7 @@ type ModalCapableAdaptor = Adaptor & { closeModal(): void };
  * (the `modal` display mode is host-driven and unreachable there). Otherwise it
  * derives `isOpen` from the `display` host-context signal and `close()` forwards
  * to the adaptor — wiring an optional Escape-to-close listener when a `document`
- * exists (mirrors the React `useEffect`; SSR / no-DOM hosts skip it).
+ * exists (SSR / no-DOM hosts skip it).
  *
  * The `adaptor` is passed explicitly for non-DI use (plain unit tests). Inside
  * an Angular injection context, prefer {@link MCP_MODAL} / {@link provideMcpModal},
@@ -101,15 +101,15 @@ export function createMcpModal(adaptor: Adaptor, enabled: boolean): McpModal {
   const ctx = createHostContextSignals(adaptor);
   const isOpen = computed(() => ctx.display().mode === "modal");
 
-  // Mirrors the React source's `adaptor.closeModal()`: a local optimistic flip
-  // of the `display` store back to `inline` (no host round-trip). Safe cast —
+  // `adaptor.closeModal()` is a local optimistic flip of the `display` store
+  // back to `inline` (no host round-trip). Safe cast —
   // enabled ⟹ mcp-app ⟹ McpAppAdaptor (see ModalCapableAdaptor).
   const close = (): void => {
     (adaptor as ModalCapableAdaptor).closeModal();
   };
 
-  // Optional DOM affordance: Escape closes the modal (mirrors the React
-  // useEffect keydown handler). Guarded on `addEventListener` (not just
+  // Optional DOM affordance: Escape closes the modal via a keydown handler.
+  // Guarded on `addEventListener` (not just
   // `document`) so SSR / no-DOM / partial-DOM hosts no-op. Cleanup is chained
   // onto the host-context signals' lifecycle (DestroyRef when in DI).
   if (
@@ -149,9 +149,9 @@ export function createMcpModal(adaptor: Adaptor, enabled: boolean): McpModal {
  * (the Apps SDK host owns its own modal chrome), gated by {@link MCP_MODAL_ENABLED}.
  *
  * The environment initializer eagerly resolves {@link MCP_MODAL} at boot — but
- * only when enabled — so the Escape-key wiring attaches up front (matching the
- * React `ModalProvider`, which mounted unconditionally inside the tree). On a
- * non-mcp-app / no-window host the initializer skips resolution entirely, so it
+ * only when enabled — so the Escape-key wiring attaches up front rather than on
+ * first use. On a non-mcp-app / no-window host the initializer skips resolution
+ * entirely, so it
  * never touches {@link MCP_ADAPTOR} (keeping the apps-sdk / SSR / test path a
  * clean no-op rather than a throw).
  */

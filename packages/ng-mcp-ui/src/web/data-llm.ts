@@ -42,11 +42,11 @@ export { VIEW_CONTEXT_KEY } from "./helpers/state.js";
  * Pass `null`/`undefined`/empty for `content` to register only as a structural
  * parent (useful for grouping nested directives).
  *
- * Registration mirrors the source's `useEffect` keyed on `[id, parentId,
- * content]`: {@link ngOnChanges} re-registers whenever the `content` input
- * changes, and {@link DestroyRef} removes the node on teardown (the effect's
- * cleanup return). The directive also writes the resolved content onto the host
- * element as a `data-llm` attribute (PLAN §5.4).
+ * Registration is keyed on `[id, parentId, content]`:
+ * {@link DataLlmDirective.ngOnChanges} re-registers whenever the `content`
+ * input changes, and {@link DestroyRef} removes the node on teardown. The
+ * directive also writes the resolved content onto the host element as a
+ * `data-llm` attribute (PLAN §5.4).
  *
  * Must be used inside a component wired by `provideMcpUi()` so `MCP_ADAPTOR`
  * resolves — nothing here calls `getAdaptor()` (THE RULE, PLAN §5.3).
@@ -98,9 +98,9 @@ export class DataLlmDirective implements OnChanges {
   }
 
   /**
-   * Re-register on every `content` change — the Angular analog of the source's
-   * `useEffect(..., [id, parentId, content])`. The node is always (re)registered
-   * via {@link setNode}: non-empty content registers a content node and writes
+   * Re-register on every `content` change, keyed on `[id, parentId, content]`.
+   * The node is always (re)registered via {@link setNode}: non-empty content
+   * registers a content node and writes
    * the `data-llm` attribute; empty/null registers a *structural parent* (a node
    * with `null` content — it emits no line of its own but keeps its children
    * nested in the serialized tree) and clears the attribute.

@@ -48,8 +48,8 @@ export type CallToolResponse = {
 
 /**
  * How the view is laid out by the host. `"modal"` is host-driven (see
- * {@link useRequestModal}); `"pip"`, `"inline"`, and `"fullscreen"` are
- * requestable via {@link useDisplayMode}.
+ * `injectRequestModal`); `"pip"`, `"inline"`, and `"fullscreen"` are
+ * requestable via `injectDisplayMode`.
  */
 export type DisplayMode = "pip" | "inline" | "fullscreen" | "modal";
 /** Subset of {@link DisplayMode} that the view can request from the host. */
@@ -69,12 +69,12 @@ export type SafeAreaInsets = {
   left: number;
 };
 
-/** Wrapper around {@link SafeAreaInsets} exposed via {@link useLayout}. */
+/** Wrapper around {@link SafeAreaInsets} exposed via `injectLayout`. */
 export type SafeArea = {
   insets: SafeAreaInsets;
 };
 
-/** Device and input-capability hints exposed via {@link useUser}. */
+/** Device and input-capability hints exposed via `injectUser`. */
 export type UserAgent = {
   device: {
     type: DeviceType;
@@ -121,13 +121,13 @@ export interface Bridge<Context> {
   getSnapshot<K extends keyof Context>(key: K): Context[K] | undefined;
 }
 
-/** @internal Per-key snapshot store backing {@link useHostContext}. */
+/** @internal Per-key snapshot store backing `injectHostContext`. */
 export type HostContextStore<K extends keyof HostContext> = {
   subscribe: Subscribe;
   getSnapshot: () => HostContext[K];
 };
 
-/** Persisted view state shape (a plain object). See {@link useViewState}. */
+/** Persisted view state shape (a plain object). See `injectViewState`. */
 export type ViewState = Record<string, unknown>;
 
 /** Updater form accepted when writing to view state. */
@@ -135,17 +135,17 @@ export type SetViewStateAction =
   | ViewState
   | ((prevState: ViewState | null) => ViewState);
 
-/** Reference to a host-managed file (returned by {@link useFiles}). */
+/** Reference to a host-managed file (returned by `injectFiles`). */
 export type FileMetadata = {
   fileId: string;
   fileName?: string;
   mimeType?: string;
 };
 
-/** Options for {@link useFiles}'s `upload`. `library: true` saves into the user's library when supported. */
+/** Options for `injectFiles`'s `upload`. `library: true` saves into the user's library when supported. */
 export type UploadFileOptions = { library?: boolean };
 
-/** Options for {@link useRequestModal}'s `open` call. */
+/** Options for `injectRequestModal`'s `open` call. */
 export type RequestModalOptions = {
   title?: string;
   params?: Record<string, unknown>;
@@ -154,7 +154,7 @@ export type RequestModalOptions = {
 };
 
 /**
- * Options for {@link useOpenExternal}. Set `redirectUrl: false` to tell the
+ * Options for `injectOpenExternal`. Set `redirectUrl: false` to tell the
  * host not to append its `?redirectUrl=…` tracking query parameter when
  * opening allowlisted targets.
  */
@@ -162,10 +162,10 @@ export type OpenExternalOptions = {
   redirectUrl?: false;
 };
 
-/** Options for {@link useSendFollowUpMessage}. */
+/** Options for `injectSendFollowUpMessage`. */
 export type SendFollowUpMessageOptions = { scrollToBottom?: boolean };
 
-/** Options for {@link useRequestSize}. Omit a dimension to leave it unchanged. */
+/** Options for `injectRequestSize`. Omit a dimension to leave it unchanged. */
 export type RequestSizeOptions = {
   width?: number;
   height?: number;
