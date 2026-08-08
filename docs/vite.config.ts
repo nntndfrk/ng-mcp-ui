@@ -17,7 +17,11 @@ const pkg: { version: string } = JSON.parse(
 
 // GitHub Pages serves a project site from /<repo>/; `vite dev` and a local
 // preview serve from /. The docs workflow sets DOCS_BASE=/ng-mcp-ui/.
-const base = process.env.DOCS_BASE ?? "/";
+// Destructured, not read as `process.env.DOCS_BASE`: this tsconfig sets
+// `noPropertyAccessFromIndexSignature`, and Biome's `useLiteralKeys` rejects
+// the bracket form that flag asks for.
+const { DOCS_BASE } = process.env;
+const base = DOCS_BASE ?? "/";
 const siteUrl = `https://nntndfrk.github.io${base}`;
 
 /**
