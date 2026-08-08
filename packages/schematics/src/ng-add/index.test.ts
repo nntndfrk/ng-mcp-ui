@@ -73,9 +73,8 @@ describe("ng-add", () => {
 
   it("leaves the SSR `build` target untouched", async () => {
     const fixture = await createWorkspaceTree("fixture-app", { ssr: true });
-    const buildBefore = JSON.parse(fixture.readContent("/angular.json")).projects[
-      "fixture-app"
-    ].architect.build;
+    const buildBefore = JSON.parse(fixture.readContent("/angular.json"))
+      .projects["fixture-app"].architect.build;
 
     const result = await runner.runSchematic(
       "ng-add",
@@ -194,9 +193,7 @@ describe("ng-add", () => {
     expect(afterSecond).toBe(afterFirst);
     // Exactly one set of MCP routes — no duplication.
     expect(afterSecond.match(/ng-mcp-ui:mcp-routes/g)?.length).toBe(1);
-    expect(
-      afterSecond.match(/app\.use\("\/mcp"/g)?.length,
-    ).toBe(1);
+    expect(afterSecond.match(/app\.use\("\/mcp"/g)?.length).toBe(1);
   });
 
   it("handles a wildcard-route catch-all (app.use('*', ...))", async () => {
@@ -253,13 +250,13 @@ describe("ng-add", () => {
     expect(result.readContent("/projects/fixture-app/src/server.ts")).toBe(
       exotic,
     );
-    expect(result.readContent("/projects/fixture-app/src/server.ts")).not.toContain(
-      "ng-mcp-ui:mcp-routes",
-    );
+    expect(
+      result.readContent("/projects/fixture-app/src/server.ts"),
+    ).not.toContain("ng-mcp-ui:mcp-routes");
     // The manual-patch instructions were logged.
     const joined = logs.join("\n");
     expect(joined).toContain("Could not automatically patch src/server.ts");
-    expect(joined).toContain('createMcpExpressRouter');
+    expect(joined).toContain("createMcpExpressRouter");
     expect(joined).toContain('app.use("/mcp", createMcpExpressRouter(mcp));');
   });
 
@@ -288,7 +285,9 @@ describe("ng-add", () => {
       expect(result.files).toContain(path);
     }
 
-    const server = result.readContent("/projects/fixture-app/src/mcp/server.ts");
+    const server = result.readContent(
+      "/projects/fixture-app/src/mcp/server.ts",
+    );
     expect(server).toContain("export function createMcpServer(): McpServer");
     expect(server).toContain('name: "echo"');
     expect(server).toContain("interface ViewNameRegistry");
@@ -300,7 +299,9 @@ describe("ng-add", () => {
     );
     expect(manifest).toContain("export function resolveViewManifest()");
 
-    const main = result.readContent("/projects/fixture-app/src/widgets/main.ts");
+    const main = result.readContent(
+      "/projects/fixture-app/src/widgets/main.ts",
+    );
     expect(main).toContain("bootstrapWidget");
 
     const registry = result.readContent(
@@ -428,9 +429,9 @@ describe("ng-add", () => {
 
     const angularJson = JSON.parse(twice.readContent("/angular.json"));
     const architect = angularJson.projects["fixture-app"].architect;
-    expect(Object.keys(architect).filter((k) => k === "build-widgets").length).toBe(
-      1,
-    );
+    expect(
+      Object.keys(architect).filter((k) => k === "build-widgets").length,
+    ).toBe(1);
     const widget = twice.readContent(
       "/projects/fixture-app/src/widgets/echo/echo.widget.ts",
     );
@@ -537,7 +538,8 @@ describe("ng-add", () => {
     fixture.create("/projects/fixture-app/tools/build-widgets.mjs", userScript);
     const pkgBefore = JSON.parse(fixture.readContent("/package.json"));
     pkgBefore.scripts ??= {};
-    pkgBefore.scripts["build:widgets"] = "node tools/build-widgets.mjs --custom";
+    pkgBefore.scripts["build:widgets"] =
+      "node tools/build-widgets.mjs --custom";
     fixture.overwrite("/package.json", JSON.stringify(pkgBefore, null, 2));
 
     const result = await runner.runSchematic(

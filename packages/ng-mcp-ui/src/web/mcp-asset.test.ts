@@ -45,9 +45,9 @@ describe("McpAssetPipe", () => {
   }
 
   it("transform() resolves against the injected MCP_SERVER_URL", () => {
-    expect(makePipe("https://app.example.com").transform("media/poll.png")).toBe(
-      "https://app.example.com/assets/widgets/media/poll.png",
-    );
+    expect(
+      makePipe("https://app.example.com").transform("media/poll.png"),
+    ).toBe("https://app.example.com/assets/widgets/media/poll.png");
   });
 
   it("transform() returns the relative path when serverUrl is empty (dev)", () => {

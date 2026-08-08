@@ -1,8 +1,5 @@
 import { assertInInjectionContext, inject } from "@angular/core";
-import type {
-  Adaptor,
-  SendFollowUpMessageOptions,
-} from "./bridges/types.js";
+import type { Adaptor, SendFollowUpMessageOptions } from "./bridges/types.js";
 import { MCP_ADAPTOR } from "./tokens.js";
 
 /** Function that sends a follow-up message to the LLM. Returned by {@link injectSendFollowUpMessage}. */

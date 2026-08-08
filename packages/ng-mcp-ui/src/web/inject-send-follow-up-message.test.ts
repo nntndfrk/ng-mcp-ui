@@ -12,8 +12,7 @@ import { createFakeAdaptor, spy } from "./test-fakes.js";
 function makeInjector(method: ReturnType<typeof spy>): EnvironmentInjector {
   const adaptor = createFakeAdaptor({
     methods: {
-      sendFollowUpMessage:
-        method as unknown as Adaptor["sendFollowUpMessage"],
+      sendFollowUpMessage: method as unknown as Adaptor["sendFollowUpMessage"],
     },
   });
   return Injector.create({

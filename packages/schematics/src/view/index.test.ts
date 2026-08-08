@@ -198,7 +198,9 @@ describe("view", () => {
     );
     expect(toolFile).toContain('component: "foo"');
 
-    const server = result.readContent("/projects/fixture-app/src/mcp/server.ts");
+    const server = result.readContent(
+      "/projects/fixture-app/src/mcp/server.ts",
+    );
     expect(server).toContain("registerFooTool(server);");
     expect(server).toContain("./tools/foo");
   });

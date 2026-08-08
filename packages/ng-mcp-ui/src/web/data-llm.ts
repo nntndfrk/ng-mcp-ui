@@ -117,7 +117,11 @@ export class DataLlmDirective implements OnChanges {
 
     if (this.renderer && this.host) {
       if (content) {
-        this.renderer.setAttribute(this.host.nativeElement, "data-llm", content);
+        this.renderer.setAttribute(
+          this.host.nativeElement,
+          "data-llm",
+          content,
+        );
       } else {
         this.renderer.removeAttribute(this.host.nativeElement, "data-llm");
       }

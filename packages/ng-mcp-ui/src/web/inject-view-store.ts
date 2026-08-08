@@ -7,10 +7,7 @@ import {
   signal,
 } from "@angular/core";
 import type { Adaptor, ViewState } from "./bridges/types.js";
-import {
-  filterViewContext,
-  injectViewContext,
-} from "./helpers/state.js";
+import { filterViewContext, injectViewContext } from "./helpers/state.js";
 import { deepEqual } from "./bridges/mcp-app/deep-equal.js";
 import { MCP_ADAPTOR } from "./tokens.js";
 
@@ -79,18 +76,14 @@ export type InjectViewStore<State extends ViewState> = {
    * (debounced).
    */
   update: (
-    partial:
-      | Partial<State>
-      | ((prevState: State | null) => Partial<State>),
+    partial: Partial<State> | ((prevState: State | null) => Partial<State>),
   ) => void;
   /**
    * Alias of {@link InjectViewStore.update} mirroring the common store "patch"
    * verb. Shallow-merges a partial onto the previous state.
    */
   patch: (
-    partial:
-      | Partial<State>
-      | ((prevState: State | null) => Partial<State>),
+    partial: Partial<State> | ((prevState: State | null) => Partial<State>),
   ) => void;
   /**
    * Derive a memoized read-only signal from the state via a selector.
@@ -177,7 +170,7 @@ export function injectViewStore<State extends ViewState>(
   const initial: State | null =
     seedFromBridge !== null
       ? filterViewContext(seedFromBridge)
-      : resolveSeed(initialState) ?? resolveSeed(defaultState);
+      : (resolveSeed(initialState) ?? resolveSeed(defaultState));
 
   const state = signal<State | null>(initial);
 
@@ -240,9 +233,7 @@ export function injectViewStore<State extends ViewState>(
   };
 
   const update = (
-    partial:
-      | Partial<State>
-      | ((prevState: State | null) => Partial<State>),
+    partial: Partial<State> | ((prevState: State | null) => Partial<State>),
   ): void => {
     set((prev) => {
       const delta =

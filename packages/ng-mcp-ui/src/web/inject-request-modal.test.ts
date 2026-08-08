@@ -71,7 +71,9 @@ describe("injectRequestModal", () => {
       providers: [{ provide: MCP_ADAPTOR, useValue: adaptor }],
     }) as EnvironmentInjector;
 
-    const { open } = runInInjectionContext(injector, () => injectRequestModal());
+    const { open } = runInInjectionContext(injector, () =>
+      injectRequestModal(),
+    );
     const options: RequestModalOptions = {
       title: "Test Modal",
       params: { foo: "bar" },

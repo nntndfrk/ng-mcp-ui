@@ -12,10 +12,7 @@
 // and `viewName` originate from request headers / view config, so escaping is a
 // defense-in-depth measure even though the values are normally trusted.
 
-import type {
-  ShellRenderer,
-  ShellRenderInput,
-} from "./shell-renderer.js";
+import type { ShellRenderer, ShellRenderInput } from "./shell-renderer.js";
 import type { ViewHostType } from "./types.js";
 import type { ViewManifest } from "./view-manifest.js";
 

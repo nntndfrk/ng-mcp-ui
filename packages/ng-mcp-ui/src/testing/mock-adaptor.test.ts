@@ -96,7 +96,9 @@ describe("MockAdaptor", () => {
     const store = adaptor.getHostContextStore("viewState");
     adaptor.pushHostContext("viewState", { count: 41 });
 
-    adaptor.setViewState((prev) => ({ count: ((prev?.count as number) ?? 0) + 1 }));
+    adaptor.setViewState((prev) => ({
+      count: ((prev?.count as number) ?? 0) + 1,
+    }));
     expect(store.getSnapshot()).toEqual({ count: 42 });
   });
 

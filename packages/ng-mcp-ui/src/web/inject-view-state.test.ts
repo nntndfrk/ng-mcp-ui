@@ -24,7 +24,9 @@ function setup(initialViewState: Record<string, unknown> | null = null) {
   const setViewState = spy(() => Promise.resolve());
   const adaptor = createFakeAdaptor({
     stores: { viewState: view.store },
-    methods: { setViewState: setViewState as unknown as Adaptor["setViewState"] },
+    methods: {
+      setViewState: setViewState as unknown as Adaptor["setViewState"],
+    },
   });
   const injector = Injector.create({
     providers: [{ provide: MCP_ADAPTOR, useValue: adaptor }],

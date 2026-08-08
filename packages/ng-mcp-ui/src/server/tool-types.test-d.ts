@@ -44,9 +44,7 @@ describe("ExtractStructuredContent", () => {
   });
 
   it("is never when the return has no structuredContent", () => {
-    expectTypeOf<
-      ExtractStructuredContent<{ content: string }>
-    >().toBeNever();
+    expectTypeOf<ExtractStructuredContent<{ content: string }>>().toBeNever();
   });
 
   it("pulls the shape from an optional structuredContent? (undefined stripped)", () => {
@@ -61,7 +59,8 @@ describe("ExtractStructuredContent", () => {
   it("pulls the shape from the carrying member of a union return", () => {
     expectTypeOf<
       ExtractStructuredContent<
-        { content: string } | { content: string; structuredContent: { hits: number } }
+        | { content: string }
+        | { content: string; structuredContent: { hits: number } }
       >
     >().toEqualTypeOf<{ hits: number }>();
   });
@@ -97,13 +96,22 @@ describe("ExtendToolRegistry", () => {
       { tookMs: number }
     >;
     expectTypeOf<R["search"]>().toEqualTypeOf<
-      ToolDef<{ query: string; limit?: number }, { hits: number }, { tookMs: number }>
+      ToolDef<
+        { query: string; limit?: number },
+        { hits: number },
+        { tookMs: number }
+      >
     >();
   });
 
   it("accumulates across registrations, inferring each entry's shapes", () => {
     type R1 = ExtendToolRegistry<Empty, "search", Shape, { hits: number }>;
-    type R2 = ExtendToolRegistry<R1, "ping", { n: z.ZodNumber }, { ok: boolean }>;
+    type R2 = ExtendToolRegistry<
+      R1,
+      "ping",
+      { n: z.ZodNumber },
+      { ok: boolean }
+    >;
     expectTypeOf<keyof R2>().toEqualTypeOf<"search" | "ping">();
     // the second entry's input shape is inferred, not just its key — and the
     // omitted TResponseMetadata falls back to its `unknown` default.
@@ -114,7 +122,10 @@ describe("ExtendToolRegistry", () => {
 });
 
 describe("ToolHandler", () => {
-  type H = ToolHandler<Shape, { content: string; structuredContent: { hits: number } }>;
+  type H = ToolHandler<
+    Shape,
+    { content: string; structuredContent: { hits: number } }
+  >;
 
   it("types args from the input shape", () => {
     expectTypeOf<Parameters<H>[0]>().toEqualTypeOf<{

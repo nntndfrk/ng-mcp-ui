@@ -44,7 +44,7 @@ describe("renderProductionShell", () => {
       viewName: "card",
       manifest: new InMemoryViewManifest("main-ABC123.js"),
     });
-    expect(html).not.toContain("rel=\"stylesheet\"");
+    expect(html).not.toContain('rel="stylesheet"');
   });
 });
 
@@ -120,7 +120,9 @@ describe("shell HTML escaping (XSS defense-in-depth)", () => {
     });
     // the injected closing tag must be neutralized to </script>
     expect(html).not.toContain("</script><script>alert(1)");
-    expect(html).toContain('viewName: "\\u003c/script>\\u003cscript>alert(1)//"');
+    expect(html).toContain(
+      'viewName: "\\u003c/script>\\u003cscript>alert(1)//"',
+    );
     // the only literal </script> tags are the two legitimate element closers
     // (the mcpUi global script + the main bundle script) — none injected.
     expect(html.match(/<\/script>/g)?.length).toBe(2);

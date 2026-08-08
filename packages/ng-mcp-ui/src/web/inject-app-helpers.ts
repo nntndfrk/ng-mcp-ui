@@ -55,11 +55,7 @@ type TypedCallToolReturn<TInput, TOutput> = Prettify<{
 
 /** Return shape of the typed `injectToolInfo`: {@link ToolState} narrowed to the schemas. */
 type TypedToolInfoReturn<TInput, TOutput, TResponseMetadata> = Signal<
-  ToolState<
-    Objectify<TInput>,
-    Objectify<TOutput>,
-    Objectify<TResponseMetadata>
-  >
+  ToolState<Objectify<TInput>, Objectify<TOutput>, Objectify<TResponseMetadata>>
 >;
 
 /**

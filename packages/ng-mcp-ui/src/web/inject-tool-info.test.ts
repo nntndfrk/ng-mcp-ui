@@ -40,7 +40,9 @@ describe("injectToolInfo", () => {
 
   it("returns pending state with input once toolInput is pushed", () => {
     const toolInput = createFakeStore<"toolInput">(null);
-    const adaptor = createFakeAdaptor({ stores: { toolInput: toolInput.store } });
+    const adaptor = createFakeAdaptor({
+      stores: { toolInput: toolInput.store },
+    });
     const injector = makeInjector(adaptor);
 
     const tool = runInInjectionContext(injector, () => injectToolInfo());
@@ -120,7 +122,9 @@ describe("injectToolInfo", () => {
     // A fake provided purely via the token: if injectToolInfo secretly called
     // getAdaptor() it would touch window.mcpUi (unset here) and throw.
     const toolInput = createFakeStore<"toolInput">({ q: "x" });
-    const adaptor = createFakeAdaptor({ stores: { toolInput: toolInput.store } });
+    const adaptor = createFakeAdaptor({
+      stores: { toolInput: toolInput.store },
+    });
     const injector = makeInjector(adaptor);
 
     const tool = runInInjectionContext(injector, () => injectToolInfo());
@@ -135,7 +139,9 @@ describe("injectToolInfo", () => {
 
   it("stops reacting to host pushes after the injector is destroyed", () => {
     const toolInput = createFakeStore<"toolInput">(null);
-    const adaptor = createFakeAdaptor({ stores: { toolInput: toolInput.store } });
+    const adaptor = createFakeAdaptor({
+      stores: { toolInput: toolInput.store },
+    });
     const injector = makeInjector(adaptor);
 
     const tool = runInInjectionContext(injector, () => injectToolInfo());

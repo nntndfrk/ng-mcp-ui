@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject } from "@angular/core";
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+} from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { Meta } from "@angular/platform-browser";
 import {
@@ -166,9 +172,15 @@ export default class DocsLayout {
     { initialValue: { route: "", content: "" } },
   );
 
-  protected readonly entry = computed(() => this.index.find(this.active().route));
-  protected readonly neighbours = computed(() => this.index.neighbours(this.active().route));
-  protected readonly headings = computed(() => extractHeadings(this.active().content));
+  protected readonly entry = computed(() =>
+    this.index.find(this.active().route),
+  );
+  protected readonly neighbours = computed(() =>
+    this.index.neighbours(this.active().route),
+  );
+  protected readonly headings = computed(() =>
+    extractHeadings(this.active().content),
+  );
 
   constructor() {
     // The generated markdown route sets <title> from front matter; the page

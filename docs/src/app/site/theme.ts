@@ -1,5 +1,11 @@
 import { isPlatformBrowser } from "@angular/common";
-import { DOCUMENT, Injectable, PLATFORM_ID, inject, signal } from "@angular/core";
+import {
+  DOCUMENT,
+  Injectable,
+  PLATFORM_ID,
+  inject,
+  signal,
+} from "@angular/core";
 
 export type Theme = "dark" | "light";
 

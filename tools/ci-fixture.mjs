@@ -57,7 +57,13 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 // ---- args -----------------------------------------------------------------
 function parseArgs(argv) {
-  const out = { ngVersion: "", port: "4400", keep: false, serve: false, tunnel: false };
+  const out = {
+    ngVersion: "",
+    port: "4400",
+    keep: false,
+    serve: false,
+    tunnel: false,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--ng-version") {
@@ -84,7 +90,9 @@ const { port, serve, tunnel } = args;
 // before a tunnel could matter); fail loudly rather than silently no-op so a
 // caller isn't left waiting for a public URL that will never print.
 if (tunnel && !serve) {
-  console.error("ci-fixture: --tunnel requires --serve (try: npm run live-host)");
+  console.error(
+    "ci-fixture: --tunnel requires --serve (try: npm run live-host)",
+  );
   process.exit(2);
 }
 // --serve is for a local live walk; default to the host major when unspecified.
@@ -489,9 +497,7 @@ async function liveServe() {
     console.log(
       `\n${tag} to expose publicly (zero-auth): cloudflared tunnel --url ${localBase}`,
     );
-    console.log(
-      `${tag} then paste <public-url>/mcp into the host connector.`,
-    );
+    console.log(`${tag} then paste <public-url>/mcp into the host connector.`);
   }
   console.log(`\n${tag} press Ctrl-C to stop.\n`);
 
@@ -594,7 +600,9 @@ async function main() {
 
   // 6a. live-host mode — keep the built demo serving for a manual real-host walk.
   if (serve) {
-    console.log(`\n${tag} BUILD COMPLETE in ${secs.toFixed(0)}s — entering live-host serve mode.`);
+    console.log(
+      `\n${tag} BUILD COMPLETE in ${secs.toFixed(0)}s — entering live-host serve mode.`,
+    );
     await liveServe();
     return; // liveServe() owns the rest of the lifecycle (and we keep the app).
   }

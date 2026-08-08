@@ -88,7 +88,9 @@
   color: var(--poll-fg);
   font-size: 0.9375rem;
   cursor: pointer;
-  transition: border-color 0.12s ease, background 0.12s ease;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
 }
 
 .poll-option:hover:not(:disabled) {

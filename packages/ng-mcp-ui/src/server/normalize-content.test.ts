@@ -8,7 +8,9 @@ describe("normalizeContent", () => {
   });
 
   it("wraps a plain string as a single TextContent", () => {
-    expect(normalizeContent("hello")).toEqual([{ type: "text", text: "hello" }]);
+    expect(normalizeContent("hello")).toEqual([
+      { type: "text", text: "hello" },
+    ]);
   });
 
   it("wraps a single content block in an array", () => {

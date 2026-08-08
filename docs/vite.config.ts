@@ -8,7 +8,9 @@ import { type Plugin, defineConfig } from "vite";
 // build time so the site can never drift from what `npm i ng-mcp-ui` installs.
 const pkg: { version: string } = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../packages/ng-mcp-ui/package.json", import.meta.url)),
+    fileURLToPath(
+      new URL("../packages/ng-mcp-ui/package.json", import.meta.url),
+    ),
     "utf8",
   ),
 );
@@ -27,7 +29,9 @@ function docRoutes(dir: URL, prefix = ""): string[] {
   const routes: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.isDirectory()) {
-      routes.push(...docRoutes(new URL(`${entry.name}/`, dir), `${prefix}${entry.name}/`));
+      routes.push(
+        ...docRoutes(new URL(`${entry.name}/`, dir), `${prefix}${entry.name}/`),
+      );
     } else if (entry.name.endsWith(".md")) {
       routes.push(`/docs/${prefix}${entry.name.slice(0, -".md".length)}`);
     }

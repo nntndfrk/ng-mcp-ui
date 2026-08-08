@@ -162,8 +162,7 @@ export function provideMcpModal(): EnvironmentProviders {
       // Only window reader for the modal gate (mirrors provideMcpUi's factories).
       // Guarded so SSR / no-window / missing-shell is `false` rather than a throw.
       useFactory: (): boolean =>
-        typeof window !== "undefined" &&
-        window.mcpUi?.hostType === "mcp-app",
+        typeof window !== "undefined" && window.mcpUi?.hostType === "mcp-app",
     },
     {
       provide: MCP_MODAL,

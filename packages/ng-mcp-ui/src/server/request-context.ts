@@ -48,9 +48,7 @@ function isLoopbackHost(host: string): boolean {
     ? host.slice(1, host.indexOf("]"))
     : host.split(":")[0];
   return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "::1"
+    hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
   );
 }
 

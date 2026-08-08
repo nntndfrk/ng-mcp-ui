@@ -221,7 +221,8 @@ export class DocsSearch {
   private readonly router = inject(Router);
   private readonly index = inject(DocsIndex);
   private readonly box = viewChild<ElementRef<HTMLInputElement>>("box");
-  private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>("dlg");
+  private readonly dialog =
+    viewChild.required<ElementRef<HTMLDialogElement>>("dlg");
 
   protected readonly isOpen = signal(false);
   protected readonly query = signal("");
@@ -240,7 +241,9 @@ export class DocsSearch {
     }
     return all
       .filter((entry) =>
-        `${entry.title} ${entry.group} ${entry.description}`.toLowerCase().includes(needle),
+        `${entry.title} ${entry.group} ${entry.description}`
+          .toLowerCase()
+          .includes(needle),
       )
       .slice(0, 12);
   });

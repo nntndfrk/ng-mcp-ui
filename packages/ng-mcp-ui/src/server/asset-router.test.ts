@@ -21,7 +21,11 @@ describe("createViewAssetRouter (production / static)", () => {
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "ng-mcp-ui-assets-"));
-    writeFileSync(join(dir, "main-XBYE53NT.js"), "export const x = 1;\n", "utf8");
+    writeFileSync(
+      join(dir, "main-XBYE53NT.js"),
+      "export const x = 1;\n",
+      "utf8",
+    );
     writeFileSync(join(dir, "styles-3KHXIMM7.css"), ".a{color:red}\n", "utf8");
     writeFileSync(join(dir, "index.html"), "<!doctype html>\n", "utf8");
   });
@@ -116,9 +120,7 @@ describe("createViewAssetRouter (development / dev-proxy)", () => {
     const app = appWith(
       createViewAssetRouter({ mode: "development", devServerUrl: upstreamUrl }),
     );
-    const res = await request(app)
-      .get("/assets/widgets/main.js")
-      .expect(200);
+    const res = await request(app).get("/assets/widgets/main.js").expect(200);
     expect(res.text).toContain("proxied main");
     expect(res.headers["access-control-allow-origin"]).toBe("*");
   });

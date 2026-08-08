@@ -9,10 +9,7 @@ import type {
   HostContext,
   HostContextStore,
 } from "./bridges/types.js";
-import {
-  createHostContextSignals,
-  injectHostContext,
-} from "./host-context.js";
+import { createHostContextSignals, injectHostContext } from "./host-context.js";
 // MCP_ADAPTOR lives in the leaf tokens module; internal modules import it
 // straight from the leaf (provide-mcp-ui re-exports it as the single public
 // export site, but importing the leaf here avoids a needless module hop).

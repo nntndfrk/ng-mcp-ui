@@ -20,9 +20,9 @@ describe("readHeader", () => {
 
   it("looks up case-insensitively (HTTP header names are)", () => {
     expect(readHeader({ Host: "a.com" }, "host")).toBe("a.com");
-    expect(readHeader({ "X-Forwarded-Host": "b.com" }, "x-forwarded-host")).toBe(
-      "b.com",
-    );
+    expect(
+      readHeader({ "X-Forwarded-Host": "b.com" }, "x-forwarded-host"),
+    ).toBe("b.com");
   });
 });
 
