@@ -1,13 +1,13 @@
 ---
 title: build-widgets
-description: The Angular builder that bundles the widget views, proves every registered view emitted a chunk, and derives views.manifest.json.
+description: The Angular builder that bundles the widget views, proves that each registered view emitted a chunk, and derives views.manifest.json.
 group: Schematics
 groupOrder: 3
 order: 4
 ---
 
-`ng add` wires a `build-widgets` target onto the `ng-mcp-ui:build-widgets` builder. Run it through
-the npm script or the target directly:
+`ng add` adds a `build-widgets` target on the `ng-mcp-ui:build-widgets` builder. Run it through the
+npm script, or run the target directly.
 
 ```bash
 npm run build:widgets
@@ -16,43 +16,49 @@ ng run my-app:build-widgets
 
 ## What it does
 
-The builder delegates the actual build to `@angular/build:application` with the passthrough options,
-then post-validates the emitted bundle graph:
+The builder gives the build itself to `@angular/build:application`, with your options. It then
+checks the emitted bundle graph.
 
-1. **Bundle.** Each entry in `src/widgets/registry.ts` is a dynamic `import()`, so esbuild
-   code-splits every view into its own name-stable hashed chunk.
-2. **Validate.** Every view registered in the widget registry must have code-split into an emitted
-   chunk on disk. A registry entry whose widget module is broken — bad import path, not reachable
-   from `src/widgets/main.ts` — fails the build here, rather than at runtime when a host first
-   requests the view.
-3. **Derive.** On success it can write an additive `views.manifest.json` of the shape
-   `{ entry, styles, views }`.
+1. **Bundle.** Each entry of `src/widgets/registry.ts` is a dynamic `import()`. Therefore esbuild
+   puts each view in its own hashed chunk, and the name of that chunk stays stable.
+2. **Validate.** Each view in the registry must have a chunk on disk. A registry entry with a broken
+   widget module fails the build here. Examples of a broken module are a bad import path, and a
+   module that `src/widgets/main.ts` cannot reach.
+3. **Derive.** After a successful build, the builder can write a `views.manifest.json` file with
+   this shape: `{ entry, styles, views }`.
 
-That second step is the point of the builder. Without it a broken registry entry is invisible until
-a real host asks for the view and gets a blank iframe.
+Step 2 is the reason for the builder. Without it, a broken registry entry stays invisible until a
+real host asks for the view and gets an empty iframe.
 
 ## Options
 
-Everything not listed here is passed through verbatim to `@angular/build:application`.
+The builder passes each option that is not in this table to `@angular/build:application` unchanged.
 
 | Option | Type | Default | Notes |
 | --- | --- | --- | --- |
-| `registry` | string | `src/widgets/registry.ts` | Workspace-root-relative path to the widget registry source. |
-| `manifestOut` | string | *(unset)* | Where to write the derived manifest JSON; omit to skip emission. |
-| `failOnMissingView` | boolean | `true` | Fail the build on a registered view with no emitted chunk (`false` warns instead). |
+| `registry` | string | `src/widgets/registry.ts` | The path of the widget registry source, relative to the workspace root. |
+| `manifestOut` | string | *(unset)* | The path for the derived manifest JSON. Omit it to write no file. |
+| `failOnMissingView` | boolean | `true` | Fails the build when a registered view has no chunk. Set `false` to write a warning instead. |
 
-## Output and the view shell
+## The output and the view shell
 
-The build emits into `dist/widgets/browser/`, including an `index.html` carrying the hashed
-`main-*.js` and `styles-*.css` names. `src/mcp/views.manifest.ts` parses that file with
-`IndexHtmlViewManifest` so `resources/read` returns a shell pointing at the real filenames — and
-falls back to an `InMemoryViewManifest("main.js")` when the build has not run yet, which still
-produces a bootable shell.
+The build writes to `dist/widgets/browser/`. The output holds an `index.html` file with the hashed
+`main-*.js` and `styles-*.css` names.
+
+`src/mcp/views.manifest.ts` parses that file with
+[`IndexHtmlViewManifest`](/docs/api/view-manifest). Therefore a `resources/read` call returns a
+shell that names the real files.
+
+Before the first build, the same code falls back to an `InMemoryViewManifest("main.js")`. That
+fallback still gives a shell that boots.
 
 ## Migrating from the scaffolded script
 
 Before this builder existed, `ng add` copied the same validation into each app as
-`tools/build-widgets.mjs`. Re-running `ng generate ng-mcp-ui:ng-add` migrates the app: the target is
-rewritten onto the builder, the scaffolded script is deleted, and the `build:widgets` npm script is
-repointed. Pass `--migrate-build-script=false` to keep a customized copy of the script — the target
-is still rewritten, which the legacy script tolerates.
+`tools/build-widgets.mjs`.
+
+Run `ng generate ng-mcp-ui:ng-add` again to migrate such an app. The schematic rewrites the target
+onto the builder, deletes the scaffolded script, and repoints the `build:widgets` npm script.
+
+Pass `--migrate-build-script=false` to keep your own copy of the script. The schematic still
+rewrites the target, and the old script tolerates that.

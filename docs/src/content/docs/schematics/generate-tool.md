@@ -1,6 +1,6 @@
 ---
 title: generate tool
-description: Scaffold a registerTool call with Zod schemas, optionally linked to an existing view, wired into createMcpServer.
+description: Scaffolds a registerTool call with Zod schemas, optionally linked to a view, wired into createMcpServer.
 group: Schematics
 groupOrder: 3
 order: 3
@@ -11,18 +11,18 @@ ng generate ng-mcp-ui:tool cast_vote
 ng generate ng-mcp-ui:tool create_poll --view=poll   # link to an existing view
 ```
 
-Generates a `registerTool` call with Zod input and output schemas and wires it into your app's
-`createMcpServer()`.
+The generator writes a [`registerTool`](/docs/api/register-tool) call with a Zod input schema and a
+Zod output schema. It also wires the call into the `createMcpServer()` function of your app.
 
 ## Options
 
 | Option | Type | Default | Notes |
 | --- | --- | --- | --- |
-| `name` | string | — | Tool name (first positional argument). **Required.** |
-| `--project` | string | current project | Target project name. |
-| `--view` | string | — | Name of an existing view to link this tool to. |
+| `name` | string | *(none)* | The name of the tool. It is the first positional argument. **Required.** |
+| `--project` | string | current project | The target project. |
+| `--view` | string | *(none)* | The name of an existing view to link this tool to. |
 
-## What it generates
+## What it writes
 
 ```ts
 import { McpServer } from "ng-mcp-ui/server";
@@ -48,8 +48,8 @@ export function registerCastVoteTool(server: McpServer): void {
 }
 ```
 
-With `--view=poll` the config also carries the view link, which is what makes the host render the
-tool result as an interactive widget instead of text:
+With `--view=poll` the config also carries the view link. That link makes the host render the tool
+result as an interactive widget, and not as text.
 
 ```ts
       view: {
@@ -58,20 +58,34 @@ tool result as an interactive widget instead of text:
       },
 ```
 
-The generated `register…Tool(server)` function is called from `createMcpServer()` in
-`src/mcp/server.ts`; edit the schemas and the handler to implement the real behaviour.
+`createMcpServer()` in `src/mcp/server.ts` calls the generated `register…Tool(server)` function.
+Edit the schemas and the handler to add the real behavior.
 
-## One tool per view
+Write the `description` field for the model. The model reads it to decide when to call your tool.
 
-A view is rendered by the tool that carries its `view` link. If several tools should be able to
-render the same widget, keep the view link on the tool that opens it and let the others be plain
-tools the widget calls through [`injectCallTool`](/docs/guides/typed-tool-data) — that is exactly
-the shape of the Quick Poll demo, where `create_poll` renders the view and `cast_vote` is called
-from inside it.
+## One tool for each view
+
+The tool that carries the `view` link renders that view. A second tool that names the same view
+throws an error at registration time.
+
+If several tools must work on one widget, keep the view link on the tool that opens the widget. Make
+the others plain tools, and call them from inside the view with
+[`injectCallTool`](/docs/api/inject-call-tool).
+
+The Quick Poll demo has this shape. `create_poll` renders the view, and the view calls `cast_vote`.
 
 ## Type inference
 
-Each `registerTool` call accumulates its input, output and `_meta` shape into the server type, so
-`typeof server` carries enough information for `injectAppHelpers<typeof server>()` to produce
-fully typed, tool-name-narrowed helpers in the widget. Nothing extra to declare — just export the
-server's type from `src/mcp/server.ts`.
+Each `registerTool` call adds its input, output and `_meta` shape to the type of the server.
+Therefore `typeof server` carries enough information for
+[`injectAppHelpers`](/docs/api/inject-app-helpers) to give you typed, tool-name-narrowed helpers in
+the widget.
+
+You declare nothing more. Export the type of the server from `src/mcp/server.ts`:
+
+```ts
+export type AppServer = ReturnType<typeof createMcpServer>;
+```
+
+Keep the `registerTool` calls in one chained expression. A version that registers each tool in a
+separate statement loses the accumulated types.

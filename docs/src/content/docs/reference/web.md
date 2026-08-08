@@ -1,14 +1,14 @@
 ---
 title: ng-mcp-ui/web
-description: The Angular host bridge — provideMcpUi, bootstrapWidget, the full inject* signal API, and the declarables.
+description: The Angular host bridge. provideMcpUi, bootstrapWidget, the full inject* signal API, and the declarables.
 group: Reference
 groupOrder: 4
 order: 2
 ---
 
-Every `inject*` function must be called from an Angular **injection context**, and each resolves the
-host adaptor from the `MCP_ADAPTOR` DI token provided by `provideMcpUi()` — so widget code is
-identical across Claude, ChatGPT and other MCP-Apps hosts.
+You must call each `inject*` function from an Angular **injection context**. Each one resolves the
+host adaptor from the `MCP_ADAPTOR` DI token that `provideMcpUi()` supplies. Therefore your widget
+code is the same for Claude, for ChatGPT and for other MCP-Apps hosts.
 
 Each row links to the full page for that symbol. For the behavior of each function on each host,
 see [host support](/docs/reference/host-support).
@@ -32,7 +32,7 @@ All signal-returning.
 | [`injectUser`](/docs/api/inject-user) | `(): Signal<UserState>` | Locale and device capabilities. |
 | [`injectViewState`](/docs/api/inject-view-state) | `<T>(default?): InjectViewStateResult<T>` | `{ value, set }` over the host's persisted, bidirectionally synced view state. |
 | [`injectViewStore`](/docs/api/inject-view-store) | `<…>(initial?, default?, options?): InjectViewStore<…>` | Store-style view state: `state` signal plus `set`/`update`/`patch`/`select`/`flush`, with debounced host writes and a conflict guard. |
-| [`injectDisplayMode`](/docs/api/inject-display-mode) | `(): InjectDisplayModeResult` | `{ displayMode, setDisplayMode }` — read and request `inline`, `fullscreen` or `pip`. |
+| [`injectDisplayMode`](/docs/api/inject-display-mode) | `(): InjectDisplayModeResult` | `{ displayMode, setDisplayMode }`. Reads the mode, and requests `inline`, `fullscreen` or `pip`. |
 | [`injectHostContext`](/docs/api/inject-host-context) | `(): HostContextSignals` | Low-level: a readonly signal per raw host-context key. |
 
 ## Calling the server and driving the host
@@ -51,7 +51,7 @@ All callable.
 | [`injectFiles`](/docs/api/inject-files) | `(): InjectFilesResult` | `{ upload, getDownloadUrl, selectFiles }` for host-managed files. |
 | [`injectSetOpenInAppUrl`](/docs/api/inject-set-open-in-app-url) | `(): SetOpenInAppUrlFn` | Set the "open in app" deep link. |
 | [`injectRegisterViewTool`](/docs/api/inject-register-view-tool) | `(config, handler): RegisterViewToolHandle` | Register a view-scoped tool with the host. |
-| [`injectAppHelpers`](/docs/api/inject-app-helpers) | `<AppType = never>()` — call as `injectAppHelpers<typeof server>()` | Typed sugar: tool-name-narrowed `injectCallTool` and `injectToolInfo`, inferred from the server's registry. |
+| [`injectAppHelpers`](/docs/api/inject-app-helpers) | `<AppType = never>()`. Call it as `injectAppHelpers<typeof server>()` | Typed sugar: tool-name-narrowed `injectCallTool` and `injectToolInfo`, inferred from the server's registry. |
 
 ## Declarables
 
@@ -64,15 +64,15 @@ All callable.
 
 Also exported for callers who need them:
 
-- **Modal** — [`MCP_MODAL`](/docs/api/mcp-modal), `provideMcpModal`, `createMcpModal`,
+- **Modal**: [`MCP_MODAL`](/docs/api/mcp-modal), `provideMcpModal`, `createMcpModal`,
   `MCP_MODAL_ENABLED`, `McpModal`.
-- **Host context** — `createHostContextSignals` (the non-DI form of
+- **Host context**: `createHostContextSignals` (the non-DI form of
   [`injectHostContext`](/docs/api/inject-host-context)), `HostContextSignals`.
-- **View context** — `VIEW_CONTEXT_KEY`, `injectViewContext`, `filterViewContext`.
-- **data-llm internals** — `getLLMDescriptionString`, `DataLlmContent`, `DataLlmNode`.
-- **Bridge core** — `getAdaptor` (the non-DI adaptor accessor), `Adaptor`, `HostContext` and the
+- **View context**: `VIEW_CONTEXT_KEY`, `injectViewContext`, `filterViewContext`.
+- **data-llm internals**: `getLLMDescriptionString`, `DataLlmContent`, `DataLlmNode`.
+- **Bridge core**: `getAdaptor` (the non-DI adaptor accessor), `Adaptor`, `HostContext` and the
   per-host adaptor types. Prefer the `MCP_ADAPTOR` token over `getAdaptor()`.
-- **Version** — `NG_MCP_UI_VERSION`.
+- **Version**: `NG_MCP_UI_VERSION`.
 
 ## Example widget
 

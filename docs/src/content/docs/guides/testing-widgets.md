@@ -1,18 +1,20 @@
 ---
 title: Testing widgets
-description: Unit-testing a widget against an in-memory MockAdaptor, with no real host and no window globals.
+description: How to unit-test a widget against an in-memory MockAdaptor, with no real host and no window globals.
 group: Guides
 groupOrder: 2
 order: 9
 ---
 
-`ng-mcp-ui/testing` gives unit tests and Storybook a pure provider override that mirrors
-`provideMcpUi()` — no `window.mcpUi`, no postMessage, no real host.
+`ng-mcp-ui/testing` gives a unit test and Storybook a pure provider override. The override mirrors
+[`provideMcpUi()`](/docs/api/provide-mcp-ui). There is no `window.mcpUi`, no postMessage, and no
+real host.
 
 ## provideMockMcpUi
 
-`provideMockMcpUi()` binds `MCP_ADAPTOR` to an in-memory `MockAdaptor` and returns both the
-providers and the adaptor, so the test can drive host pushes and inspect what the widget sent:
+[`provideMockMcpUi()`](/docs/api/provide-mock-mcp-ui) binds `MCP_ADAPTOR` to an in-memory
+[`MockAdaptor`](/docs/api/mock-adaptor). It gives you the providers and the adaptor. Therefore the
+test can drive the host and read what the widget sent.
 
 ```ts
 import { TestBed } from "@angular/core/testing";
@@ -35,7 +37,8 @@ fixture.detectChanges();
 
 ## Driving the host
 
-Tool data arrives after boot in production, and the mock reproduces that: push it explicitly.
+In production the tool data arrives after the boot. The mock reproduces that, therefore you push
+the data yourself.
 
 ```ts
 adaptor.pushHostContext("toolOutput", {
@@ -50,26 +53,41 @@ fixture.detectChanges();
 expect(fixture.nativeElement.querySelector("h1").textContent).toContain("Lunch?");
 ```
 
-Any host-context key works the same way — `theme`, `displayMode`, `viewState`, `toolInput`,
-`toolOutput` — so a test can walk a widget through the same sequence a real host produces.
+Each host-context key works the same way: `theme`, `displayMode`, `viewState`, `toolInput`,
+`toolOutput` and the others. Thus a test can move a widget through the same sequence that a real
+host produces.
 
 ## Asserting outgoing calls
 
-The mock records everything the widget sent to the host on `adaptor.calls`, so tool calls, size
-requests and follow-up messages are all assertable:
+The mock records each call that the widget made to the host, in `adaptor.calls`. Therefore you can
+assert a tool call, a size request or a follow-up message.
+
+Each entry has this shape:
+
+```ts
+{ method: "callTool", args: ["cast_vote", { pollId: "p1", option: "Ramen" }] }
+```
+
+`method` is a bridge method name, or `"registerViewTool:dispose"` for a teardown. `args` is the
+argument list of that call, in order.
 
 ```ts
 fixture.nativeElement.querySelector("button").click();
 await fixture.whenStable();
 
-expect(adaptor.calls).toContainEqual(
-  expect.objectContaining({ name: "cast_vote", args: { pollId: "p1", option: "Ramen" } }),
-);
+expect(adaptor.calls).toContainEqual({
+  method: "callTool",
+  args: ["cast_vote", { pollId: "p1", option: "Ramen" }],
+});
 ```
+
+Call `adaptor.clearCalls()` between assertions in a long test.
 
 ## Notes
 
-- Because the widget resolves everything through `MCP_ADAPTOR`, nothing has to be stubbed on
-  `window`. The same override works in Storybook.
-- `provideMockMcpUi()` mirrors `provideMcpUi()`, including zoneless change detection — prefer
-  `await fixture.whenStable()` over `detectChanges()` after an async interaction.
+- The widget resolves everything through `MCP_ADAPTOR`, therefore you stub nothing on `window`. The
+  same override works in Storybook.
+- `provideMockMcpUi()` mirrors `provideMcpUi()`, and that includes zoneless change detection. After
+  an async interaction, prefer `await fixture.whenStable()` over `detectChanges()`.
+- The providers also work in a bare Angular injector. You need no `TestBed`. Wrap each `inject*`
+  call in `runInInjectionContext`.

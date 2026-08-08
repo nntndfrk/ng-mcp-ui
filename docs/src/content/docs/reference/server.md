@@ -1,14 +1,14 @@
 ---
 title: ng-mcp-ui/server
-description: The framework-neutral MCP server — McpServer, the Express router, view resources, content helpers and auth.
+description: The framework-neutral MCP server. McpServer, the Express router, view resources, content helpers and auth.
 group: Reference
 groupOrder: 4
 order: 1
 ---
 
-`ng-mcp-ui/server` is plain TypeScript with no Angular dependency. Construct an `McpServer`, chain
-`registerTool(config, handler)` calls, and mount the Express router into your SSR `server.ts`
-**before** the Angular catch-all.
+`ng-mcp-ui/server` is plain TypeScript, and it has no Angular dependency. Construct an
+[`McpServer`](/docs/api/mcp-server), chain [`registerTool`](/docs/api/register-tool) calls, and
+mount the Express router in your SSR `server.ts` file **before** the catch-all route of Angular.
 
 Each symbol below links to its full page.
 
@@ -53,9 +53,10 @@ export function createMcpServer(): McpServer {
 }
 ```
 
-`registerTool` accumulates each tool's input, output and `_meta` shape into the server type, so
-`typeof server` carries enough type information for `injectAppHelpers<typeof server>()` on the web
-side to produce fully typed, tool-name-narrowed helpers.
+`registerTool` adds the input, output and `_meta` shape of each tool to the type of the server.
+Therefore `typeof server` carries enough information for
+[`injectAppHelpers<typeof server>()`](/docs/api/inject-app-helpers) to give the view typed,
+tool-name-narrowed helpers.
 
 Each view belongs to one tool. A second tool that names the same view throws an error at
 registration time.
@@ -109,8 +110,8 @@ The asset router has two modes. Give `dir` to serve a real build, or `mode: "dev
 
 ## View naming and manifests
 
-A `view.component` value is checked against the `ViewNameRegistry` interface, which each app
-augments — the `view` generator keeps this in sync:
+The server checks each `view.component` value against the `ViewNameRegistry` interface. Each app
+adds its own keys to that interface, and the `view` generator keeps them current.
 
 ```ts
 declare module "ng-mcp-ui/server" {
@@ -131,8 +132,8 @@ declare module "ng-mcp-ui/server" {
 ## Content helpers
 
 [`text`, `image`, `audio`, `resourceLink` and `embeddedResource`](/docs/api/content-helpers) build
-well-formed MCP content blocks for tool results; `normalizeContent` coerces a loose handler return
-into that shape, and the [`FileRef`](/docs/api/file-ref) schema types file references. See
+correct MCP content blocks for a tool result. `normalizeContent` turns a loose handler return into
+that shape. The [`FileRef`](/docs/api/file-ref) schema types a file reference. See
 [files and downloads](/docs/guides/files).
 
 ## Tool handlers
