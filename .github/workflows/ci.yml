@@ -85,3 +85,29 @@ jobs:
 
       - name: Verify M1 gate (dev-app)
         run: npm run verify --workspace dev-app
+
+  storybook:
+    # Smoke gate for the Storybook example. The docs claim `provideMockMcpUi()`
+    # drops straight into a Storybook `applicationConfig`, and this job is what
+    # keeps that claim true: a story that stops compiling against a changed
+    # library API fails the build. Its own job because the Angular/webpack
+    # Storybook build is slow and must not hold up the fast lint/test loop.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # The stories import `ng-mcp-ui/web` and `ng-mcp-ui/testing` from the
+      # workspace package's `dist/`, so the library must be built first.
+      - name: Build library
+        run: npm run build --workspace ng-mcp-ui
+
+      - name: Build Storybook
+        run: npm run build:storybook --workspace storybook-example

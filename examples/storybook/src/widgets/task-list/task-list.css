@@ -1,0 +1,89 @@
+:host {
+  display: block;
+  width: 22rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #e2e2e6;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #1b1b1f;
+}
+
+:host(.task-dark) {
+  border-color: #34343a;
+  background: #1b1b1f;
+  color: #e6e6ea;
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+nav {
+  display: flex;
+  gap: 0.375rem;
+  margin: 0.75rem 0;
+}
+
+button {
+  padding: 0.25rem 0.625rem;
+  border: 1px solid currentcolor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  opacity: 0.65;
+}
+
+button.active {
+  opacity: 1;
+  font-weight: 600;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+li {
+  padding: 0.25rem 0;
+}
+
+li.done span {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+li.empty {
+  opacity: 0.6;
+  font-size: 0.875rem;
+}
+
+label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.progress {
+  margin: 0.75rem 0 0;
+  font-size: 0.8125rem;
+  opacity: 0.7;
+}
+
+.idle {
+  margin: 0;
+  opacity: 0.6;
+}

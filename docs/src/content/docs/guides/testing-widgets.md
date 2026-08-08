@@ -83,10 +83,37 @@ expect(adaptor.calls).toContainEqual({
 
 Call `adaptor.clearCalls()` between assertions in a long test.
 
+## Storybook
+
+The same override works in Storybook. Give the `providers` to `applicationConfig`, and the widget
+renders with no host:
+
+```ts
+import { applicationConfig } from "@storybook/angular";
+import { provideMockMcpUi } from "ng-mcp-ui/testing";
+
+export const DarkTheme: Story = {
+  decorators: [
+    applicationConfig({
+      providers: [provideMockMcpUi({ hostContext: { theme: "dark" } }).providers],
+    }),
+  ],
+};
+```
+
+Make a new `MockAdaptor` for each story. The adaptor holds mutable host state and a call log, so a
+shared instance leaks the writes of one story into the next.
+
+Set `experimentalZoneless: true` on the Storybook builder. `provideMockMcpUi()` supplies
+`provideZonelessChangeDetection()`, and without that flag Storybook loads `zone.js` instead.
+
+A runnable example is in the repository at
+[`examples/storybook`](https://github.com/nntndfrk/ng-mcp-ui/tree/main/examples/storybook). CI
+builds it, so the stories stay correct.
+
 ## Notes
 
-- The widget resolves everything through `MCP_ADAPTOR`, therefore you stub nothing on `window`. The
-  same override works in Storybook.
+- The widget resolves everything through `MCP_ADAPTOR`, therefore you stub nothing on `window`.
 - `provideMockMcpUi()` mirrors `provideMcpUi()`, and that includes zoneless change detection. After
   an async interaction, prefer `await fixture.whenStable()` over `detectChanges()`.
 - The providers also work in a bare Angular injector. You need no `TestBed`. Wrap each `inject*`
