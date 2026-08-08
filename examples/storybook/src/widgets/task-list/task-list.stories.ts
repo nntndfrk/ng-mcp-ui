@@ -1,3 +1,4 @@
+import { provideIonicAngular } from "@ionic/angular/standalone";
 import { applicationConfig } from "@storybook/angular";
 import type { Decorator, Meta, StoryObj } from "@storybook/angular";
 import { type MockMcpUiArgs, provideMockMcpUi } from "ng-mcp-ui/testing";
@@ -6,18 +7,27 @@ import TaskListWidget, { type TaskListSnapshot } from "./task-list.widget";
 /**
  * Build the one decorator each story needs.
  *
- * This is the whole `ng-mcp-ui` Storybook integration. `provideMockMcpUi()`
+ * `provideMockMcpUi()` is the whole `ng-mcp-ui` Storybook integration. It
  * returns the same shape as `provideMcpUi()`, so a story hands its `providers`
  * to `applicationConfig` and the widget renders with no host, no `window.mcpUi`
  * and no iframe. Every `inject*` function in the widget resolves the mock,
  * because all of them read the one `MCP_ADAPTOR` token.
+ *
+ * `provideIonicAngular({ mode: "ios" })` is this example's chrome and not a
+ * requirement of the library. It pins Ionic to the Cupertino look, rather than
+ * letting Ionic choose from the browser's platform.
  *
  * Each call makes a new `MockAdaptor`. Do not lift one to module scope: the
  * adaptor holds mutable host state and a call log, so a shared instance would
  * leak one story's writes into the next.
  */
 function mockMcpUi(args: MockMcpUiArgs = {}): Decorator {
-  return applicationConfig({ providers: [provideMockMcpUi(args).providers] });
+  return applicationConfig({
+    providers: [
+      provideIonicAngular({ mode: "ios" }),
+      provideMockMcpUi(args).providers,
+    ],
+  });
 }
 
 const SNAPSHOT: TaskListSnapshot = {

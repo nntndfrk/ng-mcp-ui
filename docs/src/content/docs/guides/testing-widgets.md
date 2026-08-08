@@ -109,7 +109,9 @@ Set `experimentalZoneless: true` on the Storybook builder. `provideMockMcpUi()` 
 
 A runnable example is in the repository at
 [`examples/storybook`](https://github.com/nntndfrk/ng-mcp-ui/tree/main/examples/storybook). CI
-builds it, so the stories stay correct.
+builds it, so the stories stay correct. That widget uses Ionic in Cupertino mode for its look. The
+library has no opinion about your component library, and the override above is the same with any
+of them.
 
 ## Notes
 

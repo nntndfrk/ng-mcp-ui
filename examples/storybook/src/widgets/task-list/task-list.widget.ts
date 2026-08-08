@@ -1,5 +1,19 @@
 import { ChangeDetectionStrategy, Component, computed } from "@angular/core";
 import {
+  IonButton,
+  IonCard,
+  IonCardContent,
+  IonCardHeader,
+  IonCardTitle,
+  IonCheckbox,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonNote,
+  IonSegment,
+  IonSegmentButton,
+} from "@ionic/angular/standalone";
+import {
   DataLlmDirective,
   injectCallTool,
   injectDisplayMode,
@@ -47,6 +61,10 @@ export type TaskListViewState = {
  * renders in Storybook with no host present: a story provides
  * `provideMockMcpUi()` instead of `provideMcpUi()`, and nothing else changes.
  *
+ * The chrome is Ionic in `ios` (Cupertino) mode. The host theme drives the
+ * `ion-palette-dark` class, which is how Ionic switches its palette: the class
+ * sets CSS custom properties that cascade into every Ionic element below it.
+ *
  * | Capability          | Surface here                                     |
  * | ------------------- | ------------------------------------------------ |
  * | tool output         | `injectToolInfo` reads the rendering tool result  |
@@ -59,61 +77,92 @@ export type TaskListViewState = {
 @Component({
   selector: "task-list-widget",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataLlmDirective],
+  imports: [
+    DataLlmDirective,
+    IonButton,
+    IonCard,
+    IonCardContent,
+    IonCardHeader,
+    IonCardTitle,
+    IonCheckbox,
+    IonItem,
+    IonLabel,
+    IonList,
+    IonNote,
+    IonSegment,
+    IonSegmentButton,
+  ],
   host: {
-    class: "task-host",
-    "[class.task-dark]": "theme() === 'dark'",
+    // Ionic's dark palette is selected by `.ion-palette-dark.ios`, with both
+    // classes on ONE element. Ionic itself puts `ios` on `<html>`, so binding
+    // `ion-palette-dark` alone here would never match. Carrying both on the
+    // widget host makes the palette local to this component, which keeps one
+    // story (or one widget on a page) from repainting its neighbours.
+    class: "task-host ios",
+    "[class.ion-palette-dark]": "theme() === 'dark'",
     "[style.paddingBottom.px]": "safeAreaBottom()",
   },
   styleUrl: "./task-list.css",
   template: `
     @let snapshot = list();
-    @if (snapshot) {
-      <header>
-        <h1>{{ snapshot.listName }}</h1>
-        <button type="button" (click)="expand()">Expand</button>
-      </header>
+    <ion-card>
+      @if (snapshot) {
+        <ion-card-header>
+          <ion-card-title>{{ snapshot.listName }}</ion-card-title>
+          <ion-button
+            fill="clear"
+            size="small"
+            class="expand"
+            (click)="expand()"
+          >
+            Expand
+          </ion-button>
+        </ion-card-header>
 
-      <nav>
-        <button
-          type="button"
-          [class.active]="filter() === 'all'"
-          (click)="setFilter('all')"
-        >
-          All
-        </button>
-        <button
-          type="button"
-          [class.active]="filter() === 'open'"
-          (click)="setFilter('open')"
-        >
-          Open only
-        </button>
-      </nav>
+        <ion-card-content>
+          <ion-segment
+            [value]="filter()"
+            (ionChange)="onFilterChange($event)"
+          >
+            <ion-segment-button value="all">
+              <ion-label>All</ion-label>
+            </ion-segment-button>
+            <ion-segment-button value="open">
+              <ion-label>Open only</ion-label>
+            </ion-segment-button>
+          </ion-segment>
 
-      <ul>
-        @for (task of visibleTasks(); track task.id) {
-          <li [class.done]="task.done">
-            <label>
-              <input
-                type="checkbox"
-                [checked]="task.done"
-                (change)="toggle(task)"
-              />
-              <span>{{ task.label }}</span>
-            </label>
-          </li>
-        } @empty {
-          <li class="empty">Nothing to show.</li>
-        }
-      </ul>
+          <ion-list lines="full">
+            @for (task of visibleTasks(); track task.id) {
+              <ion-item>
+                <ion-checkbox
+                  justify="start"
+                  labelPlacement="end"
+                  [checked]="task.done"
+                  (ionChange)="toggle(task)"
+                >
+                  <span [class.done]="task.done">{{ task.label }}</span>
+                </ion-checkbox>
+              </ion-item>
+            } @empty {
+              <ion-item>
+                <ion-label class="ion-text-wrap">
+                  <ion-note>Nothing to show.</ion-note>
+                </ion-label>
+              </ion-item>
+            }
+          </ion-list>
 
-      <p class="progress" [dataLlm]="progressSummary()">
-        {{ doneCount() }} of {{ snapshot.tasks.length }} done
-      </p>
-    } @else {
-      <p class="idle">Waiting for the tool result…</p>
-    }
+          <ion-note class="progress" [dataLlm]="progressSummary()">
+            {{ doneCount() }} of {{ snapshot.tasks.length }} done
+          </ion-note>
+        </ion-card-content>
+      } @else {
+        <ion-card-content>
+          <ion-note>Waiting for the tool result…</ion-note>
+        </ion-card-content>
+      }
+    </ion-card>
   `,
 })
 export default class TaskListWidget {
@@ -181,8 +230,15 @@ export default class TaskListWidget {
     return `Task list "${snapshot.listName}": ${this.doneCount()} of ${snapshot.tasks.length} tasks are done. Filter: ${this.filter()}.`;
   });
 
-  protected setFilter(filter: TaskListViewState["filter"]): void {
-    this.viewState.set({ filter });
+  /**
+   * `ion-segment` reports the new value on the event detail. It is typed as a
+   * loose `string | undefined`, so narrow it before it reaches the view state.
+   */
+  protected onFilterChange(event: Event): void {
+    const value = (event as CustomEvent<{ value?: string }>).detail.value;
+    if (value === "all" || value === "open") {
+      this.viewState.set({ filter: value });
+    }
   }
 
   protected toggle(task: Task): void {

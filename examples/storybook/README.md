@@ -37,6 +37,35 @@ and a call log, so a shared instance leaks the writes of one story into the
 next. `src/widgets/task-list/task-list.stories.ts` has a `mockMcpUi()` helper
 that does this correctly.
 
+## The chrome is Ionic, and the library does not need it
+
+The widget uses Ionic 8 in `ios` (Cupertino) mode. This is the look of this
+example only. `ng-mcp-ui` has no opinion about your component library, and
+nothing in the integration above changes if you use a different one.
+
+The story helper adds one more provider next to the mock:
+
+```ts
+providers: [
+  provideIonicAngular({ mode: "ios" }),
+  provideMockMcpUi(args).providers,
+]
+```
+
+The `mode` option pins the Cupertino look. Without it Ionic reads the browser
+platform, and the same story looks different on a Mac and on Android.
+
+Two Ionic details cost time here, so they are worth writing down:
+
+- Ionic stylesheets go in the `styles` array of the builder in `angular.json`,
+  and not in an `import` in `.storybook/preview.ts`. `@ionic/angular` exports
+  `./css/*` under the `style` condition only, which a JavaScript import cannot
+  satisfy.
+- Ionic selects its dark palette with `.ion-palette-dark.ios`, and wants both
+  classes on one element. The widget host carries `ios` and binds
+  `ion-palette-dark` from the host theme, which keeps the palette local to the
+  widget.
+
 ## What the stories show
 
 | Story | Shows |
@@ -93,3 +122,15 @@ and `@storybook/angular:build-storybook`, and the npm scripts call `ng run`.
 webpack builder. The rest of this repository uses `@angular/build`. Angular
 reports the webpack packages as deprecated at install time, which is expected
 here.
+
+## Why the dev target sets `browserTarget`
+
+The `storybook` target sets `browserTarget`, and the `build-storybook` target
+does not. This looks inconsistent, and it is: `start-storybook` throws
+`SB_FRAMEWORK_ANGULAR_0001 (AngularLegacyBuildOptionsError)` when the option is
+absent, because its schema gives `browserTarget` no default. The build schema
+defaults the same option to `null`, so a build starts without one.
+
+This example points the option at its own `build-storybook` target, which keeps
+the options in one place. In an application workspace, point it at the
+application build target instead.
