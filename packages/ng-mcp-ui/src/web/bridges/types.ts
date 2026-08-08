@@ -87,8 +87,9 @@ export type UserAgent = {
 
 /**
  * Full snapshot of state the host exposes to the view. Most fields are
- * better accessed through their dedicated hooks (`useLayout`, `useUser`,
- * `useToolInfo`, etc.) — read this directly only for advanced cases.
+ * better accessed through their dedicated wrappers (`injectLayout`,
+ * `injectUser`, `injectToolInfo`, etc.) — read this directly only for
+ * advanced cases.
  */
 export interface HostContext {
   theme: Theme;
