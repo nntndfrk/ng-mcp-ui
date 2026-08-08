@@ -10,6 +10,8 @@ order: 1
 `registerTool(config, handler)` calls, and mount the Express router into your SSR `server.ts`
 **before** the Angular catch-all.
 
+Each symbol below links to its full page.
+
 ## McpServer
 
 ```ts
@@ -64,15 +66,15 @@ The second argument accepts the options of the SDK, and these two more options.
 
 | Option | Type | Default |
 | --- | --- | --- |
-| `viewManifest` | `ViewManifest` | An empty `InMemoryViewManifest`, thus development works with no configuration. |
-| `shellRenderer` | `ShellRenderer` | An `AngularShellRenderer`. It reads `NODE_ENV` and the resolved `viewManifest`. |
+| `viewManifest` | [`ViewManifest`](/docs/api/view-manifest) | An empty `InMemoryViewManifest`, thus development works with no configuration. |
+| `shellRenderer` | [`ShellRenderer`](/docs/api/shell-renderer) | An `AngularShellRenderer`. It reads `NODE_ENV` and the resolved `viewManifest`. |
 
 ### Members
 
 | Member | Purpose |
 | --- | --- |
-| `registerTool(config, handler)` | Registers a tool and its optional view. Returns the server, thus you can chain calls. |
-| [`mcpMiddleware(filter?, handler)`](/docs/guides/mcp-middleware) | Runs your code around each MCP request and notification. Register before you connect. |
+| [`registerTool(config, handler)`](/docs/api/register-tool) | Registers a tool and its optional view. Returns the server, thus you can chain calls. |
+| [`mcpMiddleware(filter?, handler)`](/docs/api/mcp-middleware) | Runs your code around each MCP request and notification. Register before you connect. |
 | `connect(transport)` | Connects a transport. Locks the set of middleware. |
 | `connectStatelessTransport(transport)` | Connects one transport for one request. Use it for stateless HTTP. |
 | `$types` | A type-only property that holds the tool registry. `injectAppHelpers<typeof server>()` reads it. Do not read it at runtime. |
@@ -97,57 +99,13 @@ app.use(
 
 `app.use(express.json())` must run before the MCP router. The handler reads `req.body`.
 
-### createMcpExpressRouter(server, options?)
+| Router | Purpose |
+| --- | --- |
+| [`createMcpExpressRouter(server, options?)`](/docs/api/create-mcp-express-router) | The mountable JSON-RPC router. Options: `cors` and `errorMiddleware`. |
+| [`createViewAssetRouter(options)`](/docs/api/create-view-asset-router) | Serves the widget build output. Takes a production `dir`, or a development `devServerUrl` proxy. |
 
-The mountable JSON-RPC router.
-
-| Option | Type | Default | Purpose |
-| --- | --- | --- | --- |
-| `cors` | boolean | `true` | Applies a permissive CORS layer. A host fetches this endpoint from another origin, therefore the default is `true`. Set `false` if your app already controls CORS for this path. |
-| `errorMiddleware` | `ErrorRequestHandler[]` | `[]` | Express error handlers for this router. They run before the built-in JSON-RPC error handler. |
-
-The server has no `use()` or `useOnError()` method. It gives you a router, and it does not own an
-Express app. Put HTTP middleware on your own app around the router. Use `errorMiddleware` for
-errors from this router only.
-
-An error handler that sends a response stops the built-in handler. An error handler that calls
-`next(err)` passes the error to the built-in 500 response.
-
-### createViewAssetRouter(options)
-
-Serves the widgets build output. The options are a union of two shapes. Select one shape with the
-`mode` field.
-
-**Production.** The router serves files from a directory.
-
-```ts
-createViewAssetRouter({ dir: "dist/widgets/browser" });
-```
-
-| Option | Type | Purpose |
-| --- | --- | --- |
-| `dir` | string | The path of the widgets build output. It contains the hashed chunks and `index.html`. An absolute path, or a path relative to the working directory. |
-| `mode` | `"production"`, optional | The default mode. |
-
-The router adds CORS headers, correct content types, and immutable cache headers for hashed file
-names.
-
-**Development.** The router sends each request to your running `ng serve` process.
-
-```ts
-createViewAssetRouter({
-  mode: "development",
-  devServerUrl: "http://localhost:4200",
-});
-```
-
-| Option | Type | Purpose |
-| --- | --- | --- |
-| `devServerUrl` | string | The origin of the widgets dev server. It must be an `http://` URL. |
-| `mode` | `"development"` | Selects this shape. |
-
-In this mode you do not run a widgets build. The dev server keeps `main.js` and `styles.css` in
-memory, thus your changes appear after a reload.
+The asset router has two modes. Give `dir` to serve a real build, or `mode: "development"` with a
+`devServerUrl` to proxy your running `ng serve`. The development mode needs no widget build.
 
 ## View naming and manifests
 
@@ -164,17 +122,18 @@ declare module "ng-mcp-ui/server" {
 
 | Symbol | Purpose |
 | --- | --- |
-| `IndexHtmlViewManifest` | Parses the widgets build's `index.html` for hashed asset names. |
-| `InMemoryViewManifest` | Fallback manifest for before the widgets build has run. |
-| `ViewManifest` | The interface both implement. |
-| `ViewManifestError` | Thrown on an unparseable or missing manifest. |
-| `AngularShellRenderer`, `ShellRenderer`, `ShellRenderInput`, `ShellMode` | The shell document rendered into the host iframe. |
+| [`IndexHtmlViewManifest`](/docs/api/view-manifest) | Parses the widgets build's `index.html` for hashed asset names. |
+| [`InMemoryViewManifest`](/docs/api/view-manifest) | Fallback manifest for before the widgets build has run. |
+| [`ViewManifest`](/docs/api/view-manifest) | The interface both implement. |
+| [`ViewManifestError`](/docs/api/view-manifest) | Thrown on an unparseable or missing manifest. |
+| [`AngularShellRenderer`, `ShellRenderer`, `ShellRenderInput`, `ShellMode`](/docs/api/shell-renderer) | The shell document rendered into the host iframe. |
 
 ## Content helpers
 
-`text`, `image`, `audio`, `resourceLink` and `embeddedResource` build well-formed MCP content blocks
-for tool results; `normalizeContent` coerces a loose handler return into that shape, and the
-`FileRef` schema types file references. See [files and downloads](/docs/guides/files).
+[`text`, `image`, `audio`, `resourceLink` and `embeddedResource`](/docs/api/content-helpers) build
+well-formed MCP content blocks for tool results; `normalizeContent` coerces a loose handler return
+into that shape, and the [`FileRef`](/docs/api/file-ref) schema types file references. See
+[files and downloads](/docs/guides/files).
 
 ## Tool handlers
 
@@ -182,7 +141,7 @@ A handler gets two arguments: the parsed `args`, and an `extra` context object.
 
 | Symbol | Purpose |
 | --- | --- |
-| `ToolConfig` | The config object of `registerTool`: name, schemas, `view`, `securitySchemes` and `_meta`. |
+| `ToolConfig` | The config object of [`registerTool`](/docs/api/register-tool): name, schemas, `view`, `securitySchemes` and `_meta`. |
 | `ToolHandler` | The handler signature. |
 | [`ClientHintsMeta`](/docs/guides/client-hints) | The locale, location and session hints on `extra._meta`. An Apps SDK host sends them. |
 | `HandlerContent` | The content shapes that a handler can return. |
@@ -191,14 +150,15 @@ A handler gets two arguments: the parsed `args`, and an `extra` context object.
 
 | Symbol | Purpose |
 | --- | --- |
-| `requireBearerAuth`, `optionalBearerAuth` | Bearer-token middleware for the mounted router. |
-| `mcpAuthMetadataRouter` | Serves the auth-metadata endpoints. |
+| [`requireBearerAuth`](/docs/api/require-bearer-auth), [`optionalBearerAuth`](/docs/api/optional-bearer-auth) | Bearer-token middleware for the mounted router. |
+| [`mcpAuthMetadataRouter`](/docs/api/mcp-auth-metadata-router) | Serves the auth-metadata endpoints. |
 | `InvalidTokenError`, `AuthInfo`, `AuthMetadataOptions`, `BearerAuthMiddlewareOptions` | Supporting types. |
-| `McpMiddlewareFn`, `McpTypedMiddlewareFn`, `McpMiddlewareFilter`, `McpExtra`, `McpMethodString`, `McpWildcard`, `McpExtraFor`, `McpResultFor` | The types of [protocol middleware](/docs/guides/mcp-middleware). |
+| `McpMiddlewareFn`, `McpTypedMiddlewareFn`, `McpMiddlewareFilter`, `McpExtra`, `McpMethodString`, `McpWildcard`, `McpExtraFor`, `McpResultFor` | The types of [protocol middleware](/docs/api/mcp-middleware). |
 
 ## Inference types
 
 `AnyToolRegistry`, `InferTools`, `ToolInput`, `ToolOutput`, `ToolNames`, `ToolResponseMetadata`,
 `McpServerTypes`, `ToolDef`, `ToolMeta`, `KnownToolMeta`, `ViewConfig`,
 [`ViewCsp`](/docs/guides/csp), `ViewHostType`, `ViewName` and `SecurityScheme` are exported for
-library authors building on top of the registry.
+library authors building on top of the registry. See
+[utility types](/docs/api/utility-types).

@@ -10,6 +10,9 @@ order: 3
 `provideMcpUi()`. There is no `window.mcpUi`, no postMessage, and no real host — the widget resolves
 its adaptor through the same `MCP_ADAPTOR` token it always does.
 
+Full pages: [`provideMockMcpUi`](/docs/api/provide-mock-mcp-ui) and
+[`MockAdaptor`](/docs/api/mock-adaptor).
+
 ## provideMockMcpUi
 
 ```ts
