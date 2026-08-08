@@ -70,7 +70,10 @@ Each entry has the shape `{ method, args }`. `method` is a bridge method name, o
 - The mock mirrors `provideMcpUi()`, and that includes zoneless change detection. After an async
   interaction, prefer `await fixture.whenStable()` over `detectChanges()`.
 - Everything goes through `MCP_ADAPTOR`, therefore you stub nothing on `window`, and the same
-  override works in Storybook with no change.
+  override works in Storybook with no change. See
+  [testing widgets](/docs/guides/testing-widgets#storybook) for the decorator, and
+  [`examples/storybook`](https://github.com/nntndfrk/ng-mcp-ui/tree/main/examples/storybook) for a
+  runnable example.
 - The providers also work in a bare Angular injector, with no `TestBed`.
 
 See [testing widgets](/docs/guides/testing-widgets) for a full example.

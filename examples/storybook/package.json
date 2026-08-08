@@ -1,0 +1,32 @@
+{
+  "name": "storybook-example",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Storybook example: renders an MCP widget with no host, using provideMockMcpUi() as the only provider swap.",
+  "scripts": {
+    "storybook": "ng run storybook-example:storybook",
+    "build:storybook": "ng run storybook-example:build-storybook"
+  },
+  "dependencies": {
+    "@angular/common": "^22.0.0",
+    "@angular/compiler": "^22.0.0",
+    "@angular/core": "^22.0.0",
+    "@angular/forms": "^22.1.1",
+    "@angular/platform-browser": "^22.0.0",
+    "@angular/platform-browser-dynamic": "^22.0.0",
+    "@angular/router": "^22.1.1",
+    "@ionic/angular": "^8.8.17",
+    "ng-mcp-ui": "*",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^22.0.0",
+    "@angular/cli": "^22.0.1",
+    "@angular/compiler-cli": "^22.0.0",
+    "@storybook/angular": "^10.5.7",
+    "@types/node": "^25.9.2",
+    "storybook": "^10.5.7",
+    "typescript": "~6.0.2"
+  }
+}

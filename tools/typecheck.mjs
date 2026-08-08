@@ -39,6 +39,14 @@ const steps = [
     cmd: bin("tsc"),
     args: ["-p", "tsconfig.json"],
   },
+  {
+    // The docs site keeps its own tsconfig, with stricter flags than the root
+    // one. `npm run docs:build` type-checks the Angular app, and it leaves the
+    // build files (vite.config.ts) unchecked, so check them here.
+    label: "docs (tsc)",
+    cmd: bin("tsc"),
+    args: ["--noEmit", "-p", "docs/tsconfig.json"],
+  },
 ];
 
 for (const { label, cmd, args } of steps) {

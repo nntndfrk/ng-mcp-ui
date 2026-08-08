@@ -1,0 +1,63 @@
+/* Ionic supplies the chrome. Only the widget-specific bits live here. */
+
+:host {
+  display: block;
+  width: 22rem;
+}
+
+/* The card is the widget frame, so drop the page-level margin Ionic gives it. */
+ion-card {
+  margin: 0;
+}
+
+/* Ionic's ios card header stacks with `column-reverse`, which would put the
+   Expand button above the title. Force a single row instead. */
+ion-card-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+ion-card-title {
+  font-size: 1.0625rem;
+  text-align: start;
+}
+
+/* Pull the clear button back in line with the title. */
+.expand {
+  flex: none;
+  margin: 0;
+  --padding-start: 0.5rem;
+  --padding-end: 0.5rem;
+}
+
+ion-segment {
+  margin-bottom: 0.5rem;
+}
+
+/* Ionic pads list items for touch. This is a compact, in-chat widget. */
+ion-list {
+  padding: 0;
+  background: transparent;
+}
+
+ion-item {
+  --background: transparent;
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  --min-height: 2.25rem;
+}
+
+.done {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.progress {
+  display: block;
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+}
