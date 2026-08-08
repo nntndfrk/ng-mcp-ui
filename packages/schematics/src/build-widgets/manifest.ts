@@ -76,7 +76,9 @@ export function resolveBrowserOutDir(
     const { base, browser } = outputPath as { base: string; browser?: unknown };
     // `browser: ""` is the documented way to emit directly into `base`.
     const sub = typeof browser === "string" ? browser : "browser";
-    return sub ? resolve(workspaceRoot, base, sub) : resolve(workspaceRoot, base);
+    return sub
+      ? resolve(workspaceRoot, base, sub)
+      : resolve(workspaceRoot, base);
   }
   throw new WidgetsManifestError(
     "the `build-widgets` target needs an explicit `outputPath` option " +
@@ -187,7 +189,9 @@ export function validateWidgetsOutput(
 
   const entryPath = join(browserOutDir, entry);
   if (!existsSync(entryPath)) {
-    throw new WidgetsManifestError(`entry bundle missing on disk: ${entryPath}`);
+    throw new WidgetsManifestError(
+      `entry bundle missing on disk: ${entryPath}`,
+    );
   }
   const mainJs = readFileSync(entryPath, "utf8");
 
@@ -223,9 +227,5 @@ export function writeManifest(
   manifest: WidgetsManifest,
 ): void {
   mkdirSync(dirname(manifestPath), { recursive: true });
-  writeFileSync(
-    manifestPath,
-    `${JSON.stringify(manifest, null, 2)}\n`,
-    "utf8",
-  );
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 }

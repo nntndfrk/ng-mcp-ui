@@ -1,4 +1,10 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -153,27 +159,28 @@ describe("validateWidgetsOutput", () => {
   // Angular 22's esbuild minifies dynamic imports to template literals, where
   // v20/v21 emitted double quotes. Matching only "…" reported every view as
   // missing and failed the build on output that was actually correct.
-  it.each([['"', "double"], ["'", "single"], ["`", "template"]] as const)(
-    "resolves view chunks when the entry uses %s (%s) quoted imports",
-    (quote) => {
-      const registryPath = writeRegistry();
-      const browserOutDir = writeBrowserOut({
-        quote,
-        views: { echo: {}, "quick-poll": {} },
-      });
+  it.each([
+    ['"', "double"],
+    ["'", "single"],
+    ["`", "template"],
+  ] as const)("resolves view chunks when the entry uses %s (%s) quoted imports", (quote) => {
+    const registryPath = writeRegistry();
+    const browserOutDir = writeBrowserOut({
+      quote,
+      views: { echo: {}, "quick-poll": {} },
+    });
 
-      const { manifest, missing } = validateWidgetsOutput({
-        browserOutDir,
-        registryPath,
-      });
+    const { manifest, missing } = validateWidgetsOutput({
+      browserOutDir,
+      registryPath,
+    });
 
-      expect(missing).toEqual([]);
-      expect(manifest.views).toEqual({
-        echo: "echo.widget-B64_urlHash.js",
-        "quick-poll": "quick-poll.widget-B64_urlHash.js",
-      });
-    },
-  );
+    expect(missing).toEqual([]);
+    expect(manifest.views).toEqual({
+      echo: "echo.widget-B64_urlHash.js",
+      "quick-poll": "quick-poll.widget-B64_urlHash.js",
+    });
+  });
 
   it("does not match when the opening and closing quotes differ", () => {
     const registryPath = writeRegistry();
@@ -214,7 +221,9 @@ describe("validateWidgetsOutput", () => {
 
   it("styles is null when index.html links no stylesheet", () => {
     const registryPath = writeRegistry();
-    const browserOutDir = writeBrowserOut({ views: { echo: {}, "quick-poll": {} } });
+    const browserOutDir = writeBrowserOut({
+      views: { echo: {}, "quick-poll": {} },
+    });
 
     const { manifest } = validateWidgetsOutput({ browserOutDir, registryPath });
 

@@ -11,7 +11,9 @@ export class AppsSdkBridge implements Bridge<AppsSdkContext> {
 
   public static getInstance(): AppsSdkBridge {
     if (window.mcpUi.hostType !== "apps-sdk" || window.openai === undefined) {
-      throw new Error("Apps SDK Bridge can only be used in the apps-sdk runtime");
+      throw new Error(
+        "Apps SDK Bridge can only be used in the apps-sdk runtime",
+      );
     }
     if (AppsSdkBridge.instance === null) {
       AppsSdkBridge.instance = new AppsSdkBridge();

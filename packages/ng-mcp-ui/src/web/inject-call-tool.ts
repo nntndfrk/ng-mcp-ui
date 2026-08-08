@@ -237,10 +237,7 @@ export function injectCallTool<
       )
     ) {
       toolArgs = null as ToolArgs; // no toolArgs provided
-      sideEffects = firstArg as SideEffects<
-        ToolArgs,
-        CombinedCallToolResponse
-      >;
+      sideEffects = firstArg as SideEffects<ToolArgs, CombinedCallToolResponse>;
     } else {
       toolArgs = (firstArg === undefined ? null : firstArg) as ToolArgs;
     }

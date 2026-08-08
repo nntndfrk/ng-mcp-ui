@@ -59,7 +59,9 @@ describe("IndexHtmlViewManifest (html string)", () => {
 
   it("throws a named ViewManifestError when no main script is found", () => {
     const html = '<html><body><div id="root"></div></body></html>';
-    expect(() => new IndexHtmlViewManifest({ html })).toThrow(ViewManifestError);
+    expect(() => new IndexHtmlViewManifest({ html })).toThrow(
+      ViewManifestError,
+    );
     try {
       // eslint-disable-next-line no-new
       new IndexHtmlViewManifest({ html });
@@ -74,7 +76,9 @@ describe("IndexHtmlViewManifest (html string)", () => {
     // A classic (non-module) script must not match — Angular emits type=module.
     const html =
       '<html><body><script src="main-AAA.js"></script></body></html>';
-    expect(() => new IndexHtmlViewManifest({ html })).toThrow(ViewManifestError);
+    expect(() => new IndexHtmlViewManifest({ html })).toThrow(
+      ViewManifestError,
+    );
   });
 });
 

@@ -275,7 +275,9 @@ describe("injectViewStore", () => {
       injectViewStore<State>(),
     );
     expect(state()).toEqual({ count: 5, name: "ctx" });
-    expect((state() as Record<string, unknown>)[VIEW_CONTEXT_KEY]).toBeUndefined();
+    expect(
+      (state() as Record<string, unknown>)[VIEW_CONTEXT_KEY],
+    ).toBeUndefined();
     injector.destroy();
   });
 

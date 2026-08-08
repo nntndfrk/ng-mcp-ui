@@ -55,12 +55,10 @@ const HOST_CONTEXT_KEYS = [
 // not coverage. If a key is ever added to HostContext without being listed in
 // HOST_CONTEXT_KEYS, the mapped HostContextSignals type would promise a signal
 // the runtime never creates — this line turns that drift into a build error.
-type _AssertAllKeysListed = Exclude<
-  keyof HostContext,
-  (typeof HOST_CONTEXT_KEYS)[number]
-> extends never
-  ? true
-  : ["HOST_CONTEXT_KEYS is missing HostContext keys", never];
+type _AssertAllKeysListed =
+  Exclude<keyof HostContext, (typeof HOST_CONTEXT_KEYS)[number]> extends never
+    ? true
+    : ["HOST_CONTEXT_KEYS is missing HostContext keys", never];
 const _allKeysListed: _AssertAllKeysListed = true;
 void _allKeysListed;
 

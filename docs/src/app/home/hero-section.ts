@@ -1,4 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from "@angular/core";
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  signal,
+} from "@angular/core";
 import { RouterLink } from "@angular/router";
 
 import { DOCS_ENTRY_ROUTE, LIBRARY_VERSION, REPO_URL } from "../site/site";
@@ -262,9 +267,13 @@ export class HeroSection {
   protected readonly copied = signal(false);
 
   protected readonly installCmd = computed(() =>
-    this.installer() === "ng" ? "ng add ng-mcp-ui --example=demo" : "npm i ng-mcp-ui",
+    this.installer() === "ng"
+      ? "ng add ng-mcp-ui --example=demo"
+      : "npm i ng-mcp-ui",
   );
-  protected readonly copyLabel = computed(() => (this.copied() ? "Copied" : "Copy"));
+  protected readonly copyLabel = computed(() =>
+    this.copied() ? "Copied" : "Copy",
+  );
 
   protected copy(): void {
     void navigator.clipboard?.writeText(this.installCmd()).then(() => {

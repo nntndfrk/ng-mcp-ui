@@ -56,9 +56,9 @@ export function injectViewContext<T extends ViewState>(
     return null;
   }
 
-  const currentState = adaptor
-    .getHostContextStore("viewState")
-    .getSnapshot() as (T & { [VIEW_CONTEXT_KEY]?: unknown }) | null;
+  const currentState = adaptor.getHostContextStore("viewState").getSnapshot() as
+    | (T & { [VIEW_CONTEXT_KEY]?: unknown })
+    | null;
 
   // `Object.hasOwn` (own key only — the snapshot is external host data, so the
   // prototype-walking `in` operator could pick up an inherited key). The store

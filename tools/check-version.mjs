@@ -25,7 +25,9 @@ const pkgVersion = JSON.parse(
 const versionTs = readFileSync(join(pkgDir, "src", "version.ts"), "utf8");
 const m = versionTs.match(/NG_MCP_UI_VERSION\s*=\s*["']([^"']+)["']/);
 if (!m) {
-  console.error("check-version: could not find NG_MCP_UI_VERSION in src/version.ts");
+  console.error(
+    "check-version: could not find NG_MCP_UI_VERSION in src/version.ts",
+  );
   process.exit(1);
 }
 const constVersion = m[1];

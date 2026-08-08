@@ -1,36 +1,40 @@
 ---
 title: View state
-description: Persisting per-view UI state on the host with injectViewState and injectViewStore.
+description: How to keep per-view UI state on the host with injectViewState and injectViewStore.
 group: Guides
 groupOrder: 2
 order: 3
 ---
 
-A view can be unmounted and remounted by the host — a conversation is scrolled away and back, a
-widget is reopened later. Any UI state you keep in a plain component field is gone by then. The host
-offers a small persisted store per view; `ng-mcp-ui` exposes it two ways.
+The host can remove a view and then render it again. The user scrolls the conversation away and
+back, or opens a widget later. UI state in a plain component field does not survive this.
 
-## injectViewState — a value and a setter
+The host keeps a small store for each view. `ng-mcp-ui` gives you two ways to use it.
 
-For one piece of state, `injectViewState` is enough. It returns `{ value, set }`, where `value` is a
-signal and `set` accepts either the next value or an updater:
+## injectViewState for one value
+
+For one piece of state, [`injectViewState`](/docs/api/inject-view-state) is enough. It gives you
+`{ value, set }`. The `value` member is a signal. The `set` member accepts the next value, or a
+function of the previous value.
 
 ```ts
 import { injectViewState } from "ng-mcp-ui/web";
 
 const viewState = injectViewState<{ myVote: string | null }>({ myVote: null });
 
-viewState.value();                                  // Signal<{ myVote: string | null } | undefined>
-viewState.set({ myVote: "Ramen" });                 // replace
-viewState.set((prev) => ({ count: (prev?.count ?? 0) + 1 })); // update
+viewState.value();                                   // Signal<{ myVote: string | null } | null>
+viewState.set({ myVote: "Ramen" });                  // replace
+viewState.set((prev) => ({ myVote: prev?.myVote ?? null })); // update
 ```
 
-The sync is bidirectional: a host-side change flows back into the signal.
+`value()` is `null` until the host reports state.
 
-## injectViewStore — when one value is not enough
+The sync goes in two directions. A change on the host flows back into the signal.
 
-`injectViewStore` is the store-style API over the same host sync, for views that have outgrown a
-single value pair:
+## injectViewStore for more than one value
+
+[`injectViewStore`](/docs/api/inject-view-store) is the store-style API over the same host sync. Use
+it for a view that has outgrown one value and one setter.
 
 ```ts
 import { injectViewStore } from "ng-mcp-ui/web";
@@ -41,22 +45,40 @@ store.state();                       // the whole state as a signal
 store.set({ filter: "", expanded: [] });
 store.update((prev) => ({ ...prev, filter: "ramen" }));
 store.patch({ filter: "ramen" });    // shallow merge
-const filter = store.select((s) => s.filter); // memoized selector signal
-await store.flush();                 // force the pending debounced write
+const filter = store.select((s) => s?.filter ?? ""); // memoized selector signal
+store.flush();                       // write the pending value now
 ```
 
-It adds three things over the simple form: **debounced** host writes so a fast-typing user does not
-spam the bridge, a `deepEqual` **conflict guard** against the write/echo loop, and view-context
-filtering with re-attach.
+The store adds three things to the simple form.
+
+- **Debounced host writes.** A user who types quickly does not send one message for each keystroke.
+- **A conflict guard.** The store compares an incoming value with the value it holds, therefore the
+  echo of your own write does not cause a second write.
+- **View-context filtering**, with a re-attach.
+
+`flush()` returns nothing, and it writes immediately. Call it before an action that ends the view,
+because a debounced write can otherwise be lost.
+
+```ts
+store.flush();
+await requestClose();
+```
 
 ## View context
 
-Both APIs write under a reserved key on the host's `viewState`, alongside the `[dataLlm]` channel.
-The helpers are exported for advanced callers:
+Both APIs write under a reserved key of the host `viewState`, next to the
+[`[dataLlm]`](/docs/api/data-llm) channel. The helpers are exported for an advanced caller.
 
-- `VIEW_CONTEXT_KEY` — the reserved key.
-- `injectViewContext()` — the raw context signal.
-- `filterViewContext(...)` — strips the context envelope from a raw host payload.
+| Symbol | Purpose |
+| --- | --- |
+| `VIEW_CONTEXT_KEY` | The reserved key. |
+| `injectViewContext()` | The raw context signal. |
+| `filterViewContext(...)` | Removes the context envelope from a raw host value. |
 
-Most widgets never need these; reach for them only when you are reading or writing the host's view
-state directly.
+Most widgets never need these. Use them only when you read or write the host view state directly.
+
+## Host support
+
+Both APIs work on the two host runtimes. The storage differs. An Apps SDK host keeps the state in
+its widget state. An MCP Apps host sends the state to the host, and it also writes a copy to
+`localStorage`. Therefore an MCP Apps view can show its last state immediately after a reload.

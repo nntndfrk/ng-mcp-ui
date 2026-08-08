@@ -13,7 +13,9 @@ describe("injectRequestClose", () => {
   it("returns a function that calls adaptor.requestClose", async () => {
     const requestClose = spy(() => Promise.resolve());
     const adaptor = createFakeAdaptor({
-      methods: { requestClose: requestClose as unknown as Adaptor["requestClose"] },
+      methods: {
+        requestClose: requestClose as unknown as Adaptor["requestClose"],
+      },
     });
     const injector = Injector.create({
       providers: [{ provide: MCP_ADAPTOR, useValue: adaptor }],

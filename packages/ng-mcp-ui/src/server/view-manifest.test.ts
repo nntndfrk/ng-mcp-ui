@@ -8,10 +8,7 @@ describe("InMemoryViewManifest", () => {
   });
 
   it("returns the style filename when provided", () => {
-    const manifest = new InMemoryViewManifest(
-      "main.js",
-      "styles-3KHXIMM.css",
-    );
+    const manifest = new InMemoryViewManifest("main.js", "styles-3KHXIMM.css");
     expect(manifest.styleFile()).toBe("styles-3KHXIMM.css");
   });
 

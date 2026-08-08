@@ -8,9 +8,9 @@ order: 2
 
 ## The tool state signal
 
-`injectToolInfo()` returns a `Signal<ToolState>` for the tool call that rendered this view. The
-state is a discriminated union of three shapes — idle, pending, success — so you narrow before
-reading:
+[`injectToolInfo()`](/docs/api/inject-tool-info) gives you a `Signal<ToolState>` for the tool call
+that rendered this view. The state is a union of three shapes: idle, pending and success. Therefore
+you must narrow the state before you read a field.
 
 ```ts
 import { computed } from "@angular/core";
@@ -33,36 +33,44 @@ const poll = computed(() => {
 });
 ```
 
-`ToolIdleState`, `ToolPendingState` and `ToolSuccessState` are exported if you want to type a
+The `input` field arrives before the `output` field. Thus you can render from the arguments while
+the tool still runs.
+
+`ToolIdleState`, `ToolPendingState` and `ToolSuccessState` are exported. Use one of them to type a
 helper against one arm of the union.
 
 ## Calling a tool from the view
 
-`injectCallTool(name)` returns a small object rather than a bare function, so the call's lifecycle
-is observable:
+[`injectCallTool(name)`](/docs/api/inject-call-tool) gives you an object, and not one function.
+Therefore you can observe the state of the call.
 
 ```ts
 const castVote = injectCallTool<{ pollId: string; option: string }, { structuredContent: PollSnapshot }>(
   "cast_vote",
 );
 
-// callTool: fire-and-track, with optional side effects
+// callTool: start the call and track it, with optional side effects
 castVote.callTool({ pollId, option }, { onSuccess: (result) => { /* … */ } });
 
 // callToolAsync: await the result directly
 const result = await castVote.callToolAsync({ pollId, option });
 
-// signals for rendering
+// signals for the template
 castVote.status(); // idle | pending | success | error
 castVote.data();
 castVote.error();
 ```
 
-## End-to-end inference with injectAppHelpers
+`callTool` returns nothing. Read the outcome from the signals. `callToolAsync` rejects when the tool
+errors, therefore put it in a `try`/`catch` block.
 
-`registerTool` accumulates each tool's input, output and `_meta` shape into the server's type, so
-`typeof server` carries the whole registry. `injectAppHelpers<typeof server>()` turns that into
-tool-name-narrowed helpers — no hand-written generics in the widget:
+## Inference with injectAppHelpers
+
+`registerTool` adds the input, output and `_meta` shape of each tool to the type of the server.
+Therefore `typeof server` carries the whole registry.
+
+[`injectAppHelpers<typeof server>()`](/docs/api/inject-app-helpers) turns that registry into
+tool-name-narrowed helpers. You then write no generics in the widget.
 
 ```ts
 // src/mcp/server.ts
@@ -84,29 +92,36 @@ const castVote = injectCallTool("cast_vote");
 const tool = injectToolInfo();
 ```
 
-The returned functions still delegate to the real wrappers, so they must also be called from an
+Keep the `registerTool` calls in one chained expression. A version that registers each tool in a
+separate statement loses the accumulated types.
+
+The returned functions still delegate to the real wrappers. Therefore you must call them from an
 injection context.
 
-## Surfacing view content back to the model
+## Showing view content to the model
 
-The model cannot see inside the iframe. `[dataLlm]` registers a piece of in-view content in a shared
-tree, which is serialized as an indented bullet list and persisted on the host's `viewState` — so
-the model can read what the user is looking at without an extra tool call:
+The model cannot see into the iframe. The [`[dataLlm]`](/docs/api/data-llm) directive registers a
+piece of in-view content in a shared tree. The library serializes that tree as an indented bullet
+list, and it writes the list to the `viewState` of the host. Thus the model reads what the user
+looks at, and it makes no extra tool call.
 
 ```html
 <p [dataLlm]="voteSummary()"></p>
 ```
 
-Nested directives discover their parent automatically, so a component tree produces a nested
-outline. `getLLMDescriptionString` is exported for advanced callers and tests.
+A nested directive finds its parent through Angular DI. Therefore your component tree becomes a
+nested outline. `getLLMDescriptionString` is exported for an advanced caller and for a test.
 
-## Assets inside the iframe
+## Assets in the iframe
 
-The widget runs on the host's origin, not yours, so a relative asset path resolves to the wrong
-place. The `mcpAsset` pipe rewrites it onto the MCP server origin:
+The widget runs on the origin of the host, and not on your origin. Therefore a relative asset path
+points to the wrong place. The [`mcpAsset`](/docs/api/mcp-asset-pipe) pipe corrects the path.
 
 ```html
 <img [src]="'logo.svg' | mcpAsset" alt="" />
 ```
 
-In development, when `MCP_SERVER_URL` is empty, the path passes through unchanged.
+In development, `MCP_SERVER_URL` is empty, and the pipe returns the path unchanged.
+
+An asset on a third origin also needs that origin in `resourceDomains`. See
+[Content Security Policy](/docs/guides/csp).

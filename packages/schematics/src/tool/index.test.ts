@@ -88,7 +88,9 @@ describe("tool", () => {
 
     // Formatting: the inserted call keeps the body's 2-space indent and leaves a
     // blank line before `return` (matches the ng-add template formatting).
-    expect(server).toMatch(/\n {2}registerBarTool\(server\);\n\n {2}return server;/);
+    expect(server).toMatch(
+      /\n {2}registerBarTool\(server\);\n\n {2}return server;/,
+    );
   });
 
   it('--view <existing> wires `view: { component: "echo" }` into the config', async () => {

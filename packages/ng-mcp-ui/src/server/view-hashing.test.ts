@@ -37,7 +37,9 @@ describe("computeClaudeContentDomain", () => {
       .update("https://example.com/mcp")
       .digest("hex")
       .slice(0, 32)}.claudemcpcontent.com`;
-    expect(computeClaudeContentDomain("https://example.com/mcp")).toBe(expected);
+    expect(computeClaudeContentDomain("https://example.com/mcp")).toBe(
+      expected,
+    );
   });
 });
 

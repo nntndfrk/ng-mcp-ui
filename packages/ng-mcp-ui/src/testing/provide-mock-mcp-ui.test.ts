@@ -81,8 +81,9 @@ describe("provideMockMcpUi", () => {
       },
     });
 
-    const { callToolAsync, status, data } = runInInjectionContext(injector, () =>
-      injectCallTool<{ q: string }>("search"),
+    const { callToolAsync, status, data } = runInInjectionContext(
+      injector,
+      () => injectCallTool<{ q: string }>("search"),
     );
 
     expect(status()).toBe("idle");

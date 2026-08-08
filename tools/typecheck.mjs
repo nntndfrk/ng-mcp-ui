@@ -12,7 +12,12 @@ import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const bin = (name) =>
-  join(root, "node_modules", ".bin", process.platform === "win32" ? `${name}.cmd` : name);
+  join(
+    root,
+    "node_modules",
+    ".bin",
+    process.platform === "win32" ? `${name}.cmd` : name,
+  );
 
 const steps = [
   {

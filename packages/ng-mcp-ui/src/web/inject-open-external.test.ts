@@ -13,7 +13,9 @@ describe("injectOpenExternal", () => {
   it("returns a function that forwards href to adaptor.openExternal", () => {
     const openExternal = spy();
     const adaptor = createFakeAdaptor({
-      methods: { openExternal: openExternal as unknown as Adaptor["openExternal"] },
+      methods: {
+        openExternal: openExternal as unknown as Adaptor["openExternal"],
+      },
     });
     const injector = Injector.create({
       providers: [{ provide: MCP_ADAPTOR, useValue: adaptor }],
@@ -29,7 +31,9 @@ describe("injectOpenExternal", () => {
   it("forwards the redirectUrl option", () => {
     const openExternal = spy();
     const adaptor = createFakeAdaptor({
-      methods: { openExternal: openExternal as unknown as Adaptor["openExternal"] },
+      methods: {
+        openExternal: openExternal as unknown as Adaptor["openExternal"],
+      },
     });
     const injector = Injector.create({
       providers: [{ provide: MCP_ADAPTOR, useValue: adaptor }],

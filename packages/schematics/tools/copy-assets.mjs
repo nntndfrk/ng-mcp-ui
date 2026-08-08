@@ -14,7 +14,9 @@ const dist = join(pkgRoot, "dist");
 // discovered dynamically (any `src/<schematic>/schema.json` ships), so a new
 // generator just drops its `schema.json` and needs no edit here.
 const schemaAssets = readdirSync(src, { withFileTypes: true })
-  .filter((e) => e.isDirectory() && existsSync(join(src, e.name, "schema.json")))
+  .filter(
+    (e) => e.isDirectory() && existsSync(join(src, e.name, "schema.json")),
+  )
   .map((e) => `${e.name}/schema.json`);
 // builders.json is the architect counterpart of collection.json (the
 // `ng-mcp-ui:build-widgets` builder, issue #48).

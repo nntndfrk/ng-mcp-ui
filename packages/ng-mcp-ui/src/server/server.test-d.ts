@@ -45,7 +45,10 @@ describe("type-level: chained registerTool accumulates TTools", () => {
   });
 
   it("captures _meta (response metadata) into the registry", () => {
-    const server = new McpServer({ name: "t", version: "1.0.0" }, {}).registerTool(
+    const server = new McpServer(
+      { name: "t", version: "1.0.0" },
+      {},
+    ).registerTool(
       {
         name: "with_meta",
         inputSchema: { id: z.string() },

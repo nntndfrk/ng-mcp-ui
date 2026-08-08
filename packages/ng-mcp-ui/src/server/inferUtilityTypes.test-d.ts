@@ -35,7 +35,9 @@ describe("inferUtilityTypes", () => {
     expectTypeOf<ToolInput<FakeServer, "search">>().toEqualTypeOf<{
       query: string;
     }>();
-    expectTypeOf<ToolInput<FakeServer, "ping">>().toEqualTypeOf<{ n: number }>();
+    expectTypeOf<ToolInput<FakeServer, "ping">>().toEqualTypeOf<{
+      n: number;
+    }>();
   });
 
   it("ToolOutput narrows by tool name", () => {

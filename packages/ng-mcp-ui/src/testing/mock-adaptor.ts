@@ -62,12 +62,10 @@ const HOST_CONTEXT_KEYS = [
 // without being listed here, MockAdaptor would build one fewer store and return
 // `undefined` at runtime for the new key — this line turns that drift into a
 // build error.
-type _AssertAllKeysListed = Exclude<
-  keyof HostContext,
-  (typeof HOST_CONTEXT_KEYS)[number]
-> extends never
-  ? true
-  : ["HOST_CONTEXT_KEYS is missing HostContext keys", never];
+type _AssertAllKeysListed =
+  Exclude<keyof HostContext, (typeof HOST_CONTEXT_KEYS)[number]> extends never
+    ? true
+    : ["HOST_CONTEXT_KEYS is missing HostContext keys", never];
 const _allKeysListed: _AssertAllKeysListed = true;
 void _allKeysListed;
 
@@ -306,7 +304,9 @@ export class MockAdaptor implements Adaptor {
     // functional updater (no separate cache to drift out of sync).
     const prev = this.stores.viewState.store.getSnapshot();
     const next =
-      typeof stateOrUpdater === "function" ? stateOrUpdater(prev) : stateOrUpdater;
+      typeof stateOrUpdater === "function"
+        ? stateOrUpdater(prev)
+        : stateOrUpdater;
     // Mirror the real adaptor: notify the `viewState` store so a subscribed
     // signal reflects the write.
     this.stores.viewState.push(next);

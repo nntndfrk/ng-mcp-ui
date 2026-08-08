@@ -157,9 +157,8 @@ describe("example", () => {
       twice.readContent(SERVER).match(/registerPollTools\(server\);/g)?.length,
     ).toBe(1);
     expect(
-      twice
-        .readContent(`${WIDGETS}/registry.ts`)
-        .match(/poll: \(\) => import/g)?.length,
+      twice.readContent(`${WIDGETS}/registry.ts`).match(/poll: \(\) => import/g)
+        ?.length,
     ).toBe(1);
   });
 

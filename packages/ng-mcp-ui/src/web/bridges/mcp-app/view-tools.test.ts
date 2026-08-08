@@ -250,9 +250,12 @@ describe("McpApp view tools", () => {
     const adaptor = McpAppAdaptor.getInstance();
     await McpAppBridge.getInstance().getApp();
 
-    const unregister = adaptor.registerViewTool({ name: "chess_reset" }, () => ({
-      content: [{ type: "text", text: "reset" }],
-    }));
+    const unregister = adaptor.registerViewTool(
+      { name: "chess_reset" },
+      () => ({
+        content: [{ type: "text", text: "reset" }],
+      }),
+    );
 
     await vi.waitFor(() => {
       expect(

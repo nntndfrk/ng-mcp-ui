@@ -118,7 +118,8 @@ export const PACKAGES: { name: string; purpose: string; route: string }[] = [
   },
   {
     name: "ng-mcp-ui/testing",
-    purpose: "MockAdaptor and provideMockMcpUi test harness for unit-testing widgets.",
+    purpose:
+      "MockAdaptor and provideMockMcpUi test harness for unit-testing widgets.",
     route: "/docs/reference/testing",
   },
   {

@@ -128,7 +128,9 @@ export type AppsSdkMethods<WS extends AppsSdkWidgetState = AppsSdkWidgetState> =
      * Downloads a file from the host. Works for files uploaded by the widget,
      * files selected via selectFiles(), or files provided via tool/file params.
      */
-    getFileDownloadUrl: (file: FileMetadata) => Promise<{ downloadUrl: string }>;
+    getFileDownloadUrl: (
+      file: FileMetadata,
+    ) => Promise<{ downloadUrl: string }>;
 
     /**
      * Sets the open in app URL.

@@ -17,7 +17,10 @@ const mobileAgent: UserAgent = {
 function makeInjector(
   locale: string,
   userAgent?: UserAgent,
-): { injector: EnvironmentInjector; localeStore: ReturnType<typeof createFakeStore<"locale">> } {
+): {
+  injector: EnvironmentInjector;
+  localeStore: ReturnType<typeof createFakeStore<"locale">>;
+} {
   const localeStore = createFakeStore<"locale">(locale);
   const stores: Parameters<typeof createFakeAdaptor>[0] = {
     stores: { locale: localeStore.store },

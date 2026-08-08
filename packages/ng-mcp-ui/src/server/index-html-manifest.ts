@@ -124,9 +124,9 @@ function parseIndexHtml(html: string): ParsedManifest {
  * {@link ViewManifest} backed by an Angular widgets-build `index.html`.
  *
  * Construct with EITHER an inline HTML string (parsed eagerly) or a filesystem
- * path (read lazily on first access, then cached). {@link reload} clears the
- * cache so the next access re-reads the file — useful when the build re-runs
- * while the server is up.
+ * path (read lazily on first access, then cached).
+ * {@link IndexHtmlViewManifest.reload} clears the cache so the next access
+ * re-reads the file — useful when the build re-runs while the server is up.
  *
  * @example
  * // From a file path (lazy read + cache):

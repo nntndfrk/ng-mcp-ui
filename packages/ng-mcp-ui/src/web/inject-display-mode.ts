@@ -1,8 +1,4 @@
-import {
-  type Signal,
-  assertInInjectionContext,
-  inject,
-} from "@angular/core";
+import { type Signal, assertInInjectionContext, inject } from "@angular/core";
 import type {
   Adaptor,
   DisplayMode,

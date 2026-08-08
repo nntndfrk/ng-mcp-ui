@@ -1,6 +1,6 @@
 ---
 title: generate view
-description: Scaffold a widget component and wire it into the widget registry and the ViewNameRegistry.
+description: Scaffolds a widget component and wires it into the widget registry and the ViewNameRegistry.
 group: Schematics
 groupOrder: 3
 order: 2
@@ -11,25 +11,26 @@ ng generate ng-mcp-ui:view poll
 ng generate ng-mcp-ui:view poll --withTool   # also scaffold a paired tool
 ```
 
-Generates a standalone widget component under `src/widgets/<name>/` and wires it into two places:
+The generator writes a standalone widget component under `src/widgets/<name>/`. It also wires the
+component into two places.
 
-- `src/widgets/registry.ts` — a lazy `import()` entry, so the builder code-splits the view into its
-  own chunk;
-- the `ViewNameRegistry` module augmentation, so `view: { component: "<name>" }` type-checks on the
-  server.
+- `src/widgets/registry.ts` gets a lazy `import()` entry. Therefore the builder puts the view in its
+  own chunk.
+- The `ViewNameRegistry` interface gets one more key. Therefore `view: { component: "<name>" }`
+  type-checks on the server.
 
 ## Options
 
 | Option | Type | Default | Notes |
 | --- | --- | --- | --- |
-| `name` | string | — | View name (first positional argument). **Required.** |
-| `--project` | string | current project | Target project name. |
-| `--withTool` | boolean | `false` | Also scaffold a paired MCP tool (delegates to the `tool` generator). |
+| `name` | string | *(none)* | The name of the view. It is the first positional argument. **Required.** |
+| `--project` | string | current project | The target project. |
+| `--withTool` | boolean | `false` | Also scaffolds a paired MCP tool. The generator delegates to the `tool` generator. |
 
-## What it generates
+## What it writes
 
-The component is standalone, `OnPush`, and already reads live host state — a starting point you edit
-rather than a blank file:
+The component is standalone, it uses `OnPush`, and it already reads live host state. Edit it. It is
+not a blank file.
 
 ```ts
 @Component({
@@ -72,20 +73,23 @@ export default class PollWidget {
 }
 ```
 
-Edit the `injectToolInfo` generic to match the paired tool's `inputSchema` and `outputSchema` — or
-drop the generic entirely and use
-[`injectAppHelpers`](/docs/guides/typed-tool-data) for inference straight from the server type.
+Change the generic of [`injectToolInfo`](/docs/api/inject-tool-info) to match the `inputSchema` and
+the `outputSchema` of the paired tool. Or remove the generic, and use
+[`injectAppHelpers`](/docs/api/inject-app-helpers) to infer both from the server type.
 
-The component is a **default export**, because `src/widgets/main.ts` boots
+The component is a **default export**, because `src/widgets/main.ts` boots it with
 `registry[name]().then((m) => bootstrapWidget(m.default))`.
 
-## After generating
+## After you generate
 
-Run the widgets build so the new chunk exists before a host asks for the view:
+Build the widgets, so the new chunk exists before a host asks for the view.
 
 ```bash
 npm run build:widgets
 ```
 
-The build fails loudly if a registered view did not emit a chunk — see
+The build fails with a clear message when a registered view emitted no chunk. See
 [build-widgets](/docs/schematics/build-widgets).
+
+To skip this step while you write widget code, put the asset router in development mode. See
+[`createViewAssetRouter`](/docs/api/create-view-asset-router).

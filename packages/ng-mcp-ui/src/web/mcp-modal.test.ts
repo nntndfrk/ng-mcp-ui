@@ -254,11 +254,13 @@ describe("createMcpModal Escape-key listener lifecycle (DI)", () => {
   it("removes the keydown listener on injector destroy (not leaked across lifetimes)", () => {
     // Stub a DOM so the Escape-to-close branch runs (node has no `document`).
     const keydownHandlers: Array<(e: KeyboardEvent) => void> = [];
-    const addEventListener = spy((type: string, h: (e: KeyboardEvent) => void) => {
-      if (type === "keydown") {
-        keydownHandlers.push(h);
-      }
-    });
+    const addEventListener = spy(
+      (type: string, h: (e: KeyboardEvent) => void) => {
+        if (type === "keydown") {
+          keydownHandlers.push(h);
+        }
+      },
+    );
     const removeEventListener = spy();
     vi.stubGlobal("document", { addEventListener, removeEventListener });
 

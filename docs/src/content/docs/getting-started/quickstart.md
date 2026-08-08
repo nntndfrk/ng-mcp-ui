@@ -1,48 +1,49 @@
 ---
 title: Quickstart
-description: Retrofit an existing Angular application with an MCP server, a widget build target, and a working example view.
+description: Retrofit an Angular application with an MCP server, a widget build target, and a working example view.
 group: Getting started
 groupOrder: 1
 order: 2
 ---
 
-> Requires **Angular v20, v21 or v22** and Node 22 or newer. If your app has no SSR yet, the
-> schematic adds it.
+> You need **Angular v20, v21 or v22**, and Node 22 or later. If your app has no SSR, the schematic
+> adds it.
 
 ## 1. Install and retrofit
 
-A single schematic mounts the MCP JSON-RPC endpoint into your `server.ts`, scaffolds an example tool
-and widget, and wires the dev scripts:
+One schematic mounts the MCP JSON-RPC endpoint into your `server.ts` file. It also scaffolds an
+example tool and widget, and it adds the dev scripts.
 
 ```bash
 ng add ng-mcp-ui --example=demo
 ```
 
-`ng add` installs the package and runs the retrofit in one step. If `ng-mcp-ui` is already
-installed, run the same schematic directly:
+`ng add` installs the package and runs the retrofit in one step. If the package is already
+installed, run the schematic directly:
 
 ```bash
 ng generate ng-mcp-ui:ng-add --example=demo
 ```
 
-What lands in your app:
+The schematic writes these files.
 
 | Path | What it is |
 | --- | --- |
-| `src/mcp/server.ts` | Your `createMcpServer()` — register tools here |
-| `src/mcp/views.manifest.ts` | Resolves the widgets build output for the view shell |
-| `src/widgets/registry.ts` | View name → lazy `import()` of the widget module |
-| `src/widgets/main.ts` | Widget bootstrap entry, reads `viewName` from the shell |
-| `tsconfig.widgets.json` | TypeScript project for the widgets build |
+| `src/mcp/server.ts` | Your `createMcpServer()` function. Register your tools here |
+| `src/mcp/views.manifest.ts` | Resolves the widget build output for the view shell |
+| `src/widgets/registry.ts` | Maps each view name to a lazy `import()` of the widget module |
+| `src/widgets/main.ts` | The widget entry. It reads `viewName` from the shell |
+| `tsconfig.widgets.json` | The TypeScript project for the widget build |
 
-Plus a `build-widgets` target on the `ng-mcp-ui:build-widgets` builder, the `/mcp` and
-`/assets/widgets` routes mounted in `src/server.ts` before Angular's SSR catch-all, and three npm
-scripts.
+It also adds a `build-widgets` target on the
+[`ng-mcp-ui:build-widgets`](/docs/schematics/build-widgets) builder, mounts the `/mcp` and
+`/assets/widgets` routes in `src/server.ts` before the SSR catch-all route of Angular, and adds
+three npm scripts.
 
 ## 2. Register a tool
 
-Tools are typed with Zod. A tool that carries a `view` renders as an interactive widget instead of
-plain text:
+Zod types each tool. A tool with a `view` field renders as an interactive widget, and not as plain
+text.
 
 ```ts
 import { McpServer } from "ng-mcp-ui/server";
@@ -96,12 +97,13 @@ export function createMcpServer(): McpServer {
 }
 ```
 
-Generating one is a single command — see [generate tool](/docs/schematics/generate-tool).
+One command generates a tool. See [generate tool](/docs/schematics/generate-tool), and
+[`registerTool`](/docs/api/register-tool) for each config field.
 
 ## 3. Write the widget
 
-A widget is a standalone, zoneless, OnPush Angular component that reads live host state through the
-`inject*` API:
+A widget is a standalone Angular component. It uses `OnPush`, it needs no Zone.js, and it reads live
+host state through the `inject*` API.
 
 ```ts
 import { ChangeDetectionStrategy, Component, computed } from "@angular/core";
@@ -162,7 +164,7 @@ export default class PollWidget {
 }
 ```
 
-Register it in `src/widgets/registry.ts` so the builder can code-split it:
+Add it to `src/widgets/registry.ts`, so the builder can put it in its own chunk.
 
 ```ts
 export const registry = {
@@ -173,11 +175,11 @@ export const registry = {
 export type ViewName = keyof typeof registry;
 ```
 
-`ng generate ng-mcp-ui:view poll` writes both the component and the registry entry for you.
+`ng generate ng-mcp-ui:view poll` writes the component and the registry entry for you.
 
 ## 4. Run it
 
-`ng add` wires three npm scripts. The dev loop is:
+`ng add` adds three npm scripts. The dev loop is:
 
 ```bash
 npm run build:widgets   # AOT-build the widget bundle, validate every registered
@@ -186,13 +188,19 @@ npm run dev:mcp         # ng serve — /mcp and /assets/widgets are now live
 npm run tunnel          # expose it, e.g. cloudflared tunnel --url http://localhost:4200
 ```
 
-Then add the tunnel URL plus `/mcp` as a custom connector in the host — Claude: Settings →
-Connectors; ChatGPT: developer-mode connectors — and ask the model to use your tool.
+Then add the tunnel URL with `/mcp` at the end as a custom connector in the host. In Claude, open
+Settings and then Connectors. In ChatGPT, use the developer-mode connectors. Then ask the model to
+use your tool.
 
-Re-run `build:widgets` after changing a widget.
+Run `build:widgets` again after you change a widget.
+
+To skip that step while you write widget code, put the asset router in development mode. It proxies
+your running `ng serve` process, therefore you need no widget build. See
+[`createViewAssetRouter`](/docs/api/create-view-asset-router).
 
 ## Next steps
 
-- [How it works](/docs/getting-started/how-it-works) — what actually happens inside the host iframe.
-- [Typed tool data](/docs/guides/typed-tool-data) — get end-to-end inference from Zod to widget.
-- [Testing widgets](/docs/guides/testing-widgets) — unit-test without a real host.
+- [How it works](/docs/getting-started/how-it-works) tells you what happens in the host iframe.
+- [Typed tool data](/docs/guides/typed-tool-data) gives you inference from Zod to the widget.
+- [Testing widgets](/docs/guides/testing-widgets) tests a widget with no real host.
+- [Troubleshooting](/docs/guides/troubleshooting) lists each error and its correction.

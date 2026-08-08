@@ -379,7 +379,10 @@ function findEngineAnchorEnd(source: ts.SourceFile): number | null {
         continue;
       }
       const init = decl.initializer.getText(source);
-      if (decl.name.text === "angularApp" && /AngularNodeAppEngine/.test(init)) {
+      if (
+        decl.name.text === "angularApp" &&
+        /AngularNodeAppEngine/.test(init)
+      ) {
         return statement.getEnd();
       }
       if (decl.name.text === "app" && /express\s*\(\s*\)/.test(init)) {

@@ -57,7 +57,12 @@ try {
   writeFileSync(
     join(scratch, "package.json"),
     `${JSON.stringify(
-      { name: "scratch-consumer", version: "1.0.0", type: "module", private: true },
+      {
+        name: "scratch-consumer",
+        version: "1.0.0",
+        type: "module",
+        private: true,
+      },
       null,
       2,
     )}\n`,
@@ -92,7 +97,9 @@ try {
     }
     console.log("ng-mcp-ui/server  ->", server);
   `;
-  process.stdout.write(runCapture("node", ["--input-type=module", "-e", probe], scratch));
+  process.stdout.write(
+    runCapture("node", ["--input-type=module", "-e", probe], scratch),
+  );
   console.log(
     "\nverify-pack: OK — all four subpath exports resolve from a packed install.",
   );

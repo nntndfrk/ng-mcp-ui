@@ -43,7 +43,10 @@ describe("buildAppsSdkContentMeta", () => {
     const meta = buildAppsSdkContentMeta(
       view({
         csp: {
-          resourceDomains: ["https://assets.example.com", "https://cdn.example.com"],
+          resourceDomains: [
+            "https://assets.example.com",
+            "https://cdn.example.com",
+          ],
           connectDomains: ["https://ws.example.com"],
         },
       }),
@@ -51,7 +54,10 @@ describe("buildAppsSdkContentMeta", () => {
     );
     expect(meta["openai/widgetCSP"]).toEqual({
       // dedup: the shared default origin appears once
-      resource_domains: ["https://assets.example.com", "https://cdn.example.com"],
+      resource_domains: [
+        "https://assets.example.com",
+        "https://cdn.example.com",
+      ],
       connect_domains: ["https://api.example.com", "https://ws.example.com"],
     });
   });
@@ -144,7 +150,10 @@ describe("buildExtAppsContentMeta", () => {
     const meta = buildExtAppsContentMeta(
       view({
         csp: {
-          resourceDomains: ["https://assets.example.com", "https://cdn.example.com"],
+          resourceDomains: [
+            "https://assets.example.com",
+            "https://cdn.example.com",
+          ],
           frameDomains: ["https://frame.example.com"],
           redirectDomains: ["https://redir.example.com"],
         },
@@ -152,7 +161,10 @@ describe("buildExtAppsContentMeta", () => {
       EXT_APPS_DEFAULTS,
     );
     expect(meta.ui?.csp).toEqual({
-      resourceDomains: ["https://assets.example.com", "https://cdn.example.com"],
+      resourceDomains: [
+        "https://assets.example.com",
+        "https://cdn.example.com",
+      ],
       connectDomains: ["https://api.example.com"],
       baseUriDomains: ["https://base.example.com"],
       frameDomains: ["https://frame.example.com"],
@@ -175,7 +187,11 @@ describe("buildExtAppsContentMeta", () => {
 
   it("carries description, prefersBorder, and the per-view domain on ui", () => {
     const meta = buildExtAppsContentMeta(
-      view({ description: "A card", prefersBorder: false, domain: "view.example.com" }),
+      view({
+        description: "A card",
+        prefersBorder: false,
+        domain: "view.example.com",
+      }),
       EXT_APPS_DEFAULTS,
     );
     expect(meta.ui?.description).toBe("A card");
