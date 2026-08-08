@@ -18,8 +18,8 @@ import { MCP_ADAPTOR } from "./tokens.js";
  * Default debounce window (ms) for coalescing local store writes into a single
  * `adaptor.setViewState` call. `0` schedules a trailing write on the next macro
  * task, so any number of synchronous `set`/`update`/`patch` calls in the same
- * tick collapse into one host write — the signal-equivalent of the reference
- * store's "debounced writes". Tune via {@link InjectViewStoreOptions.debounceMs}.
+ * tick collapse into one host write. Tune via
+ * {@link InjectViewStoreOptions.debounceMs}.
  */
 const DEFAULT_DEBOUNCE_MS = 0;
 
@@ -33,10 +33,10 @@ export type ViewStoreUpdater<State extends ViewState> =
   | ((prevState: State | null) => State | null);
 
 /**
- * State creator: a value, `null`, or a lazy initializer of the seed state. The
- * signal analogue of the reference store's `(set) => ({ ... })` creator —
- * trimmed to the seed shape, since selectors/actions are expressed as Angular
- * signals on the returned handle rather than baked into the state object.
+ * State creator: a value, `null`, or a lazy initializer of the seed state.
+ * It carries the seed shape only: selectors and actions are expressed as
+ * Angular signals on the returned handle rather than baked into the state
+ * object.
  */
 export type ViewStoreCreator<State extends ViewState> =
   | State
@@ -93,9 +93,8 @@ export type InjectViewStore<State extends ViewState> = {
       | ((prevState: State | null) => Partial<State>),
   ) => void;
   /**
-   * Derive a memoized read-only signal from the state via a selector — the
-   * signal analogue of the reference store's selector overload. Recomputes when
-   * `state` changes.
+   * Derive a memoized read-only signal from the state via a selector.
+   * Recomputes when `state` changes.
    */
   select: <T>(selector: (state: State | null) => T) => Signal<T>;
   /**
@@ -140,8 +139,8 @@ export type InjectViewStore<State extends ViewState> = {
  * **Debounce window:** local writes are coalesced with a trailing-edge timer
  * (default `0` ms — the next macro task; configurable via `options.debounceMs`).
  * Any burst of synchronous writes in one tick results in a single
- * `setViewState` carrying the final value, matching the reference store's
- * "debounced writes". Call {@link InjectViewStore.flush} to persist immediately;
+ * `setViewState` carrying the final value.
+ * Call {@link InjectViewStore.flush} to persist immediately;
  * the pending timer is cleared (and a final flush performed) on destroy via the
  * ambient {@link DestroyRef}.
  *
@@ -157,8 +156,8 @@ export type InjectViewStore<State extends ViewState> = {
  * @param initialState Seed state (value, `null`, or lazy creator). Used only
  *   when the host has no existing `viewState`.
  * @param defaultState Fallback seed used when `initialState` resolves to `null`
- *   and the host has no `viewState` — lets callers pass a creator plus a plain
- *   default, mirroring the reference store's `(creator, defaultState)` shape.
+ *   and the host has no `viewState`. Lets callers pass a creator plus a plain
+ *   default.
  * @param options See {@link InjectViewStoreOptions} (debounce window).
  */
 export function injectViewStore<State extends ViewState>(
