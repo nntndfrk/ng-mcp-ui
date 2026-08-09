@@ -1,3 +1,4 @@
+import type { InputRequiredResult } from "@modelcontextprotocol/server";
 import { describe, expectTypeOf, it } from "vitest";
 import { z } from "zod";
 import type {
@@ -64,6 +65,15 @@ describe("ExtractStructuredContent", () => {
       >
     >().toEqualTypeOf<{ hits: number }>();
   });
+
+  it("skips MRTR input_required members (their loose index signature would otherwise widen the shape to unknown)", () => {
+    expectTypeOf<
+      ExtractStructuredContent<
+        | InputRequiredResult
+        | { content: string; structuredContent: { hits: number } }
+      >
+    >().toEqualTypeOf<{ hits: number }>();
+  });
 });
 
 describe("ExtractMeta", () => {
@@ -80,6 +90,14 @@ describe("ExtractMeta", () => {
   it("pulls the shape from an optional _meta? (undefined stripped)", () => {
     expectTypeOf<
       ExtractMeta<{ content: string; _meta?: { traceId: string } }>
+    >().toEqualTypeOf<{ traceId: string }>();
+  });
+
+  it("skips MRTR input_required members like ExtractStructuredContent does", () => {
+    expectTypeOf<
+      ExtractMeta<
+        InputRequiredResult | { content: string; _meta: { traceId: string } }
+      >
     >().toEqualTypeOf<{ traceId: string }>();
   });
 });

@@ -1,11 +1,13 @@
 import type {
   Icon,
+  InputRequiredResult,
   RequestMeta,
   ServerContext,
   StandardSchemaV1,
   StandardSchemaWithJSON,
   ToolAnnotations,
 } from "@modelcontextprotocol/server";
+import type { SealedState } from "./state.js";
 import type {
   HandlerContent,
   SecurityScheme,
@@ -40,24 +42,48 @@ export type InferToolArgs<TInput extends ToolInputSchema | undefined> =
 
 /**
  * @internal
+ * Structural marker for an MRTR `input_required` return. The SDK's
+ * {@link InputRequiredResult} extends the loose `Result` (index signature), so
+ * key-presence probes match EVERY key on it; the extractors below must skip
+ * such members explicitly or a `... | InputRequiredResult` union return would
+ * degrade the extracted shapes to `unknown`.
+ */
+type InputRequiredLike = { resultType: "input_required" };
+
+/**
+ * The values a tool handler may return: a completing result (with optional
+ * `content` / `structuredContent` / `_meta`) or an MRTR `input_required`
+ * round built with `inputRequired()`.
+ */
+export type ToolHandlerResult =
+  | { content?: HandlerContent }
+  | InputRequiredResult;
+
+/**
+ * @internal
  * Pull a handler return's `structuredContent` shape, or `never` if no return
  * member declares it. Distributes over unions and tests key *presence* (rather
  * than `T extends { structuredContent: infer SC }`, which only matches a
  * **required** property), so an optional `structuredContent?:` and conditional
  * (`A | B`) returns are handled — each member that carries the key contributes
- * its shape, with `undefined` stripped.
+ * its shape, with `undefined` stripped. MRTR `input_required` members are
+ * skipped: only the completing member shapes a view's typed output.
  */
 export type ExtractStructuredContent<T> = T extends unknown
-  ? "structuredContent" extends keyof T
-    ? Simplify<Exclude<T["structuredContent"], undefined>>
-    : never
+  ? T extends InputRequiredLike
+    ? never
+    : "structuredContent" extends keyof T
+      ? Simplify<Exclude<T["structuredContent"], undefined>>
+      : never
   : never;
 
-/** @internal Per-union-member `_meta` shape, or `never` for members without it. */
+/** @internal Per-union-member `_meta` shape, or `never` for members without it (MRTR members skipped). */
 type MetaOf<T> = T extends unknown
-  ? "_meta" extends keyof T
-    ? Exclude<T["_meta"], undefined>
-    : never
+  ? T extends InputRequiredLike
+    ? never
+    : "_meta" extends keyof T
+      ? Exclude<T["_meta"], undefined>
+      : never
   : never;
 
 /**
@@ -154,6 +180,12 @@ export interface ClientHintsMeta {
  */
 export type McpToolContext = ServerContext & {
   mcpReq: { _meta?: RequestMeta & ClientHintsMeta };
+  /**
+   * Sealed-state helpers (`seal`/`open`), present when the blueprint was
+   * constructed with a `state` option. See `state.ts` and
+   * `.claude/REQUEST-STATE-DESIGN.md`.
+   */
+  state?: SealedState;
 };
 
 /**
@@ -162,7 +194,7 @@ export type McpToolContext = ServerContext & {
  */
 export type ToolHandler<
   TInput extends ToolInputSchema | undefined = undefined,
-  TReturn extends { content?: HandlerContent } = { content?: HandlerContent },
+  TReturn extends ToolHandlerResult = ToolHandlerResult,
 > = (
   args: InferToolArgs<TInput>,
   ctx: McpToolContext,

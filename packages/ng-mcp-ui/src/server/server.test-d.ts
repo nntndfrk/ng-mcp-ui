@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, it } from "vitest";
 import * as z from "zod";
 import { McpServer } from "./server.js";
+import { inputRequired } from "./state.js";
 import type { ViewName } from "./types.js";
 
 // `ViewName` is narrowed to `never` until a `ViewNameRegistry` augmentation
@@ -63,6 +64,29 @@ describe("type-level: chained registerTool accumulates TTools", () => {
     type Tools = (typeof server)["$types"]["tools"];
     expectTypeOf<Tools["with_meta"]["responseMetadata"]>().toEqualTypeOf<{
       traceId: string;
+    }>();
+  });
+});
+
+describe("type-level: MRTR input_required returns", () => {
+  it("registerTool accepts a handler that may return inputRequired() and keeps the completing member's output", () => {
+    const server = new McpServer(
+      { name: "t", version: "1.0.0" },
+      {},
+    ).registerTool(
+      {
+        name: "confirm_delete",
+        inputSchema: z.object({ target: z.string() }),
+      },
+      async ({ target }) =>
+        target === "?"
+          ? inputRequired({ requestState: "opaque" })
+          : { content: "ok", structuredContent: { deleted: target } },
+    );
+
+    type Tools = (typeof server)["$types"]["tools"];
+    expectTypeOf<Tools["confirm_delete"]["output"]>().toEqualTypeOf<{
+      deleted: string;
     }>();
   });
 });

@@ -1,7 +1,14 @@
 import crypto from "node:crypto";
+import { CLIENT_CAPABILITIES_META_KEY } from "@modelcontextprotocol/server";
 import { afterEach, describe, expect, it } from "vitest";
 import * as z from "zod";
 import { McpServer } from "./server.js";
+import {
+  acceptedContent,
+  inputRequired,
+  SEALED_STATE_INVALID_MESSAGE,
+  STATE_META_KEY,
+} from "./state.js";
 import { connectModern, rpc } from "./test-fakes.js";
 import type { ViewName } from "./types.js";
 import { InMemoryViewManifest, type ViewManifest } from "./view-manifest.js";
@@ -521,5 +528,173 @@ describe("2026-07-28 wire surface", () => {
     };
     expect(bareBody.error).toBeDefined();
     expect(bareBody.error?.data?.supported).toEqual(["2026-07-28"]);
+  });
+});
+
+describe("sealed state + MRTR (the weave)", () => {
+  const KEY = "0123456789abcdef0123456789abcdef"; // 32 bytes
+
+  it("round-trips widget-carried state through seal/open over the wire", async () => {
+    const server = new McpServer(
+      { name: "test", version: "1.0.0" },
+      { capabilities: {}, state: { key: KEY } },
+    )
+      .registerTool({ name: "start" }, async (_args, ctx) => ({
+        content: "started",
+        structuredContent: { count: 1 },
+        _meta: { [STATE_META_KEY]: await ctx.state?.seal({ count: 1 }) },
+      }))
+      .registerTool(
+        { name: "bump", inputSchema: z.object({ state: z.string() }) },
+        async ({ state }, ctx) => {
+          const prev = await ctx.state?.open<{ count: number }>(state);
+          const count = (prev?.count ?? 0) + 1;
+          return {
+            content: `count=${count}`,
+            structuredContent: { count },
+            _meta: { [STATE_META_KEY]: await ctx.state?.seal({ count }) },
+          };
+        },
+      );
+
+    const { client, close } = await connectModern(server);
+    const started = await client.callTool({ name: "start", arguments: {} });
+    const token = (started._meta as Record<string, unknown>)?.[STATE_META_KEY];
+    expect(typeof token).toBe("string");
+
+    const bumped = await client.callTool({
+      name: "bump",
+      arguments: { state: token as string },
+    });
+    await close();
+
+    expect(bumped.structuredContent).toEqual({ count: 2 });
+    const next = (bumped._meta as Record<string, unknown>)?.[STATE_META_KEY];
+    expect(typeof next).toBe("string");
+    expect(next).not.toBe(token);
+  });
+
+  it("surfaces a tampered token as the stable isError result", async () => {
+    const server = new McpServer(
+      { name: "test", version: "1.0.0" },
+      { capabilities: {}, state: { key: KEY } },
+    ).registerTool(
+      { name: "bump", inputSchema: z.object({ state: z.string() }) },
+      async ({ state }, ctx) => {
+        const prev = await ctx.state?.open<{ count: number }>(state);
+        return { content: `count=${prev?.count}` };
+      },
+    );
+
+    const { client, close } = await connectModern(server);
+    const result = await client.callTool({
+      name: "bump",
+      arguments: { state: "garbage" },
+    });
+    await close();
+
+    expect(result.isError).toBe(true);
+    const text = (result.content as Array<{ text?: string }>)[0]?.text;
+    expect(text).toContain(SEALED_STATE_INVALID_MESSAGE);
+  });
+
+  it("drives a two-round MRTR elicitation with verified requestState", async () => {
+    const confirmSchema = z.object({ ok: z.boolean() });
+    const server = new McpServer(
+      { name: "test", version: "1.0.0" },
+      { capabilities: {}, state: { key: KEY } },
+    ).registerTool(
+      {
+        name: "confirm_delete",
+        inputSchema: z.object({ target: z.string() }),
+      },
+      async ({ target }, ctx) => {
+        const confirmed = acceptedContent(
+          ctx.mcpReq.inputResponses,
+          "confirm",
+          confirmSchema,
+        );
+        if (confirmed === undefined) {
+          return inputRequired({
+            inputRequests: {
+              confirm: inputRequired.elicit({
+                message: `Delete ${target}?`,
+                requestedSchema: confirmSchema,
+              }),
+            },
+            requestState: await ctx.state?.seal({ target }),
+          });
+        }
+        // Round two: the seam has already verified and decoded the echo.
+        const sealed = ctx.mcpReq.requestState<{ target: string }>();
+        return { content: `deleted ${sealed?.target}, ok=${confirmed.ok}` };
+      },
+    );
+
+    const { handler, close } = await connectModern(server);
+
+    // Embedding an elicit request requires the request envelope to declare
+    // the elicitation capability, or the seam answers -32021.
+    const elicitCaps = {
+      [CLIENT_CAPABILITIES_META_KEY]: { elicitation: { form: {} } },
+    };
+
+    const round1 = await rpc(handler, "tools/call", {
+      name: "confirm_delete",
+      arguments: { target: "report.pdf" },
+      _meta: elicitCaps,
+    });
+    expect(round1.status).toBe(200);
+    const r1 = round1.body.result as Record<string, unknown>;
+    expect(r1.resultType).toBe("input_required");
+    expect(
+      (r1.inputRequests as Record<string, unknown> | undefined)?.confirm,
+    ).toBeDefined();
+    const echoed = r1.requestState as string;
+    expect(typeof echoed).toBe("string");
+    // No viewUUID stamping and no content on an input_required round.
+    expect(r1.content).toBeUndefined();
+
+    const round2 = await rpc(
+      handler,
+      "tools/call",
+      {
+        name: "confirm_delete",
+        arguments: { target: "report.pdf" },
+        requestState: echoed,
+        inputResponses: {
+          confirm: { action: "accept", content: { ok: true } },
+        },
+        _meta: elicitCaps,
+      },
+      { id: 2 },
+    );
+    expect(round2.status).toBe(200);
+    const text = (round2.body.result?.content as Array<{ text?: string }>)[0]
+      ?.text;
+    expect(text).toBe("deleted report.pdf, ok=true");
+
+    // A tampered echo is refused before the handler runs: the SDK's frozen
+    // -32602 with no handler-visible detail.
+    const tampered = await rpc(
+      handler,
+      "tools/call",
+      {
+        name: "confirm_delete",
+        arguments: { target: "report.pdf" },
+        requestState: `${echoed}x`,
+        inputResponses: {
+          confirm: { action: "accept", content: { ok: true } },
+        },
+        _meta: elicitCaps,
+      },
+      { id: 3 },
+    );
+    await close();
+
+    expect(tampered.body.error?.code).toBe(-32602);
+    expect(tampered.body.error?.message).toContain(
+      "Invalid or expired requestState",
+    );
   });
 });

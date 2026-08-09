@@ -26,6 +26,7 @@ import type { McpUiToolMeta } from "@modelcontextprotocol/ext-apps";
 import {
   type CacheHint,
   type Implementation,
+  isInputRequiredResult,
   type McpRequestContext,
   type McpServerFactory,
   McpServer as SdkMcpServer,
@@ -41,6 +42,12 @@ import {
 } from "./request-context.js";
 import type { ShellRenderer } from "./shell-renderer.js";
 import { AngularShellRenderer } from "./shell-templates.js";
+import {
+  createSealedState,
+  type RequestStateCodec,
+  resolveStateCodec,
+  type StateOptions,
+} from "./state.js";
 import type {
   ExtendToolRegistry,
   ExtractMeta,
@@ -48,10 +55,10 @@ import type {
   McpToolContext,
   ToolConfig,
   ToolHandler,
+  ToolHandlerResult,
   ToolInputSchema,
 } from "./tool-types.js";
 import type {
-  HandlerContent,
   McpServerTypes,
   SecurityScheme,
   ToolDef,
@@ -167,6 +174,17 @@ export interface McpServerExtraOptions {
    * seeded from `NODE_ENV` and the resolved `viewManifest`.
    */
   shellRenderer?: ShellRenderer;
+  /**
+   * Sealed-state configuration (see `.claude/REQUEST-STATE-DESIGN.md`). One
+   * HMAC codec upgrades both verified state carriers: MRTR `requestState`
+   * echoes are verified before handlers run (and decoded via
+   * `ctx.mcpReq.requestState<T>()`), and handlers gain `ctx.state.seal()` /
+   * `ctx.state.open()` for widget-carried state. Pass options (`key`,
+   * `ttlSeconds`, `bind`) or a ready-made {@link RequestStateCodec}. An
+   * explicit SDK `requestState` option on this config wins over the codec's
+   * `verify` wiring.
+   */
+  state?: StateOptions | RequestStateCodec;
 }
 
 /**
@@ -194,14 +212,29 @@ export class McpServer<
   private readonly sdkOptions?: ServerOptions;
   private readonly viewManifest: ViewManifest;
   private readonly shellRenderer: ShellRenderer;
+  private readonly stateCodec?: RequestStateCodec;
 
   constructor(
     serverInfo: Implementation,
     options?: ServerOptions & McpServerExtraOptions,
   ) {
-    const { viewManifest, shellRenderer, ...sdkOptions } = options ?? {};
+    const { viewManifest, shellRenderer, state, ...sdkOptions } = options ?? {};
     this.serverInfo = serverInfo;
-    this.sdkOptions = sdkOptions;
+    const codec = resolveStateCodec(state);
+    this.stateCodec = codec;
+    // Wire the codec's `verify` into the SDK's MRTR integrity hook so echoed
+    // `requestState` is checked before handlers run and the decoded payload
+    // reaches `ctx.mcpReq.requestState<T>()`. A user-supplied `requestState`
+    // option wins.
+    this.sdkOptions =
+      codec !== undefined && sdkOptions.requestState === undefined
+        ? {
+            ...sdkOptions,
+            requestState: {
+              verify: (echoed, ctx) => codec.verify(echoed, ctx),
+            },
+          }
+        : sdkOptions;
     this.viewManifest = viewManifest ?? new InMemoryViewManifest("main.js");
     // Default to the real Angular shells. `render()` honors the per-request
     // `isProduction` flag, so the constructed `mode` here is only a fallback;
@@ -231,7 +264,7 @@ export class McpServer<
   registerTool<
     TName extends string,
     TInput extends ToolInputSchema,
-    TReturn extends { content?: HandlerContent },
+    TReturn extends ToolHandlerResult,
   >(
     config: ToolConfig<TInput> & { name: TName },
     cb: ToolHandler<TInput, TReturn>,
@@ -242,10 +275,7 @@ export class McpServer<
     ExtractStructuredContent<TReturn>,
     ExtractMeta<TReturn>
   >;
-  registerTool<
-    TName extends string,
-    TReturn extends { content?: HandlerContent },
-  >(
+  registerTool<TName extends string, TReturn extends ToolHandlerResult>(
     config: ToolConfig<undefined> & { name: TName; inputSchema?: undefined },
     cb: ToolHandler<undefined, TReturn>,
   ): AddTool<
@@ -397,7 +427,18 @@ export class McpServer<
     { attachViewUUID }: { attachViewUUID: boolean },
   ) {
     return async (args: Record<string, unknown>, ctx: McpToolContext) => {
+      if (this.stateCodec) {
+        // Attach the per-request sealed-state surface. Mutating the SDK's ctx
+        // (rather than spreading it) preserves its prototype and any
+        // `this`-bound internals.
+        ctx.state = createSealedState(this.stateCodec, ctx);
+      }
       const result = await cb(args, ctx);
+      if (isInputRequiredResult(result)) {
+        // An MRTR round-one return has no `content` to normalize and must not
+        // carry a viewUUID (nothing renders until the flow completes).
+        return result;
+      }
       return {
         ...result,
         content: normalizeContent(result.content),

@@ -3,8 +3,8 @@
 // Pure-TS foundation: content helpers, the FileRef schema, the tool/type
 // inference machinery (the `typeof server` -> typed-view chain), the
 // `McpServer` blueprint, the mountable express router + fetch handler + auth
-// helpers, and the Angular shell renderer + `index.html` manifest parser +
-// asset router.
+// helpers, the sealed-state + MRTR surface (`state.ts`), and the Angular
+// shell renderer + `index.html` manifest parser + asset router.
 //
 // Gone in 1.x (see the migration guide): the protocol middleware API
 // (`McpExtra*` / `McpMiddleware*` types and `mcpMiddleware()`) and the
@@ -53,11 +53,28 @@ export { normalizeContent } from "./normalize-content.js";
 export { McpServer, type McpServerExtraOptions } from "./server.js";
 export type { ShellRenderer, ShellRenderInput } from "./shell-renderer.js";
 export { AngularShellRenderer, type ShellMode } from "./shell-templates.js";
+export {
+  acceptedContent,
+  createRequestStateCodec,
+  type InputRequest,
+  type InputRequests,
+  type InputRequiredResult,
+  type InputResponses,
+  type InputResponseView,
+  inputRequired,
+  inputResponse,
+  type RequestStateCodec,
+  SEALED_STATE_INVALID_MESSAGE,
+  type SealedState,
+  STATE_META_KEY,
+  type StateOptions,
+} from "./state.js";
 export type {
   ClientHintsMeta,
   McpToolContext,
   ToolConfig,
   ToolHandler,
+  ToolHandlerResult,
   ToolInputSchema,
 } from "./tool-types.js";
 export type {
