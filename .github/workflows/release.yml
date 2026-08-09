@@ -57,6 +57,18 @@ jobs:
         run: npm run verify:pack --workspace ng-mcp-ui
 
       - name: Publish to npm
-        run: npm publish --workspace ng-mcp-ui --access public --provenance
+        # Route by version shape. npm assigns `latest` to whatever it publishes
+        # unless told otherwise, so a prerelease MUST carry an explicit dist-tag
+        # or `npm i ng-mcp-ui` starts serving it to everyone. 1.x is modern-only
+        # (MCP 2026-07-28) and cannot serve today's hosts, so it ships on `next`
+        # until a host adopts the new protocol.
+        run: |
+          VERSION=$(node -p "require('./packages/ng-mcp-ui/package.json').version")
+          case "$VERSION" in
+            *-*) DIST_TAG=next ;;
+            *)   DIST_TAG=latest ;;
+          esac
+          echo "Publishing ng-mcp-ui@$VERSION to dist-tag '$DIST_TAG'"
+          npm publish --workspace ng-mcp-ui --access public --provenance --tag "$DIST_TAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

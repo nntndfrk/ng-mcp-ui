@@ -7,11 +7,11 @@
 [![Angular](https://img.shields.io/badge/Angular-v20%20%7C%20v21%20%7C%20v22-dd0031)](https://github.com/nntndfrk/ng-mcp-ui/actions/workflows/ci-matrix.yml)
 [![license](https://img.shields.io/npm/l/ng-mcp-ui)](https://github.com/nntndfrk/ng-mcp-ui/blob/main/LICENSE)
 
-**📖 [Documentation](https://nntndfrk.github.io/ng-mcp-ui/)** ·
-[Quickstart](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/quickstart) ·
-[How it works](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/how-it-works) ·
-[Schematics](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/ng-add) ·
-[API reference](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web)
+**📖 [Documentation](https://nntndfrk.github.io/ng-mcp-ui/next/)** ·
+[Quickstart](https://nntndfrk.github.io/ng-mcp-ui/next/docs/getting-started/quickstart) ·
+[How it works](https://nntndfrk.github.io/ng-mcp-ui/next/docs/getting-started/how-it-works) ·
+[Schematics](https://nntndfrk.github.io/ng-mcp-ui/next/docs/schematics/ng-add) ·
+[API reference](https://nntndfrk.github.io/ng-mcp-ui/next/docs/reference/web)
 
 <!-- TODO(readme): drop the live-host capture here: the Quick Poll widget in
      Claude, and a vote as it is cast. Highest-value addition to this page.
@@ -29,7 +29,7 @@ This package has two lines. Pick by the MCP protocol your host speaks.
 A 1.x server rejects 2025-era clients. Claude still connects with the
 2025-11-25 protocol as of August 2026, so **use 0.2.x for a connector you want
 to work today**. Move to 1.x when your hosts adopt 2026-07-28. See the
-[migration guide](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/migrate-from-0-2).
+[migration guide](https://nntndfrk.github.io/ng-mcp-ui/next/docs/getting-started/migrate-from-0-2).
 
 Your widget code is the same in both lines. The changes are on the server.
 
@@ -76,7 +76,7 @@ model to use your tool. Re-run `build:widgets` after changing a widget;
 generate more views/tools with `ng generate ng-mcp-ui:view <name>` /
 `ng generate ng-mcp-ui:tool <name>`.
 
-See the [schematics reference](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/ng-add)
+See the [schematics reference](https://nntndfrk.github.io/ng-mcp-ui/next/docs/schematics/ng-add)
 for the full generator + options reference.
 
 ## Subpath exports
@@ -118,7 +118,7 @@ Also exported: `injectUser`, `injectFiles`, `injectHostContext`,
 `injectRequestSize`, `injectRequestClose`, `injectDownload`,
 `injectSetOpenInAppUrl`, `injectRegisterViewTool`, and the mcp-app modal surface.
 
-**→ Full signatures and options: [`ng-mcp-ui/web` API reference](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web)**
+**→ Full signatures and options: [`ng-mcp-ui/web` API reference](https://nntndfrk.github.io/ng-mcp-ui/next/docs/reference/web)**
 
 ### Example widget
 
@@ -298,9 +298,9 @@ new McpServer(
 ```
 
 The same option verifies the `requestState` of an
-[elicitation](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/elicitation)
+[elicitation](https://nntndfrk.github.io/ng-mcp-ui/next/docs/guides/elicitation)
 round trip. See
-[sealed state](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/sealed-state).
+[sealed state](https://nntndfrk.github.io/ng-mcp-ui/next/docs/guides/sealed-state).
 
 ## `testing`
 
@@ -338,15 +338,15 @@ we test both against real hosts. **Gemini is not supported.**
 
 ## Documentation
 
-Full docs, searchable, at **<https://nntndfrk.github.io/ng-mcp-ui/>**.
+Full docs, searchable, at **<https://nntndfrk.github.io/ng-mcp-ui/next/>**.
 
 | | |
 | --- | --- |
-| **Getting started** | [Introduction](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/introduction) · [Quickstart](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/quickstart) · [How it works](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/how-it-works) · [Migrate from 0.2.x](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/migrate-from-0-2) |
-| **Guides** | [Host bridge and adaptors](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/host-bridge) · [Typed tool data](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/typed-tool-data) · [View state](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/view-state) · [Theme and display mode](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/theme-display-mode) · [Files and downloads](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/files) · [Content Security Policy](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/csp) · [Client hints](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/client-hints) · [Sealed state](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/sealed-state) · [Elicitation](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/elicitation) · [Testing widgets](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/testing-widgets) · [Troubleshooting](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/troubleshooting) |
-| **Schematics** | [ng add](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/ng-add) · [generate view](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/generate-view) · [generate tool](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/generate-tool) · [build-widgets](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/build-widgets) |
-| **Reference** | [`ng-mcp-ui/server`](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/server) · [`ng-mcp-ui/web`](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web) · [`ng-mcp-ui/testing`](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/testing) · [Host support matrix](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/host-support) |
-| **API** | One page for each exported symbol, with its full signature: [`createMcpServer`](https://nntndfrk.github.io/ng-mcp-ui/docs/api/mcp-server) · [`registerTool`](https://nntndfrk.github.io/ng-mcp-ui/docs/api/register-tool) · [`provideMcpUi`](https://nntndfrk.github.io/ng-mcp-ui/docs/api/provide-mcp-ui) · [`injectToolInfo`](https://nntndfrk.github.io/ng-mcp-ui/docs/api/inject-tool-info) · [`injectCallTool`](https://nntndfrk.github.io/ng-mcp-ui/docs/api/inject-call-tool) · [and 33 more](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web) |
+| **Getting started** | [Introduction](https://nntndfrk.github.io/ng-mcp-ui/next/docs/getting-started/introduction) · [Quickstart](https://nntndfrk.github.io/ng-mcp-ui/next/docs/getting-started/quickstart) · [How it works](https://nntndfrk.github.io/ng-mcp-ui/next/docs/getting-started/how-it-works) · [Migrate from 0.2.x](https://nntndfrk.github.io/ng-mcp-ui/next/docs/getting-started/migrate-from-0-2) |
+| **Guides** | [Host bridge and adaptors](https://nntndfrk.github.io/ng-mcp-ui/next/docs/guides/host-bridge) · [Typed tool data](https://nntndfrk.github.io/ng-mcp-ui/next/docs/guides/typed-tool-data) · [View state](https://nntndfrk.github.io/ng-mcp-ui/next/docs/guides/view-state) · [Theme and display mode](https://nntndfrk.github.io/ng-mcp-ui/next/docs/guides/theme-display-mode) · [Files and downloads](https://nntndfrk.github.io/ng-mcp-ui/next/docs/guides/files) · [Content Security Policy](https://nntndfrk.github.io/ng-mcp-ui/next/docs/guides/csp) · [Client hints](https://nntndfrk.github.io/ng-mcp-ui/next/docs/guides/client-hints) · [Sealed state](https://nntndfrk.github.io/ng-mcp-ui/next/docs/guides/sealed-state) · [Elicitation](https://nntndfrk.github.io/ng-mcp-ui/next/docs/guides/elicitation) · [Testing widgets](https://nntndfrk.github.io/ng-mcp-ui/next/docs/guides/testing-widgets) · [Troubleshooting](https://nntndfrk.github.io/ng-mcp-ui/next/docs/guides/troubleshooting) |
+| **Schematics** | [ng add](https://nntndfrk.github.io/ng-mcp-ui/next/docs/schematics/ng-add) · [generate view](https://nntndfrk.github.io/ng-mcp-ui/next/docs/schematics/generate-view) · [generate tool](https://nntndfrk.github.io/ng-mcp-ui/next/docs/schematics/generate-tool) · [build-widgets](https://nntndfrk.github.io/ng-mcp-ui/next/docs/schematics/build-widgets) |
+| **Reference** | [`ng-mcp-ui/server`](https://nntndfrk.github.io/ng-mcp-ui/next/docs/reference/server) · [`ng-mcp-ui/web`](https://nntndfrk.github.io/ng-mcp-ui/next/docs/reference/web) · [`ng-mcp-ui/testing`](https://nntndfrk.github.io/ng-mcp-ui/next/docs/reference/testing) · [Host support matrix](https://nntndfrk.github.io/ng-mcp-ui/next/docs/reference/host-support) |
+| **API** | One page for each exported symbol, with its full signature: [`createMcpServer`](https://nntndfrk.github.io/ng-mcp-ui/next/docs/api/mcp-server) · [`registerTool`](https://nntndfrk.github.io/ng-mcp-ui/next/docs/api/register-tool) · [`provideMcpUi`](https://nntndfrk.github.io/ng-mcp-ui/next/docs/api/provide-mcp-ui) · [`injectToolInfo`](https://nntndfrk.github.io/ng-mcp-ui/next/docs/api/inject-tool-info) · [`injectCallTool`](https://nntndfrk.github.io/ng-mcp-ui/next/docs/api/inject-call-tool) · [and 33 more](https://nntndfrk.github.io/ng-mcp-ui/next/docs/reference/web) |
 
 ## License
 

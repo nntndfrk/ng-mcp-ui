@@ -10,10 +10,10 @@
 [![Angular](https://img.shields.io/badge/Angular-v20%20%7C%20v21%20%7C%20v22-dd0031)](https://github.com/nntndfrk/ng-mcp-ui/actions/workflows/ci-matrix.yml)
 [![license](https://img.shields.io/npm/l/ng-mcp-ui)](./LICENSE)
 
-**📖 [Documentation](https://nntndfrk.github.io/ng-mcp-ui/)** ·
-[Quickstart](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/quickstart) ·
-[Schematics](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/ng-add) ·
-[API reference](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web)
+**📖 [Documentation](https://nntndfrk.github.io/ng-mcp-ui/next/)** ·
+[Quickstart](https://nntndfrk.github.io/ng-mcp-ui/next/docs/getting-started/quickstart) ·
+[Schematics](https://nntndfrk.github.io/ng-mcp-ui/next/docs/schematics/ng-add) ·
+[API reference](https://nntndfrk.github.io/ng-mcp-ui/next/docs/reference/web)
 
 Install with **`npm i ng-mcp-ui`**, or retrofit an existing app with
 **`ng add ng-mcp-ui`** (see below). See the
@@ -32,7 +32,7 @@ connects with 2025-11-25 as of August 2026, so **a connector you want working
 today needs 0.2.x**. 1.x goes stable once a real host renders widgets over the
 new protocol. The widget API is identical in both lines; the changes are on the
 server. See the
-[migration guide](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/migrate-from-0-2).
+[migration guide](https://nntndfrk.github.io/ng-mcp-ui/next/docs/getting-started/migrate-from-0-2).
 
 ---
 
