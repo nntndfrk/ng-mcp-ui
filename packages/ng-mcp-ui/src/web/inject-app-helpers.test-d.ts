@@ -13,14 +13,14 @@ const server = new McpServer({ name: "test-app", version: "1.0.0" }, {})
     {
       name: "search-trip",
       description: "Search for trips",
-      inputSchema: {
+      inputSchema: z.object({
         destination: z.string(),
         maxPrice: z.number().optional(),
-      },
-      outputSchema: {
+      }),
+      outputSchema: z.object({
         results: z.array(z.object({ id: z.string(), price: z.number() })),
         totalCount: z.number(),
-      },
+      }),
     },
     async ({ destination }) => ({
       content: [{ type: "text", text: `Found trips to ${destination}` }],
@@ -34,7 +34,6 @@ const server = new McpServer({ name: "test-app", version: "1.0.0" }, {})
     {
       name: "no-input-view",
       description: "View with no input",
-      inputSchema: {},
     },
     async () => ({
       content: [{ type: "text", text: "No input needed" }],
@@ -45,7 +44,7 @@ const server = new McpServer({ name: "test-app", version: "1.0.0" }, {})
     {
       name: "view-with-metadata",
       description: "View that returns response metadata",
-      inputSchema: { resourceId: z.string() },
+      inputSchema: z.object({ resourceId: z.string() }),
     },
     async ({ resourceId }) => ({
       content: [{ type: "text", text: `Resource: ${resourceId}` }],

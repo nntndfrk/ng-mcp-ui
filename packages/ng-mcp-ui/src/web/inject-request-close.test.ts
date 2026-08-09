@@ -5,9 +5,9 @@ import {
 } from "@angular/core";
 import { describe, expect, it } from "vitest";
 import type { Adaptor } from "./bridges/types.js";
-import { MCP_ADAPTOR } from "./tokens.js";
 import { injectRequestClose } from "./inject-request-close.js";
 import { createFakeAdaptor, spy } from "./test-fakes.js";
+import { MCP_ADAPTOR } from "./tokens.js";
 
 describe("injectRequestClose", () => {
   it("returns a function that calls adaptor.requestClose", async () => {

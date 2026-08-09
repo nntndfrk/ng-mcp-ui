@@ -5,9 +5,9 @@ import {
 } from "@angular/core";
 import { describe, expect, it } from "vitest";
 import type { Adaptor } from "./bridges/types.js";
-import { MCP_ADAPTOR } from "./tokens.js";
 import { injectSetOpenInAppUrl } from "./inject-set-open-in-app-url.js";
 import { createFakeAdaptor, spy } from "./test-fakes.js";
+import { MCP_ADAPTOR } from "./tokens.js";
 
 describe("injectSetOpenInAppUrl", () => {
   it("forwards the href to adaptor.setOpenInAppUrl", async () => {

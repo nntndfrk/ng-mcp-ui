@@ -10,9 +10,9 @@ import type {
   ViewToolConfig,
   ViewToolResult,
 } from "./bridges/types.js";
-import { MCP_ADAPTOR } from "./tokens.js";
 import { injectRegisterViewTool } from "./inject-register-view-tool.js";
 import { createFakeAdaptor, spy } from "./test-fakes.js";
+import { MCP_ADAPTOR } from "./tokens.js";
 
 const okResult: ViewToolResult = {
   content: [{ type: "text", text: "ok" }],

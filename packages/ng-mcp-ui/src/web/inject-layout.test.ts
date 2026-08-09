@@ -4,9 +4,9 @@ import {
   runInInjectionContext,
 } from "@angular/core";
 import { describe, expect, it } from "vitest";
-import { MCP_ADAPTOR } from "./tokens.js";
 import { injectLayout } from "./inject-layout.js";
 import { createFakeAdaptor, createFakeStore } from "./test-fakes.js";
+import { MCP_ADAPTOR } from "./tokens.js";
 
 function makeInjector(
   adaptor: ReturnType<typeof createFakeAdaptor>,

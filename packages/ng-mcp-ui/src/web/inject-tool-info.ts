@@ -1,8 +1,8 @@
 import {
-  type Signal,
   assertInInjectionContext,
   computed,
   inject,
+  type Signal,
 } from "@angular/core";
 import { createHostContextSignals } from "./host-context.js";
 // Token imported from the leaf tokens module (THE RULE): every inject* wrapper

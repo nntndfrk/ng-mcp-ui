@@ -2,10 +2,10 @@ import {
   DestroyRef,
   Directive,
   ElementRef,
-  type OnChanges,
-  Renderer2,
   inject,
   input,
+  type OnChanges,
+  Renderer2,
 } from "@angular/core";
 import {
   type DataLlmContent,

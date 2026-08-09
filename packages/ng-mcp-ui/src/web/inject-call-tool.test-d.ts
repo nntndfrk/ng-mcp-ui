@@ -2,8 +2,8 @@ import { describe, expectTypeOf, it } from "vitest";
 import type { CallToolResponse } from "./bridges/types.js";
 import {
   type CallToolState,
-  type SideEffects,
   injectCallTool,
+  type SideEffects,
 } from "./inject-call-tool.js";
 
 // Compile-time type assertions for injectCallTool. This file is never executed

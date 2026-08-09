@@ -1,5 +1,5 @@
+import { assertInInjectionContext, DestroyRef, inject } from "@angular/core";
 import type { ZodRawShapeCompat } from "@modelcontextprotocol/sdk/server/zod-compat.js";
-import { DestroyRef, assertInInjectionContext, inject } from "@angular/core";
 import type {
   Adaptor,
   AnyViewToolHandler,

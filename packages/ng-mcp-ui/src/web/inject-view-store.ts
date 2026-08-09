@@ -1,14 +1,14 @@
 import {
-  DestroyRef,
-  type Signal,
   assertInInjectionContext,
   computed,
+  DestroyRef,
   inject,
+  type Signal,
   signal,
 } from "@angular/core";
+import { deepEqual } from "./bridges/mcp-app/deep-equal.js";
 import type { Adaptor, ViewState } from "./bridges/types.js";
 import { filterViewContext, injectViewContext } from "./helpers/state.js";
-import { deepEqual } from "./bridges/mcp-app/deep-equal.js";
 import { MCP_ADAPTOR } from "./tokens.js";
 
 /**

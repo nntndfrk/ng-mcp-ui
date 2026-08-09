@@ -1,8 +1,8 @@
 import {
-  DestroyRef,
-  type Signal,
   assertInInjectionContext,
+  DestroyRef,
   inject,
+  type Signal,
   signal,
 } from "@angular/core";
 import type { Adaptor, HostContext } from "./bridges/types.js";

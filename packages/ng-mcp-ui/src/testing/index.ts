@@ -3,6 +3,8 @@
 // log-and-resolve) plus `provideMockMcpUi`, the pure provider override mirroring
 // `provideMcpUi()` that unit tests and Storybook (M8) swap in via the
 // `MCP_ADAPTOR` seam (THE RULE — nothing here calls `getAdaptor()`).
+
+export { NG_MCP_UI_VERSION } from "../version.js";
 export {
   MockAdaptor,
   type MockAdaptorCall,
@@ -10,7 +12,6 @@ export {
   type MockToolResponse,
 } from "./mock-adaptor.js";
 export {
-  provideMockMcpUi,
   type ProvideMockMcpUiResult,
+  provideMockMcpUi,
 } from "./provide-mock-mcp-ui.js";
-export { NG_MCP_UI_VERSION } from "../version.js";

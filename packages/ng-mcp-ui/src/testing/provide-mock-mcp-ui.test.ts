@@ -1,7 +1,7 @@
 import {
+  createEnvironmentInjector,
   type EnvironmentInjector,
   Injector,
-  createEnvironmentInjector,
   runInInjectionContext,
 } from "@angular/core";
 import { describe, expect, it } from "vitest";

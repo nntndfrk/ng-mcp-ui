@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from "vitest";
-import { type ToolState, injectToolInfo } from "./inject-tool-info.js";
+import { injectToolInfo, type ToolState } from "./inject-tool-info.js";
 
 // Compile-time type assertions for injectToolInfo. This file is never executed
 // (vitest collects it only under `--typecheck.only`); the `injectToolInfo()`

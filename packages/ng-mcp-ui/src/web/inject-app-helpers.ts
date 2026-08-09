@@ -12,7 +12,7 @@ import {
   type CallToolState,
   injectCallTool,
 } from "./inject-call-tool.js";
-import { type ToolState, injectToolInfo } from "./inject-tool-info.js";
+import { injectToolInfo, type ToolState } from "./inject-tool-info.js";
 
 /**
  * Widen `T` to a plain object so it lines up with the web wrappers'

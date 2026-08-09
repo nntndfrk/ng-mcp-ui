@@ -5,9 +5,9 @@ import {
 } from "@angular/core";
 import { describe, expect, it } from "vitest";
 import type { Adaptor, FileMetadata } from "./bridges/types.js";
-import { MCP_ADAPTOR } from "./tokens.js";
 import { injectFiles } from "./inject-files.js";
 import { createFakeAdaptor, spy } from "./test-fakes.js";
+import { MCP_ADAPTOR } from "./tokens.js";
 
 const dummyFile = new File([], "test.txt");
 

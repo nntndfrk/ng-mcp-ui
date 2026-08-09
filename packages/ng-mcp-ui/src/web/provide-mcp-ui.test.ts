@@ -1,7 +1,7 @@
 import {
+  createEnvironmentInjector,
   type EnvironmentInjector,
   Injector,
-  createEnvironmentInjector,
 } from "@angular/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppsSdkAdaptor } from "./bridges/apps-sdk/adaptor.js";
@@ -10,9 +10,9 @@ import { McpAppAdaptor } from "./bridges/mcp-app/adaptor.js";
 import { McpAppBridge } from "./bridges/mcp-app/bridge.js";
 import type { Adaptor } from "./bridges/types.js";
 import {
+  bootstrapWidget,
   MCP_ADAPTOR,
   MCP_SERVER_URL,
-  bootstrapWidget,
   provideMcpUi,
 } from "./provide-mcp-ui.js";
 

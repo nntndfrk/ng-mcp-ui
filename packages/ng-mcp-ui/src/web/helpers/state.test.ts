@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Adaptor, HostContextStore } from "../bridges/types.js";
 import {
-  VIEW_CONTEXT_KEY,
   filterViewContext,
   injectViewContext,
+  VIEW_CONTEXT_KEY,
 } from "./state.js";
 
 /**

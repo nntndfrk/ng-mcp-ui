@@ -1,8 +1,8 @@
 import {
-  type Signal,
   assertInInjectionContext,
   computed,
   inject,
+  type Signal,
 } from "@angular/core";
 import type { Adaptor, UserAgent } from "./bridges/types.js";
 import { createHostContextSignals } from "./host-context.js";

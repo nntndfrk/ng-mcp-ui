@@ -3,8 +3,8 @@ import { expect, test } from "vitest";
 import { NG_MCP_UI_VERSION as server } from "./server/index.js";
 import { NG_MCP_UI_VERSION as testing } from "./testing/index.js";
 import { NG_MCP_UI_VERSION as tunnel } from "./tunnel/index.js";
-import { NG_MCP_UI_VERSION as web } from "./web/index.js";
 import { NG_MCP_UI_VERSION } from "./version.js";
+import { NG_MCP_UI_VERSION as web } from "./web/index.js";
 
 // Source-of-truth for the expected value: package.json, read at test time so a
 // version bump can't drift the exported constant past this guard (the release

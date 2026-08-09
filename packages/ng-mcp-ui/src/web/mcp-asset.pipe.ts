@@ -1,4 +1,4 @@
-import { Pipe, type PipeTransform, inject } from "@angular/core";
+import { inject, Pipe, type PipeTransform } from "@angular/core";
 import { resolveMcpAsset } from "./mcp-asset.js";
 import { MCP_SERVER_URL } from "./tokens.js";
 

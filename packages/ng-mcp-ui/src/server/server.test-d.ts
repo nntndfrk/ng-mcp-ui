@@ -12,7 +12,7 @@ describe("type-level: chained registerTool accumulates TTools", () => {
       .registerTool(
         {
           name: "create_poll",
-          inputSchema: { question: z.string() },
+          inputSchema: z.object({ question: z.string() }),
           view: { component: "poll" as ViewName },
         },
         async ({ question }) => ({
@@ -23,7 +23,7 @@ describe("type-level: chained registerTool accumulates TTools", () => {
       .registerTool(
         {
           name: "tally_votes",
-          inputSchema: { pollId: z.string() },
+          inputSchema: z.object({ pollId: z.string() }),
         },
         async ({ pollId }) => ({
           content: "ok",
@@ -51,7 +51,7 @@ describe("type-level: chained registerTool accumulates TTools", () => {
     ).registerTool(
       {
         name: "with_meta",
-        inputSchema: { id: z.string() },
+        inputSchema: z.object({ id: z.string() }),
       },
       async ({ id }) => ({
         content: "ok",

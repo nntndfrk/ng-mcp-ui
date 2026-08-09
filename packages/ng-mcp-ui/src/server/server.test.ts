@@ -1,10 +1,8 @@
 import crypto from "node:crypto";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { afterEach, describe, expect, it } from "vitest";
 import * as z from "zod";
 import { McpServer } from "./server.js";
+import { connectModern, rpc } from "./test-fakes.js";
 import type { ViewName } from "./types.js";
 import { InMemoryViewManifest, type ViewManifest } from "./view-manifest.js";
 
@@ -18,22 +16,6 @@ function resetEnv() {
 
 afterEach(resetEnv);
 
-/** Connect a client to the server over a linked in-memory transport pair. */
-async function connect(server: McpServer) {
-  const client = new Client({ name: "test-client", version: "1.0.0" });
-  const [clientTransport, serverTransport] =
-    InMemoryTransport.createLinkedPair();
-  await server.connect(serverTransport);
-  await client.connect(clientTransport);
-  return {
-    client,
-    async close() {
-      await client.close();
-      await server.close();
-    },
-  };
-}
-
 describe("McpServer.registerTool — tools/list", () => {
   it("(a) exposes the tool with view _meta (outputTemplate + ui.resourceUri)", async () => {
     const server = new McpServer(
@@ -43,7 +25,7 @@ describe("McpServer.registerTool — tools/list", () => {
       {
         name: "create_poll",
         description: "Create a poll",
-        inputSchema: { question: z.string() },
+        inputSchema: z.object({ question: z.string() }),
         view: { component: "poll" as ViewName, description: "Poll view" },
       },
       async ({ question }) => ({
@@ -52,7 +34,7 @@ describe("McpServer.registerTool — tools/list", () => {
       }),
     );
 
-    const { client, close } = await connect(server);
+    const { client, close } = await connectModern(server);
     const { tools } = await client.listTools();
     await close();
 
@@ -66,28 +48,26 @@ describe("McpServer.registerTool — tools/list", () => {
     expect(meta?.ui).toEqual({ resourceUri: "ui://views/ext-apps/poll.html" });
   });
 
-  it("registers a plain tool with no view (no resources)", async () => {
+  it("registers a plain tool with no view (no view _meta, no resources)", async () => {
     const server = new McpServer(
       { name: "test", version: "1.0.0" },
       { capabilities: {} },
     ).registerTool(
-      { name: "echo", inputSchema: { msg: z.string() } },
+      { name: "echo", inputSchema: z.object({ msg: z.string() }) },
       async ({ msg }) => ({ content: msg, structuredContent: { msg } }),
     );
 
-    const { client, close } = await connect(server);
+    const { client, close } = await connectModern(server);
     const { tools } = await client.listTools();
     await close();
 
     expect(tools).toHaveLength(1);
-    // No view → no resource registered. The SDK only advertises the resources
-    // capability once a resource exists, so `_registeredResources` is empty.
-    // biome-ignore lint/suspicious/noExplicitAny: read internal registered resource map
-    const registered = (server as any)._registeredResources as Record<
-      string,
-      unknown
-    >;
-    expect(Object.keys(registered)).toHaveLength(0);
+    // No view → no view wiring on the tool _meta (and no view resources; the
+    // per-request instance only advertises the resources capability once a
+    // view registers one).
+    const meta = (tools[0]?._meta ?? {}) as Record<string, unknown>;
+    expect(meta["openai/outputTemplate"]).toBeUndefined();
+    expect(meta.ui).toBeUndefined();
   });
 
   it("enforces one-tool-per-view", () => {
@@ -111,7 +91,7 @@ describe("McpServer.registerTool — tools/list", () => {
       structuredContent: {},
     }));
 
-    const { client, close } = await connect(server);
+    const { client, close } = await connectModern(server);
     const first = await client.callTool({ name: "v", arguments: {} });
     const second = await client.callTool({ name: "v", arguments: {} });
     await close();
@@ -129,11 +109,11 @@ describe("McpServer.registerTool — tools/list", () => {
       { name: "test", version: "1.0.0" },
       { capabilities: {} },
     ).registerTool(
-      { name: "echo", inputSchema: { msg: z.string() } },
+      { name: "echo", inputSchema: z.object({ msg: z.string() }) },
       async ({ msg }) => ({ content: msg }),
     );
 
-    const { client, close } = await connect(server);
+    const { client, close } = await connectModern(server);
     const result = await client.callTool({
       name: "echo",
       arguments: { msg: "hi" },
@@ -145,72 +125,66 @@ describe("McpServer.registerTool — tools/list", () => {
 });
 
 describe("McpServer.registerTool — zero-input tools (#45)", () => {
-  /** `tools/call` WITHOUT `params.arguments` — spec-legal, real hosts do it.
-   * `client.callTool` can't express this, so send the raw request. */
-  const callWithoutArguments = (
-    client: Awaited<ReturnType<typeof connect>>["client"],
-    name: string,
-  ) =>
-    client.request(
-      { method: "tools/call", params: { name } },
-      CallToolResultSchema,
-    );
-
-  it("inputSchema: {} accepts a call that omits `arguments`", async () => {
+  it("schema-less tools accept a call that omits `arguments` entirely", async () => {
     const server = new McpServer(
       { name: "test", version: "1.0.0" },
       { capabilities: {} },
     ).registerTool(
-      { name: "ping", inputSchema: {}, outputSchema: { ok: z.boolean() } },
+      { name: "ping", outputSchema: z.object({ ok: z.boolean() }) },
       async () => ({ content: "pong", structuredContent: { ok: true } }),
     );
 
-    const { client, close } = await connect(server);
-    const result = await callWithoutArguments(client, "ping");
+    const { handler, close } = await connectModern(server);
+    // `tools/call` WITHOUT `params.arguments` — spec-legal, real hosts do it.
+    // The client API can't express this, so send the raw modern wire.
+    const { body } = await rpc(
+      handler,
+      "tools/call",
+      { name: "ping" },
+      { name: "ping" },
+    );
     await close();
 
-    expect(result.isError).not.toBe(true);
-    expect(result.structuredContent).toEqual({ ok: true });
+    expect(body.error).toBeUndefined();
+    expect(body.result?.structuredContent).toEqual({ ok: true });
   });
 
-  it("schema-less tools get args = {} and the real `extra` (not the SDK one-arg mixup)", async () => {
+  it("schema-less tools get args = {} and the real v2 ctx (not the SDK one-arg mixup)", async () => {
     let seenArgs: unknown = "unset";
-    let seenExtra: unknown = "unset";
+    let seenCtx: unknown = "unset";
     const server = new McpServer(
       { name: "test", version: "1.0.0" },
       { capabilities: {} },
-    ).registerTool({ name: "whoami" }, async (args, extra) => {
+    ).registerTool({ name: "whoami" }, async (args, ctx) => {
       seenArgs = args;
-      seenExtra = extra;
+      seenCtx = ctx;
       return { content: "me" };
     });
 
-    const { client, close } = await connect(server);
-    await callWithoutArguments(client, "whoami");
+    const { handler, close } = await connectModern(server);
+    await rpc(handler, "tools/call", { name: "whoami" }, { name: "whoami" });
     await close();
 
-    // Before the fix the SDK's one-argument convention put `extra` in the
-    // `args` slot and left `extra` undefined.
+    // The SDK's one-argument convention for schema-less tools would put `ctx`
+    // in the `args` slot; the blueprint bridges it so `args` is always `{}`.
     expect(seenArgs).toEqual({});
-    const extra = seenExtra as { requestId?: unknown; signal?: unknown };
-    expect(extra.requestId).toBeDefined();
-    expect(extra.signal).toBeInstanceOf(AbortSignal);
+    const ctx = seenCtx as { mcpReq?: { id?: unknown; signal?: unknown } };
+    expect(ctx.mcpReq?.id).toBeDefined();
+    expect(ctx.mcpReq?.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("tools/list still advertises an object inputSchema for empty-shape tools", async () => {
+  it("tools/list still advertises an object inputSchema for schema-less tools", async () => {
     const server = new McpServer(
       { name: "test", version: "1.0.0" },
       { capabilities: {} },
-    ).registerTool({ name: "ping", inputSchema: {} }, async () => ({
-      content: "pong",
-    }));
+    ).registerTool({ name: "ping" }, async () => ({ content: "pong" }));
 
-    const { client, close } = await connect(server);
+    const { client, close } = await connectModern(server);
     const { tools } = await client.listTools();
     await close();
 
-    // Dropping the empty shape at registration must be invisible on the wire:
-    // the SDK falls back to the same empty object schema.
+    // Registering without a schema must be invisible on the wire: the SDK
+    // falls back to the same empty object schema.
     expect(tools[0]?.inputSchema).toMatchObject({ type: "object" });
   });
 
@@ -218,18 +192,22 @@ describe("McpServer.registerTool — zero-input tools (#45)", () => {
     const server = new McpServer(
       { name: "test", version: "1.0.0" },
       { capabilities: {} },
-    ).registerTool(
-      { name: "show", inputSchema: {}, view: view("status") },
-      async () => ({ content: "ok", structuredContent: {} }),
-    );
+    ).registerTool({ name: "show", view: view("status") }, async () => ({
+      content: "ok",
+      structuredContent: {},
+    }));
 
-    const { client, close } = await connect(server);
-    const result = await callWithoutArguments(client, "show");
+    const { handler, close } = await connectModern(server);
+    const { body } = await rpc(
+      handler,
+      "tools/call",
+      { name: "show" },
+      { name: "show" },
+    );
     await close();
 
-    expect(typeof (result._meta as Record<string, unknown>)?.viewUUID).toBe(
-      "string",
-    );
+    const meta = body.result?._meta as Record<string, unknown> | undefined;
+    expect(typeof meta?.viewUUID).toBe("string");
   });
 });
 
@@ -247,7 +225,7 @@ describe("McpServer — resources/list + resources/read", () => {
       async () => ({ content: "ok", structuredContent: {} }),
     );
 
-    const { client, close } = await connect(server);
+    const { client, close } = await connectModern(server);
 
     const { resources } = await client.listResources();
     const appsSdk = resources.find((r) => r.uri.includes("apps-sdk"));
@@ -265,7 +243,7 @@ describe("McpServer — resources/list + resources/read", () => {
     };
     expect(appsSdkContent?.mimeType).toBe("text/html+skybridge");
     const appsSdkHtml = appsSdkContent?.text as string;
-    // No host headers on the in-memory transport → dev localhost fallback.
+    // No host-identifying headers on the test transport → dev localhost fallback.
     expect(appsSdkHtml).toContain('hostType: "apps-sdk"');
     expect(appsSdkHtml).toContain("http://localhost:3000");
     expect(appsSdkHtml).toContain('viewName: "poll"');
@@ -299,7 +277,7 @@ describe("McpServer — resources/list + resources/read", () => {
       async () => ({ content: "ok", structuredContent: {} }),
     );
 
-    const { client, close } = await connect(server);
+    const { client, close } = await connectModern(server);
     const { resources } = await client.listResources();
     await close();
 
@@ -342,28 +320,18 @@ describe("McpServer — resources/list + resources/read", () => {
 });
 
 describe("CSP / request-context resolution (wiring)", () => {
-  /** Read the registered ext-apps resource callback directly with synthetic headers. */
-  async function readExtAppsMeta(
-    server: McpServer,
+  /** List the ext-apps view resource `_meta` with the given HTTP headers. */
+  async function listExtAppsMeta(
+    // biome-ignore lint/suspicious/noExplicitAny: tests accept any tool registry
+    server: McpServer<any>,
     headers: Record<string, string>,
   ) {
-    // biome-ignore lint/suspicious/noExplicitAny: reach the internal registered-resource map for a focused handler test
-    const registered = (server as any)._registeredResources as Record<
-      string,
-      {
-        readCallback: (
-          uri: URL,
-          extra: unknown,
-        ) => Promise<{ contents: Array<{ _meta?: Record<string, unknown> }> }>;
-      }
-    >;
-    const extUri = Object.keys(registered).find((u) => u.includes("ext-apps"));
-    expect(extUri).toBeDefined();
-    const result = await registered[extUri ?? ""]?.readCallback(
-      new URL(extUri ?? ""),
-      { requestInfo: { headers } },
-    );
-    return result?.contents[0]?._meta;
+    const { client, close } = await connectModern(server, headers);
+    const { resources } = await client.listResources();
+    await close();
+    const extApps = resources.find((r) => r.uri.includes("ext-apps"));
+    expect(extApps).toBeDefined();
+    return extApps?._meta as Record<string, unknown> | undefined;
   }
 
   it("derives serverUrl from x-forwarded-host and hashes the Claude content domain", async () => {
@@ -381,13 +349,15 @@ describe("CSP / request-context resolution (wiring)", () => {
 
     const forwardedHost = "tunnel.example.com";
     const serverUrl = `https://${forwardedHost}`;
+    // The Claude content domain hashes `${serverUrl}${pathname}` — the test
+    // transport posts to `/mcp`, matching a real host connector URL.
     const expectedDomain = `${crypto
       .createHash("sha256")
-      .update(serverUrl)
+      .update(`${serverUrl}/mcp`)
       .digest("hex")
       .slice(0, 32)}.claudemcpcontent.com`;
 
-    const meta = (await readExtAppsMeta(server, {
+    const meta = (await listExtAppsMeta(server, {
       "user-agent": "Claude-User",
       "x-forwarded-host": forwardedHost,
       "x-forwarded-proto": "https",
@@ -417,7 +387,7 @@ describe("CSP / request-context resolution (wiring)", () => {
     const tunnelHost = "abc-def-123.trycloudflare.com";
     const expectedServerUrl = `https://${tunnelHost}`;
 
-    const meta = (await readExtAppsMeta(server, {
+    const meta = (await listExtAppsMeta(server, {
       // No Claude-User agent: isolates serverUrl derivation from domain hashing.
       "x-forwarded-host": tunnelHost,
       "x-forwarded-proto": "https",
@@ -432,7 +402,7 @@ describe("CSP / request-context resolution (wiring)", () => {
 });
 
 describe("view URI versioning", () => {
-  it("versions view URIs with a content hash in production", () => {
+  it("versions view URIs with a content hash in production", async () => {
     process.env.NODE_ENV = "production";
     const manifest = new InMemoryViewManifest("main-ABC123.js", "styles-X.css");
     const server = new McpServer(
@@ -451,21 +421,16 @@ describe("view URI versioning", () => {
       .digest("hex")
       .slice(0, 8)}`;
 
-    // biome-ignore lint/suspicious/noExplicitAny: read internal registered resource uris
-    const registered = (server as any)._registeredResources as Record<
-      string,
-      unknown
-    >;
-    const uris = Object.keys(registered);
-    expect(
-      uris.some((u) => u === `ui://views/apps-sdk/poll.html${expected}`),
-    ).toBe(true);
-    expect(
-      uris.some((u) => u === `ui://views/ext-apps/poll.html${expected}`),
-    ).toBe(true);
+    const { client, close } = await connectModern(server);
+    const { resources } = await client.listResources();
+    await close();
+
+    const uris = resources.map((r) => r.uri);
+    expect(uris).toContain(`ui://views/apps-sdk/poll.html${expected}`);
+    expect(uris).toContain(`ui://views/ext-apps/poll.html${expected}`);
   });
 
-  it("still versions in production when styleFile() throws but mainFile() resolves", () => {
+  it("still versions in production when styleFile() throws but mainFile() resolves", async () => {
     process.env.NODE_ENV = "production";
     // A manifest where the style read throws (e.g. critical-CSS inlined, no
     // global stylesheet) must not discard the resolved mainFile and disable
@@ -491,19 +456,16 @@ describe("view URI versioning", () => {
       .digest("hex")
       .slice(0, 8)}`;
 
-    // biome-ignore lint/suspicious/noExplicitAny: read internal registered resource uris
-    const registered = (server as any)._registeredResources as Record<
-      string,
-      unknown
-    >;
-    expect(
-      Object.keys(registered).some(
-        (u) => u === `ui://views/apps-sdk/poll.html${expected}`,
-      ),
-    ).toBe(true);
+    const { client, close } = await connectModern(server);
+    const { resources } = await client.listResources();
+    await close();
+
+    expect(resources.map((r) => r.uri)).toContain(
+      `ui://views/apps-sdk/poll.html${expected}`,
+    );
   });
 
-  it("does not version view URIs in development", () => {
+  it("does not version view URIs in development", async () => {
     const server = new McpServer(
       { name: "test", version: "1.0.0" },
       { capabilities: {} },
@@ -511,26 +473,53 @@ describe("view URI versioning", () => {
       { name: "v", view: { component: "poll" as ViewName } },
       async () => ({ content: "ok", structuredContent: {} }),
     );
-    // biome-ignore lint/suspicious/noExplicitAny: read internal registered resource uris
-    const registered = (server as any)._registeredResources as Record<
-      string,
-      unknown
-    >;
-    expect(Object.keys(registered)).toContain("ui://views/apps-sdk/poll.html");
-    expect(Object.keys(registered)).toContain("ui://views/ext-apps/poll.html");
+
+    const { client, close } = await connectModern(server);
+    const { resources } = await client.listResources();
+    await close();
+
+    const uris = resources.map((r) => r.uri);
+    expect(uris).toContain("ui://views/apps-sdk/poll.html");
+    expect(uris).toContain("ui://views/ext-apps/poll.html");
   });
 });
 
-describe("mcpMiddleware lifecycle", () => {
-  it("throws when registered after connect()", async () => {
+describe("2026-07-28 wire surface", () => {
+  it("list results carry cache hints and rejects a bare 2025-era request", async () => {
     const server = new McpServer(
       { name: "test", version: "1.0.0" },
       { capabilities: {} },
+    ).registerTool({ name: "ping" }, async () => ({ content: "pong" }));
+
+    const { handler, close } = await connectModern(server);
+
+    // Modern list result: SEP-2549 cache fields present.
+    const list = await rpc(handler, "tools/list");
+    expect(list.body.result?.ttlMs).toBeDefined();
+    expect(list.body.result?.cacheScope).toBeDefined();
+
+    // 1.x wire policy: `legacy: 'reject'` — a bare 2025-era body (no modern
+    // envelope, no routing headers) is refused with the
+    // unsupported-protocol-version error, not served.
+    const bare = await handler.fetch(
+      new Request("http://localhost:3000/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 9,
+          method: "tools/list",
+          params: {},
+        }),
+      }),
     );
-    const { close } = await connect(server);
-    expect(() =>
-      server.mcpMiddleware("tools/call", (_req, _extra, next) => next()),
-    ).toThrow(/Cannot register MCP middleware after/);
     await close();
+
+    expect(bare.status).toBe(400);
+    const bareBody = (await bare.json()) as {
+      error?: { code: number; data?: { supported?: string[] } };
+    };
+    expect(bareBody.error).toBeDefined();
+    expect(bareBody.error?.data?.supported).toEqual(["2026-07-28"]);
   });
 });

@@ -1,37 +1,37 @@
 import { describe, expectTypeOf, it } from "vitest";
 import { z } from "zod";
-import type { ToolDef } from "./types.js";
 import type {
   ClientHintsMeta,
   ExtendToolRegistry,
   ExtractMeta,
   ExtractStructuredContent,
-  ShapeOutput,
+  InferToolArgs,
+  McpToolContext,
   ToolConfig,
   ToolHandler,
-  ToolHandlerExtra,
 } from "./tool-types.js";
+import type { ToolDef } from "./types.js";
 
 // Compile-time type tests. Run ONLY by `npm run test:types`
 // (`vitest run --typecheck.only`), never by the runtime `npm test`.
 
-const shape = {
+const schema = z.object({
   query: z.string(),
   limit: z.number().optional(),
-};
-type Shape = typeof shape;
+});
+type Schema = typeof schema;
 
-describe("ShapeOutput", () => {
-  it("keeps required schemas required and makes optional schemas optional", () => {
-    expectTypeOf<ShapeOutput<Shape>>().toEqualTypeOf<{
+describe("InferToolArgs", () => {
+  it("keeps required fields required and makes optional fields optional", () => {
+    expectTypeOf<InferToolArgs<Schema>>().toEqualTypeOf<{
       query: string;
-      limit?: number;
+      limit?: number | undefined;
     }>();
   });
 
-  it("an empty shape yields an empty object", () => {
-    expectTypeOf<ShapeOutput<Record<string, never>>>().toEqualTypeOf<
-      Record<string, never>
+  it("a schema-less tool yields an empty args object", () => {
+    expectTypeOf<InferToolArgs<undefined>>().toEqualTypeOf<
+      Record<never, never>
     >();
   });
 });
@@ -91,13 +91,13 @@ describe("ExtendToolRegistry", () => {
     type R = ExtendToolRegistry<
       Empty,
       "search",
-      Shape,
+      Schema,
       { hits: number },
       { tookMs: number }
     >;
     expectTypeOf<R["search"]>().toEqualTypeOf<
       ToolDef<
-        { query: string; limit?: number },
+        { query: string; limit?: number | undefined },
         { hits: number },
         { tookMs: number }
       >
@@ -105,11 +105,12 @@ describe("ExtendToolRegistry", () => {
   });
 
   it("accumulates across registrations, inferring each entry's shapes", () => {
-    type R1 = ExtendToolRegistry<Empty, "search", Shape, { hits: number }>;
+    const pingSchema = z.object({ n: z.number() });
+    type R1 = ExtendToolRegistry<Empty, "search", Schema, { hits: number }>;
     type R2 = ExtendToolRegistry<
       R1,
       "ping",
-      { n: z.ZodNumber },
+      typeof pingSchema,
       { ok: boolean }
     >;
     expectTypeOf<keyof R2>().toEqualTypeOf<"search" | "ping">();
@@ -119,18 +120,25 @@ describe("ExtendToolRegistry", () => {
       ToolDef<{ n: number }, { ok: boolean }, unknown>
     >();
   });
+
+  it("a schema-less registration stores empty args", () => {
+    type R = ExtendToolRegistry<Empty, "noop", undefined, { ok: boolean }>;
+    expectTypeOf<R["noop"]>().toEqualTypeOf<
+      ToolDef<Record<never, never>, { ok: boolean }, unknown>
+    >();
+  });
 });
 
 describe("ToolHandler", () => {
   type H = ToolHandler<
-    Shape,
+    Schema,
     { content: string; structuredContent: { hits: number } }
   >;
 
-  it("types args from the input shape", () => {
+  it("types args from the input schema", () => {
     expectTypeOf<Parameters<H>[0]>().toEqualTypeOf<{
       query: string;
-      limit?: number;
+      limit?: number | undefined;
     }>();
   });
 
@@ -141,19 +149,26 @@ describe("ToolHandler", () => {
     >();
   });
 
-  it("widens the extra's _meta to carry Apps SDK client hints", () => {
-    // The whole reason ToolHandlerExtra exists: `_meta` is the SDK extra's meta
-    // intersected with ClientHintsMeta, so handlers can read `openai/*` hints.
-    expectTypeOf<H>().parameter(1).toEqualTypeOf<ToolHandlerExtra>();
+  it("widens the ctx's mcpReq._meta to carry Apps SDK client hints", () => {
+    // The whole reason McpToolContext exists: `mcpReq._meta` is the v2 request
+    // meta intersected with ClientHintsMeta, so handlers can read `openai/*`
+    // hints without casting.
+    expectTypeOf<H>().parameter(1).toEqualTypeOf<McpToolContext>();
     expectTypeOf<
-      NonNullable<ToolHandlerExtra["_meta"]>["openai/locale"]
+      NonNullable<McpToolContext["mcpReq"]["_meta"]>["openai/locale"]
     >().toEqualTypeOf<string | undefined>();
   });
 });
 
 describe("ToolConfig and ClientHintsMeta", () => {
   it("ToolConfig.name is a string", () => {
-    expectTypeOf<ToolConfig<Shape>["name"]>().toEqualTypeOf<string>();
+    expectTypeOf<ToolConfig<Schema>["name"]>().toEqualTypeOf<string>();
+  });
+
+  it("ToolConfig.inputSchema carries the schema type", () => {
+    expectTypeOf<ToolConfig<Schema>["inputSchema"]>().toEqualTypeOf<
+      Schema | undefined
+    >();
   });
 
   it("ClientHintsMeta fields are optional hints", () => {

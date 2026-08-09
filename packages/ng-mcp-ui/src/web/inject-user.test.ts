@@ -5,9 +5,9 @@ import {
 } from "@angular/core";
 import { describe, expect, it } from "vitest";
 import type { UserAgent } from "./bridges/types.js";
-import { MCP_ADAPTOR } from "./tokens.js";
 import { injectUser } from "./inject-user.js";
 import { createFakeAdaptor, createFakeStore } from "./test-fakes.js";
+import { MCP_ADAPTOR } from "./tokens.js";
 
 const mobileAgent: UserAgent = {
   device: { type: "mobile" },

@@ -26,16 +26,16 @@ import type { McpUiToolMeta } from "@modelcontextprotocol/ext-apps";
 import {
   type CacheHint,
   type Implementation,
-  McpServer as SdkMcpServer,
   type McpRequestContext,
   type McpServerFactory,
+  McpServer as SdkMcpServer,
   type ServerContext,
   type ServerOptions,
 } from "@modelcontextprotocol/server";
 import { normalizeContent } from "./normalize-content.js";
 import {
-  readHeader,
   type RequestHeaders,
+  readHeader,
   resolveConnectDomains,
   resolveServerUrl,
 } from "./request-context.js";
@@ -242,7 +242,10 @@ export class McpServer<
     ExtractStructuredContent<TReturn>,
     ExtractMeta<TReturn>
   >;
-  registerTool<TName extends string, TReturn extends { content?: HandlerContent }>(
+  registerTool<
+    TName extends string,
+    TReturn extends { content?: HandlerContent },
+  >(
     config: ToolConfig<undefined> & { name: TName; inputSchema?: undefined },
     cb: ToolHandler<undefined, TReturn>,
   ): AddTool<

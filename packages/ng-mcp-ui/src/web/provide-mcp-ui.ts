@@ -1,18 +1,20 @@
 import {
   type ApplicationRef,
   type EnvironmentProviders,
-  type Provider,
-  type Type,
   makeEnvironmentProviders,
+  type Provider,
   provideZonelessChangeDetection,
+  type Type,
 } from "@angular/core";
 import { getAdaptor } from "./bridges/get-adaptor.js";
 import type { Adaptor } from "./bridges/types.js";
 import { provideMcpModal } from "./mcp-modal.js";
+
 // The DI tokens live in their own leaf module to avoid a provide-mcp-ui ↔
 // mcp-modal import cycle (see tokens.ts). Re-exported here so this is the single
 // public export site for both tokens and the public barrel stays unchanged.
 export { MCP_ADAPTOR, MCP_SERVER_URL } from "./tokens.js";
+
 import { MCP_ADAPTOR, MCP_SERVER_URL } from "./tokens.js";
 
 /**

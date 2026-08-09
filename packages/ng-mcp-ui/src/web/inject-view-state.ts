@@ -1,8 +1,8 @@
 import {
-  DestroyRef,
-  type Signal,
   assertInInjectionContext,
+  DestroyRef,
   inject,
+  type Signal,
   signal,
 } from "@angular/core";
 import type { Adaptor, ViewState } from "./bridges/types.js";

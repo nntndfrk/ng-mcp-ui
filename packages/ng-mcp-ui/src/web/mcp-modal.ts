@@ -1,12 +1,12 @@
 import {
+  computed,
   DestroyRef,
   type EnvironmentProviders,
   InjectionToken,
-  type Signal,
-  computed,
   inject,
   makeEnvironmentProviders,
   provideEnvironmentInitializer,
+  type Signal,
   signal,
 } from "@angular/core";
 import type { Adaptor } from "./bridges/types.js";

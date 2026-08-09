@@ -1,6 +1,7 @@
-// S06 wire-through: McpServer + IndexHtmlViewManifest(spike fixture) +
+// Wire-through: McpServer + IndexHtmlViewManifest(spike fixture) +
 // AngularShellRenderer → the production `resources/read` shell references the
-// hashed entry bundle resolved from the parsed index.html.
+// hashed entry bundle resolved from the parsed index.html. Speaks the modern
+// (2026-07-28) wire through the express router.
 
 import express from "express";
 import request from "supertest";
@@ -9,6 +10,7 @@ import { createMcpExpressRouter } from "./express.js";
 import { IndexHtmlViewManifest } from "./index-html-manifest.js";
 import { McpServer } from "./server.js";
 import { AngularShellRenderer } from "./shell-templates.js";
+import { modernBody, modernHeaders } from "./test-fakes.js";
 import type { ViewName } from "./types.js";
 
 const SPIKE_INDEX_HTML = `<!doctype html>
@@ -24,7 +26,7 @@ afterEach(() => {
   delete process.env.NODE_ENV;
 });
 
-describe("S06 wire-through: index.html manifest → production shell", () => {
+describe("wire-through: index.html manifest → production shell", () => {
   it("resources/read shell script src is {serverUrl}/assets/widgets/main-XBYE53NT.js", async () => {
     process.env.NODE_ENV = "production";
 
@@ -49,7 +51,8 @@ describe("S06 wire-through: index.html manifest → production shell", () => {
     const list = await request(app)
       .post("/mcp")
       .set("Accept", ACCEPT_BOTH)
-      .send({ jsonrpc: "2.0", id: 1, method: "resources/list", params: {} });
+      .set(modernHeaders("resources/list"))
+      .send(modernBody("resources/list"));
     const resources = list.body.result.resources as Array<{ uri: string }>;
     const uri = resources.find((r) => r.uri.includes("apps-sdk/demo"))?.uri;
     expect(uri).toBeDefined();
@@ -58,12 +61,8 @@ describe("S06 wire-through: index.html manifest → production shell", () => {
       .post("/mcp")
       .set("Accept", ACCEPT_BOTH)
       .set("Host", "example.com")
-      .send({
-        jsonrpc: "2.0",
-        id: 2,
-        method: "resources/read",
-        params: { uri },
-      });
+      .set(modernHeaders("resources/read", uri))
+      .send(modernBody("resources/read", { uri }, 2));
 
     expect(res.status).toBe(200);
     const text = res.body.result.contents[0].text as string;

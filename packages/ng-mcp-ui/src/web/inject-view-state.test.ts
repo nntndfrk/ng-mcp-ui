@@ -6,9 +6,9 @@ import {
 import { describe, expect, it } from "vitest";
 import type { Adaptor } from "./bridges/types.js";
 import { VIEW_CONTEXT_KEY } from "./helpers/state.js";
-import { MCP_ADAPTOR } from "./tokens.js";
 import { injectViewState } from "./inject-view-state.js";
 import { createFakeAdaptor, createFakeStore, spy } from "./test-fakes.js";
+import { MCP_ADAPTOR } from "./tokens.js";
 
 type State = { count: number; name: string };
 

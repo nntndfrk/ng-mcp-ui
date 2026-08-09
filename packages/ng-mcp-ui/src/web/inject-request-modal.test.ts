@@ -5,9 +5,9 @@ import {
 } from "@angular/core";
 import { describe, expect, it } from "vitest";
 import type { Adaptor, RequestModalOptions } from "./bridges/types.js";
-import { MCP_ADAPTOR } from "./tokens.js";
 import { injectRequestModal } from "./inject-request-modal.js";
 import { createFakeAdaptor, createFakeStore, spy } from "./test-fakes.js";
+import { MCP_ADAPTOR } from "./tokens.js";
 
 describe("injectRequestModal", () => {
   it("isOpen is false and params undefined when mode is not modal", () => {

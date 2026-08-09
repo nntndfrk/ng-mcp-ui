@@ -23,13 +23,13 @@ import {
 import type { AuthInfo } from "@modelcontextprotocol/server";
 import type { RequestHandler } from "express";
 
+export type { AuthInfo };
 export {
   type AuthMetadataOptions,
   type BearerAuthMiddlewareOptions,
   mcpAuthMetadataRouter,
   requireBearerAuth,
 };
-export type { AuthInfo };
 
 /**
  * Like `requireBearerAuth`, but lets requests through when no

@@ -1,7 +1,7 @@
 import {
-  type Signal,
   assertInInjectionContext,
   inject,
+  type Signal,
   signal,
 } from "@angular/core";
 import type { CallToolArgs, CallToolResponse } from "./bridges/types.js";

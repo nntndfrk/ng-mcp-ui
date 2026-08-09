@@ -9,6 +9,12 @@
 // Gone in 1.x (see the migration guide): the protocol middleware API
 // (`McpExtra*` / `McpMiddleware*` types and `mcpMiddleware()`) and the
 // `InvalidTokenError` re-export.
+
+export { NG_MCP_UI_VERSION } from "../version.js";
+export {
+  type CreateViewAssetRouterOptions,
+  createViewAssetRouter,
+} from "./asset-router.js";
 export {
   type AuthInfo,
   type AuthMetadataOptions,
@@ -18,10 +24,6 @@ export {
   requireBearerAuth,
 } from "./auth.js";
 export {
-  createViewAssetRouter,
-  type CreateViewAssetRouterOptions,
-} from "./asset-router.js";
-export {
   audio,
   embeddedResource,
   image,
@@ -29,16 +31,24 @@ export {
   text,
 } from "./content-helpers.js";
 export {
-  createMcpExpressRouter,
   type CreateMcpExpressRouterOptions,
-  createMcpFetchHandler,
   type CreateMcpFetchHandlerOptions,
+  createMcpExpressRouter,
+  createMcpFetchHandler,
 } from "./express.js";
 export { FileRef } from "./file-ref.js";
 export {
   IndexHtmlViewManifest,
   ViewManifestError,
 } from "./index-html-manifest.js";
+export type {
+  AnyToolRegistry,
+  InferTools,
+  ToolInput,
+  ToolNames,
+  ToolOutput,
+  ToolResponseMetadata,
+} from "./inferUtilityTypes.js";
 export { normalizeContent } from "./normalize-content.js";
 export { McpServer, type McpServerExtraOptions } from "./server.js";
 export type { ShellRenderer, ShellRenderInput } from "./shell-renderer.js";
@@ -50,15 +60,6 @@ export type {
   ToolHandler,
   ToolInputSchema,
 } from "./tool-types.js";
-export { InMemoryViewManifest, type ViewManifest } from "./view-manifest.js";
-export type {
-  AnyToolRegistry,
-  InferTools,
-  ToolInput,
-  ToolNames,
-  ToolOutput,
-  ToolResponseMetadata,
-} from "./inferUtilityTypes.js";
 export type {
   HandlerContent,
   KnownToolMeta,
@@ -72,4 +73,4 @@ export type {
   ViewName,
   ViewNameRegistry,
 } from "./types.js";
-export { NG_MCP_UI_VERSION } from "../version.js";
+export { InMemoryViewManifest, type ViewManifest } from "./view-manifest.js";

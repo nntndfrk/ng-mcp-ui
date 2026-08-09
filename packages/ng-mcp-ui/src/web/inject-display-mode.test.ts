@@ -5,9 +5,9 @@ import {
 } from "@angular/core";
 import { describe, expect, it } from "vitest";
 import type { Adaptor } from "./bridges/types.js";
-import { MCP_ADAPTOR } from "./tokens.js";
 import { injectDisplayMode } from "./inject-display-mode.js";
 import { createFakeAdaptor, createFakeStore, spy } from "./test-fakes.js";
+import { MCP_ADAPTOR } from "./tokens.js";
 
 describe("injectDisplayMode", () => {
   it("returns the current display mode from host context", () => {

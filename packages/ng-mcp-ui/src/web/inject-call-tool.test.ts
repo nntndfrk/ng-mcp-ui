@@ -3,7 +3,7 @@ import {
   Injector,
   runInInjectionContext,
 } from "@angular/core";
-import { type Mock, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 import type { Adaptor, CallToolResponse } from "./bridges/types.js";
 import { injectCallTool } from "./inject-call-tool.js";
 // Shared, non-shipping fakes — see test-fakes.ts. Only `callTool` is exercised
