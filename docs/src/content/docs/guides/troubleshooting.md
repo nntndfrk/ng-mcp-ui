@@ -1,57 +1,111 @@
 ---
 title: Troubleshooting
-description: The errors that the library throws, what causes each one, and how to correct it.
+description: The errors that the library and the MCP SDK raise, what causes each one, and how to correct it.
 group: Guides
 groupOrder: 2
 order: 11
 ---
 
-Each message below comes from the library. Find your message, then apply the correction.
+Each message below comes from the library or from the MCP SDK it runs on. Find your message, then
+apply the correction.
 
 ## Server errors
 
-### Cannot register MCP middleware after connect()
+### The host cannot connect at all
 
 ```
-Cannot register MCP middleware after connect() / connectStatelessTransport() has been called
+HTTP 400, JSON-RPC -32022 "Unsupported protocol version"
+data.supported: ["2026-07-28"]
 ```
 
-The server instruments its handler maps one time, at the first connect. After that point you cannot
-add middleware.
+1.x speaks MCP 2026-07-28 only. The endpoint rejects a 2025-era client on the wire
+(`legacy: "reject"`), therefore no tool ever runs. In the host this looks like a connector that
+does not add, or one that lists no tools.
 
-Move each `mcpMiddleware()` call into the function that builds the server. Register the middleware
-before you return the server. See [protocol middleware](/docs/guides/mcp-middleware).
+This is expected today. As of August 2026, claude.ai still connects with the 2025-11-25 revision.
+Keep a production connector on the 0.2.x line until the hosts you target roll out 2026-07-28. See
+[migrate from 0.2.x](/docs/getting-started/migrate-from-0-2).
 
-### next() called multiple times
-
-```
-next() called multiple times in middleware for "tools/call"
-```
-
-One middleware called `next()` two times. Each middleware must call `next()` one time only.
-
-Look for a conditional branch that calls `next()`, and then calls it again on a later line. To stop
-the chain, do not call `next()`. Return a result instead.
-
-### mcpMiddleware requires a handler function
+### Sealed state is invalid or expired
 
 ```
-mcpMiddleware requires a handler function when a filter is provided
+ng-mcp-ui: sealed state is invalid or expired
 ```
 
-You gave a filter as the first argument, but you did not give a handler as the second argument.
-Add the handler, or remove the filter.
+`ctx.state.open()` refused a token. The signature does not match, the lifetime ran out, the `bind`
+context differs, or the token was minted for the other carrier. The SDK converts the throw into an
+`isError` tool result, therefore the widget sees a failed call and not an exception.
 
-### Incompatible MCP SDK version
+The message names no reason on purpose. The usual causes are:
+
+- The server restarted with no `state.key`, thus with an ephemeral key.
+- `ttlSeconds` is shorter than the time the widget stays on screen. Raise it, or re-seal on each
+  response, because a re-seal restarts the lifetime.
+- An elicitation `requestState` token was given to `open()`. The two carriers are not
+  interchangeable.
+
+In the widget, treat this result as "start over". See [sealed state](/docs/guides/sealed-state).
+
+### Invalid or expired requestState
 
 ```
-Incompatible MCP SDK version: expected _requestHandlers and _notificationHandlers on Server
+JSON-RPC -32602 "Invalid or expired requestState"
 ```
 
-The middleware layer reads two internal maps of the MCP SDK. Your installed SDK does not have them.
+Round two of an elicitation arrived with an echo that failed verification: tampered, expired, or
+minted for another purpose or another tool. The check runs before your handler, therefore the
+handler never sees the call.
 
-Install an SDK version that agrees with the peer dependency range of the package. Look at
-`peerDependencies` in `package.json`.
+Mint the echo with `ctx.state.sealRequestState(...)` in round one, and let the host send it back
+unchanged. Do not build or edit the token yourself. See [elicitation](/docs/guides/elicitation).
+
+### The client capabilities do not declare the required capability
+
+```
+JSON-RPC -32021 "Cannot request input 'confirm' (elicitation/create): the request's client
+capabilities do not declare the required capability"
+```
+
+Your handler returned an `inputRequired(...)` with a form elicitation, but the request envelope
+declared no `elicitation.form` capability. The error data lists the missing capabilities in
+`requiredCapabilities`.
+
+A host that supports elicitation declares the capability on each request. Therefore this error
+means one of two things: the host cannot elicit, or a test request omitted the capability from the
+`_meta` envelope. Give the tool a path that completes without the question.
+
+### state.key is required in production
+
+```
+ng-mcp-ui: `state.key` is required in production. Provide a stable secret of at least 32 bytes …
+```
+
+You constructed the server with a `state` option and no `key`, and `NODE_ENV` is `production`.
+Construction throws, thus the process does not start.
+
+Read the key from the environment, for example `state: { key: process.env["NG_MCP_STATE_KEY"] }`.
+Each instance that can receive a token needs the same key.
+
+In development the same case only writes a warning:
+
+```
+ng-mcp-ui: no `state.key` configured; using an ephemeral per-process key. …
+```
+
+The library then mints a key for the process. Each token dies on restart. That is correct for a dev
+loop, and it is the usual cause of "sealed state is invalid or expired" after a reload.
+
+### A tool renders a view but returned no content
+
+```
+ng-mcp-ui: tool "create_poll" renders a view but returned no `content`.
+```
+
+The handler returned `structuredContent` only. The view renders on an MCP Apps host and on an Apps
+SDK host. Every other client, and the model's own reading of the result, sees nothing.
+
+Return a short text summary next to `structuredContent`. The library writes this warning in
+development only, and one time for each tool.
 
 ### A view is already used by another tool
 

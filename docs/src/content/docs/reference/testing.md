@@ -41,6 +41,11 @@ A `callTool` for a name that `toolResponses` does not list resolves with an empt
 Therefore a wrapper still reaches the success state, and you list only the tools that a test asserts
 on.
 
+A canned response with `resultType: "input_required"` is rejected: the `callTool` promise throws
+with an explanatory message. No host surfaces a multi-round trip to a widget, so a tool that a view
+calls must complete in one round. Keep an [elicitation](/docs/guides/elicitation) flow on a
+chat-path tool, and test that flow against the server instead.
+
 ## MockAdaptor
 
 ```ts

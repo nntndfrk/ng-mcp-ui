@@ -31,6 +31,10 @@ const { providers, adaptor } = provideMockMcpUi({
 
 The arguments are the same as the arguments of `MockAdaptor`.
 
+A canned response with `resultType: "input_required"` is refused: `callTool` rejects with an error.
+A host never surfaces a multi-round trip to a widget, therefore a tool that a view calls has to
+finish in one round. Keep an [elicitation](/docs/guides/elicitation) flow on a chat-path tool.
+
 ## In a test
 
 The providers work in a bare Angular injector. You need no `TestBed`, and no Zone.js.

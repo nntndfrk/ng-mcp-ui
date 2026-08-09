@@ -23,8 +23,8 @@ The middleware reads the `Authorization` header.
 
 | Header | Result |
 | --- | --- |
-| Absent | The request continues. `extra.authInfo` is `undefined`. |
-| Present and valid | The request continues. `extra.authInfo` holds the verified identity. |
+| Absent | The request continues. `ctx.http?.authInfo` is `undefined`. |
+| Present and valid | The request continues. `ctx.http?.authInfo` holds the verified identity. |
 | Present and not valid | The same 401 or 403 response as [`requireBearerAuth`](/docs/api/require-bearer-auth). |
 
 A bad token is always an error. Only a missing token is permitted.
@@ -41,13 +41,12 @@ The options are the same as [`requireBearerAuth`](/docs/api/require-bearer-auth)
 
 ## In a tool handler
 
-Test `extra.authInfo` and give a smaller result to an anonymous caller.
+Test `ctx.http?.authInfo` and give a smaller result to an anonymous caller.
 
 ```ts
-server.registerTool({ name: "list_items" }, async (_args, extra) => {
-  const items = extra.authInfo
-    ? await listAll(extra.authInfo)
-    : await listPublic();
+server.registerTool({ name: "list_items" }, async (_args, ctx) => {
+  const auth = ctx.http?.authInfo;
+  const items = auth ? await listAll(auth) : await listPublic();
   return { content: `Found ${items.length} items.`, structuredContent: { items } };
 });
 ```

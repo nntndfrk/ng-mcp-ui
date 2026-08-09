@@ -51,15 +51,19 @@ These describe the config objects rather than the registry.
 | --- | --- |
 | `ToolConfig` | The config argument of [`registerTool`](/docs/api/register-tool). |
 | `ToolHandler` | The handler argument. |
+| `ToolInputSchema` | The `inputSchema` field: a Standard Schema that also gives JSON Schema. |
+| `ToolHandlerResult` | The values that a handler can return. |
+| `McpToolContext` | The `ctx` argument of a handler. |
 | `ToolDef` | One entry in the registry. |
 | `ToolMeta`, `KnownToolMeta` | The `_meta` of a tool. |
 | `ViewConfig` | The `view` field. See [CSP](/docs/guides/csp). |
 | `ViewCsp` | The `csp` field of a view. |
 | `ViewHostType` | `"apps-sdk"` or `"mcp-app"`. |
 | `ViewName`, `ViewNameRegistry` | The permitted values of `view.component`. |
+| `CacheHint`, `CacheScope` | The `view.cacheHint` field, and the `cacheHints` server option. |
 | `SecurityScheme` | An entry of `securitySchemes`. |
 | `HandlerContent` | The values that a handler can put in `content`. |
-| `ClientHintsMeta` | The hints on `extra._meta`. See [client hints](/docs/guides/client-hints). |
+| `ClientHintsMeta` | The hints on `ctx.mcpReq._meta`. See [client hints](/docs/guides/client-hints). |
 
 ## ViewNameRegistry
 

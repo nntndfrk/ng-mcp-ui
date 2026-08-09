@@ -14,25 +14,27 @@ can omit any field. Always write code that operates correctly when a field is ab
 
 ## How to read the hints
 
-The second argument of a tool handler is the `extra` object. Its `_meta` field holds the hints.
+The second argument of a tool handler is the `ctx` object. The hints sit on `ctx.mcpReq._meta`.
 
 ```ts
+import { z } from "zod";
+
 server.registerTool(
   {
     name: "list_events",
-    inputSchema: { query: z.string() },
+    inputSchema: z.object({ query: z.string() }),
   },
-  async ({ query }, extra) => {
-    const locale = extra._meta?.["openai/locale"] ?? "en-US";
-    const city = extra._meta?.["openai/userLocation"]?.city;
+  async ({ query }, ctx) => {
+    const locale = ctx.mcpReq._meta?.["openai/locale"] ?? "en-US";
+    const city = ctx.mcpReq._meta?.["openai/userLocation"]?.city;
 
     return text(await search(query, { locale, city }));
   },
 );
 ```
 
-TypeScript knows these keys. The handler type widens `_meta` with the `ClientHintsMeta` interface.
-Therefore you get completion for each key, and you do not write a cast.
+TypeScript knows these keys. The handler context widens `mcpReq._meta` with the `ClientHintsMeta`
+interface. Therefore you get completion for each key, and you do not write a cast.
 
 ## The fields
 
@@ -67,10 +69,11 @@ Use the hints to make a result better. Do not use them to make a decision about 
   supplies these values. They are not a verified identity.
 
 For authorization, use a bearer token. See `requireBearerAuth` and `optionalBearerAuth` in the
-[server reference](/docs/reference/server).
+[server reference](/docs/reference/server). The verified token reaches the handler as
+`ctx.http?.authInfo`, and the raw request headers as `ctx.http?.req?.headers.get("x-foo")`.
 
 ## Host support
 
-Only an Apps SDK host sends these hints. On an MCP Apps host, `extra._meta` does not contain them.
-Give a default value for each field that you read. The example above shows this pattern with the
-`??` operator.
+Only an Apps SDK host sends these hints. On an MCP Apps host, `ctx.mcpReq._meta` does not contain
+them. Give a default value for each field that you read. The example above shows this pattern with
+the `??` operator.

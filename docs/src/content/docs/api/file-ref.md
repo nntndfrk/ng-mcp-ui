@@ -6,16 +6,17 @@ groupOrder: 5
 order: 10
 ---
 
-`FileRef` is a Zod object. Put it in an `inputSchema` or an `outputSchema`. The host then knows
-that the field is a file, and it can show attach controls and previews.
+`FileRef` is a Zod object. Put it in a field of an `inputSchema` or an `outputSchema`. The host then
+knows that the field is a file, and it can show attach controls and previews.
 
 ```ts
 import { FileRef } from "ng-mcp-ui/server";
+import { z } from "zod";
 
 server.registerTool(
   {
     name: "summarize_document",
-    inputSchema: { document: FileRef },
+    inputSchema: z.object({ document: FileRef }),
   },
   async ({ document }) => {
     const res = await fetch(document.download_url);
@@ -41,8 +42,8 @@ TypeScript type. Therefore you use the same name in a value position and in a ty
 ```ts
 import { FileRef } from "ng-mcp-ui/server";
 
-const schema = { document: FileRef };        // value
-function read(file: FileRef) { /* … */ }     // type
+const schema = z.object({ document: FileRef }); // value
+function read(file: FileRef) { /* … */ }        // type
 ```
 
 ## In an output schema
@@ -50,7 +51,7 @@ function read(file: FileRef) { /* … */ }     // type
 Put `FileRef` in an `outputSchema` to give a file back to the host.
 
 ```ts
-outputSchema: { report: FileRef }
+outputSchema: z.object({ report: FileRef })
 ```
 
 The view then reads the reference from

@@ -18,15 +18,16 @@ The two hosts are very different here. Read the
 
 ## FileRef in a tool schema
 
-`FileRef` is a Zod object. Put it in an `inputSchema` or an `outputSchema`.
+`FileRef` is a Zod object. Put it in a field of an `inputSchema` or an `outputSchema`.
 
 ```ts
 import { FileRef } from "ng-mcp-ui/server";
+import { z } from "zod";
 
 server.registerTool(
   {
     name: "summarize_document",
-    inputSchema: { document: FileRef },
+    inputSchema: z.object({ document: FileRef }),
   },
   async ({ document }) => {
     const res = await fetch(document.download_url);

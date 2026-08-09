@@ -14,6 +14,9 @@ ng generate ng-mcp-ui:tool create_poll --view=poll   # link to an existing view
 The generator writes a [`registerTool`](/docs/api/register-tool) call with a Zod input schema and a
 Zod output schema. It also wires the call into the `createMcpServer()` function of your app.
 
+The generator dasherizes the name. `cast_vote` and `castVote` both give the file
+`src/mcp/tools/cast-vote.ts`, the function `registerCastVoteTool`, and the tool name `cast-vote`.
+
 ## Options
 
 | Option | Type | Default | Notes |
@@ -31,11 +34,11 @@ import { z } from "zod";
 export function registerCastVoteTool(server: McpServer): void {
   server.registerTool(
     {
-      name: "cast_vote",
-      title: "Cast vote",
-      description: "Describe what the cast_vote tool does.",
-      inputSchema: { message: z.string() },
-      outputSchema: { message: z.string() },
+      name: "cast-vote",
+      title: "CastVote",
+      description: "Describe what the cast-vote tool does.",
+      inputSchema: z.object({ message: z.string() }),
+      outputSchema: z.object({ message: z.string() }),
     },
     (args) => {
       const message = args.message;
@@ -59,7 +62,15 @@ result as an interactive widget, and not as text.
 ```
 
 `createMcpServer()` in `src/mcp/server.ts` calls the generated `register…Tool(server)` function.
-Edit the schemas and the handler to add the real behavior.
+Edit the schemas and the handler to add the real behavior. The `title` field starts as the
+classified name, so give it a readable one.
+
+Each schema is a [Standard Schema](https://standardschema.dev). `z.object({ … })` is the form the
+generator writes, and ArkType and Valibot work too.
+
+A handler receives `(args, ctx)`. The scaffold uses `args` alone. `ctx` carries the sealed state
+(`ctx.state`, see [sealed state](/docs/guides/sealed-state)), the HTTP request, and the elicitation
+surface (see [elicitation](/docs/guides/elicitation)).
 
 Write the `description` field for the model. The model reads it to decide when to call your tool.
 

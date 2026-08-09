@@ -81,8 +81,8 @@ type TypedToolInfoReturn<TInput, TOutput, TResponseMetadata> = Signal<
  *   .registerTool(
  *     {
  *       name: "search-trip",
- *       inputSchema: { destination: z.string() },
- *       outputSchema: { results: z.array(z.string()) },
+ *       inputSchema: z.object({ destination: z.string() }),
+ *       outputSchema: z.object({ results: z.array(z.string()) }),
  *       view: { component: "search-trip" },
  *     },
  *     async ({ destination }) => ({

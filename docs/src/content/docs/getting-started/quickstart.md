@@ -7,7 +7,9 @@ order: 2
 ---
 
 > You need **Angular v20, v21 or v22**, and Node 22 or later. If your app has no SSR, the schematic
-> adds it.
+> adds it. The 1.x server serves the **MCP 2026-07-28** revision only. It builds on version 2 of the
+> MCP TypeScript SDK: `@modelcontextprotocol/server`, `/express` and `/node` at `^2.0.0`, with zod
+> `^4.2.0` and Express 5. See [ng add](/docs/schematics/ng-add) for the full peer list.
 
 ## 1. Install and retrofit
 
@@ -15,8 +17,11 @@ One schematic mounts the MCP JSON-RPC endpoint into your `server.ts` file. It al
 example tool and widget, and it adds the dev scripts.
 
 ```bash
-ng add ng-mcp-ui --example=demo
+ng add ng-mcp-ui@next --example=demo
 ```
+
+The `@next` tag is needed while 1.x is beta. A plain `ng add ng-mcp-ui` installs the 0.2.x line,
+which speaks the 2025-era protocol. See [migrate from 0.2.x](/docs/getting-started/migrate-from-0-2).
 
 `ng add` installs the package and runs the retrofit in one step. If the package is already
 installed, run the schematic directly:
@@ -33,7 +38,13 @@ The schematic writes these files.
 | `src/mcp/views.manifest.ts` | Resolves the widget build output for the view shell |
 | `src/widgets/registry.ts` | Maps each view name to a lazy `import()` of the widget module |
 | `src/widgets/main.ts` | The widget entry. It reads `viewName` from the shell |
+| `src/widgets/index.html` | The shell document of the widget browser build |
+| `src/widgets/echo/echo.widget.ts` | The sample `echo` widget |
 | `tsconfig.widgets.json` | The TypeScript project for the widget build |
+
+`--example=demo` adds the Quick Poll demo on top: `src/mcp/tools/poll.ts`,
+`src/widgets/poll/poll.widget.ts`, `src/widgets/poll/poll.css`, and the `src/widgets/views.d.ts`
+file that declares the view names.
 
 It also adds a `build-widgets` target on the
 [`ng-mcp-ui:build-widgets`](/docs/schematics/build-widgets) builder, mounts the `/mcp` and
@@ -42,8 +53,8 @@ three npm scripts.
 
 ## 2. Register a tool
 
-Zod types each tool. A tool with a `view` field renders as an interactive widget, and not as plain
-text.
+A Zod object types each tool. A tool with a `view` field renders as an interactive widget, and not
+as plain text.
 
 ```ts
 import { McpServer } from "ng-mcp-ui/server";
@@ -60,23 +71,27 @@ declare module "ng-mcp-ui/server" {
 export function createMcpServer(): McpServer {
   return new McpServer(
     { name: "my-app", version: "0.0.0" },
-    { viewManifest: resolveViewManifest() },
+    {
+      viewManifest: resolveViewManifest(),
+      // sealed state: ctx.state.seal() / ctx.state.open() in your handlers
+      state: { key: process.env["NG_MCP_STATE_KEY"] },
+    },
   ).registerTool(
     {
       name: "create_poll",
       title: "Create poll",
       description: "Create a poll and render it as an interactive view.",
-      inputSchema: {
+      inputSchema: z.object({
         question: z.string().min(1),
         options: z.array(z.string().min(1)).min(2),
-      },
-      outputSchema: {
+      }),
+      outputSchema: z.object({
         pollId: z.string(),
         question: z.string(),
         options: z.array(z.string()),
         tally: z.array(z.object({ option: z.string(), count: z.number() })),
         total: z.number(),
-      },
+      }),
       // links this tool to the `poll` widget — one tool per view
       view: {
         component: "poll",
@@ -96,6 +111,16 @@ export function createMcpServer(): McpServer {
   );
 }
 ```
+
+The schema of each tool is a [Standard Schema](https://standardschema.dev). `z.object({ … })` is
+the common form, and ArkType and Valibot work too. A handler receives `(args, ctx)`. This one needs
+no context, so it takes `args` alone.
+
+The `state` option is what `ng add` scaffolds. It gives each handler a `ctx.state` that seals
+server state into a signed token the widget carries back, so the server keeps no session. In
+development you can leave `NG_MCP_STATE_KEY` unset: the server then mints an ephemeral key and logs
+a warning. In production a missing key throws. The scaffolded poll demo works this way. See
+[sealed state](/docs/guides/sealed-state).
 
 One command generates a tool. See [generate tool](/docs/schematics/generate-tool), and
 [`registerTool`](/docs/api/register-tool) for each config field.

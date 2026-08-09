@@ -22,7 +22,7 @@ Put a `csp` object in the `view` config of `registerTool`.
 server.registerTool(
   {
     name: "create_poll",
-    inputSchema: { question: z.string() },
+    inputSchema: z.object({ question: z.string() }),
     view: {
       component: "poll",
       csp: {
@@ -92,13 +92,14 @@ targets the two hosts. The server does not put it in the Apps SDK data.
 
 ## The related view options
 
-Three more fields of `ViewConfig` control how the host shows the view.
+Four more fields of `ViewConfig` control how the host treats the view.
 
 | Option | Function |
 | --- | --- |
 | `hosts` | Selects the runtimes that get a view resource. The default is the two runtimes. |
 | `prefersBorder` | Asks the host for a border around the widget. Apps SDK hosts only. |
 | `domain` | Replaces the served domain of the iframe. Apps SDK hosts only. For advanced use. |
+| `cacheHint` | Overrides how long the host may cache this view resource. The server computes a default from the asset URI. |
 
 ## Assets need more than a CSP
 

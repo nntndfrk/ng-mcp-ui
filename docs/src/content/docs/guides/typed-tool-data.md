@@ -69,13 +69,31 @@ errors, therefore put it in a `try`/`catch` block.
 `registerTool` adds the input, output and `_meta` shape of each tool to the type of the server.
 Therefore `typeof server` carries the whole registry.
 
+`inputSchema` takes one Standard Schema that can also produce JSON Schema. A zod v4
+`z.object({ … })` is the usual choice, and ArkType or Valibot also work. The raw shape form of
+0.2.x (`{ question: z.string() }`) is not accepted. See
+[migrate from 0.2.x](/docs/getting-started/migrate-from-0-2).
+
 [`injectAppHelpers<typeof server>()`](/docs/api/inject-app-helpers) turns that registry into
 tool-name-narrowed helpers. You then write no generics in the widget.
 
 ```ts
 // src/mcp/server.ts
+import { z } from "zod";
+
 export function createMcpServer() {
-  return new McpServer(/* … */).registerTool(/* create_poll */).registerTool(/* cast_vote */);
+  return new McpServer({ name: "poll", version: "1.0.0" })
+    .registerTool(
+      { name: "create_poll", inputSchema: z.object({ question: z.string() }) },
+      createPoll,
+    )
+    .registerTool(
+      {
+        name: "cast_vote",
+        inputSchema: z.object({ pollId: z.string(), option: z.string() }),
+      },
+      castVote,
+    );
 }
 export type AppServer = ReturnType<typeof createMcpServer>;
 ```

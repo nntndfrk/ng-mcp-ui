@@ -12,13 +12,28 @@ a poll that the user can vote on, a chart, a form. Your app serves them, and you
 `ng-mcp-ui` does this with one schematic.
 
 ```bash
-ng add ng-mcp-ui --example=demo
+ng add ng-mcp-ui@next --example=demo
 ```
 
 The schematic mounts an [MCP](https://modelcontextprotocol.io) server into the Angular SSR
 `server.ts` file of your app. It also scaffolds an example tool and widget, and it adds a dev
 tunnel. Thus you can connect a real host, for example Claude or ChatGPT, and see your changes
 immediately.
+
+## Two lines: 0.2.x and 1.x
+
+This documentation covers **1.x**. It speaks the **MCP 2026-07-28** protocol revision only, it is
+built on version 2 of the MCP TypeScript SDK, and it rejects 2025-era clients.
+
+| Line | Install | Protocol | Status |
+| --- | --- | --- | --- |
+| 0.2.x | `ng add ng-mcp-ui` | 2025 era | The line for the hosts that connect today. Security patches until August 2027 |
+| 1.x | `ng add ng-mcp-ui@next` | 2026-07-28 only | Beta, on the npm `next` dist-tag. Adds sealed state, elicitation and cache hints |
+
+As of August 2026, claude.ai still connects with the 2025-11-25 revision. Therefore a connector
+that must work today needs 0.2.x. 1.x ships as `1.0.0-beta.x` until a real host renders widgets
+over the new protocol. The widget API is the same in both lines, and the changes are on the
+server. See [migrate from 0.2.x](/docs/getting-started/migrate-from-0-2).
 
 ## What the package contains
 
@@ -53,8 +68,9 @@ ChatGPT uses) and the open **MCP-Apps** postMessage specification
 (`@modelcontextprotocol/ext-apps`, which Claude and other MCP-Apps hosts use). Therefore your widget
 code is the same for each host.
 
-Live-host tests are signed off on Claude and on ChatGPT. A machine verifies the render, and a person
-confirms the interactive tool-call rows. **Gemini is not supported.**
+Live-host tests are signed off on Claude and on ChatGPT, on the 0.2.x line and the 2025-era
+protocol. A machine verifies the render, and a person confirms the interactive tool-call rows. The
+same sign-off on the 2026-07-28 wire waits for a host that speaks it. **Gemini is not supported.**
 
 For the behavior of each function on each host, see
 [host support](/docs/reference/host-support).

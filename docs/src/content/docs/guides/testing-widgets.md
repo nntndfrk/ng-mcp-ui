@@ -35,6 +35,11 @@ const fixture = TestBed.createComponent(PollWidget);
 fixture.detectChanges();
 ```
 
+A canned response must be a completed result. The mock throws when a `toolResponses` entry has
+`resultType: "input_required"`. No host surfaces a multi-round trip to a widget, therefore a tool
+that a view calls must finish in one round. Keep [elicitation](/docs/guides/elicitation) flows on
+chat-path tools.
+
 ## Driving the host
 
 In production the tool data arrives after the boot. The mock reproduces that, therefore you push

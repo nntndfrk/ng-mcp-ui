@@ -37,13 +37,21 @@ short form is usually enough.
 
 ```ts
 toolResponses: {
-  cast_vote: { total: 4 },                        // short form
-  create_poll: { structuredContent: { id: "1" }, isError: false },
+  cast_vote: { total: 4 },                                        // short form
+  create_poll: { content: [], structuredContent: { id: "1" }, isError: false },
 }
 ```
 
+The long form needs all three of `content`, `structuredContent` and `isError`. An object that
+misses one of them counts as the short form, and the whole object becomes the
+`structuredContent`. A long form may also carry `meta`.
+
 A `callTool` for a name that is not listed resolves with an empty success response. Therefore a
 wrapper still moves to the success state, and you can test that path without listing every tool.
+
+A canned response with `resultType: "input_required"` is refused: `callTool` rejects with an error.
+A host never surfaces a multi-round trip to a widget, therefore a tool that a view calls has to
+finish in one round. Keep an [elicitation](/docs/guides/elicitation) flow on a chat-path tool.
 
 ## Members
 

@@ -17,6 +17,13 @@ The two runtimes are:
 
 The behavior below comes from the two adaptor implementations in the package.
 
+The host runtime and the protocol revision are two different things. This page describes the
+runtime that a widget sees, and that runtime is the same in 0.2.x and in 1.x: the host bridges do
+not depend on the protocol era. The server side does. A 1.x server speaks MCP 2026-07-28 only,
+and as of August 2026 claude.ai still connects with the 2025-11-25 revision, so it cannot reach
+one. Keep a connector for today's hosts on the 0.2.x line. See
+[migrate from 0.2.x](/docs/getting-started/migrate-from-0-2).
+
 ## Failure modes
 
 An unsupported call fails in one of three ways. The difference is important, because each way needs
@@ -83,7 +90,7 @@ See the [files guide](/docs/guides/files) for the full details.
 
 | Data | Apps SDK | MCP Apps |
 | --- | --- | --- |
-| [Client hints](/docs/guides/client-hints) on `extra._meta` | Supported | Not sent |
+| [Client hints](/docs/guides/client-hints) on `ctx.mcpReq._meta` | Supported | Not sent |
 | [`baseUriDomains`](/docs/guides/csp) in the view CSP | Not sent | Supported |
 | `prefersBorder` on the view config | Supported | Sent, but the host can ignore it |
 | `domain` on the view config | Supported | Sent, but the host can ignore it |

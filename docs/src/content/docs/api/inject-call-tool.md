@@ -87,6 +87,18 @@ const { injectCallTool } = injectAppHelpers<AppServer>();
 private readonly vote = injectCallTool("cast_vote");   // args and data are typed
 ```
 
+The second type argument refines `structuredContent` and `meta` on `data()`:
+
+```ts
+private readonly move = injectCallTool<
+  { state: string; cell: number },
+  { structuredContent: GameView; meta: { "ng-mcp-ui/state"?: string } }
+>("move");
+```
+
+`meta` is the `_meta` of the tool result. A server returns a sealed state token there, and the view
+echoes it back as an argument. See [Sealed state](/docs/guides/sealed-state).
+
 ## Host support
 
 Supported on the two host runtimes.

@@ -11,6 +11,12 @@ back, or opens a widget later. UI state in a plain component field does not surv
 
 The host keeps a small store for each view. `ng-mcp-ui` gives you two ways to use it.
 
+View state is client-owned UI state: a selection, a draft, a scroll position. The host holds it,
+and the client can change it, therefore a server cannot trust what comes back. For server state
+that a widget carries between tool calls, use [sealed state](/docs/guides/sealed-state). The two
+work together: seal the state on the server, then keep the token in view state so a remounted
+widget still has it.
+
 ## injectViewState for one value
 
 For one piece of state, [`injectViewState`](/docs/api/inject-view-state) is enough. It gives you

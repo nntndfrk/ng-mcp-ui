@@ -52,6 +52,9 @@ Without a type argument, `output` is a loose object. Two ways give you a typed r
 readonly tool = injectToolInfo<{ output: { question: string; total: number } }>();
 ```
 
+The shape takes `input`, `output` and `responseMetadata`. A server returns a sealed state token in
+`responseMetadata`. See [Sealed state](/docs/guides/sealed-state).
+
 **From the server.** [`injectAppHelpers`](/docs/api/inject-app-helpers) infers the shape from your
 server type, which is the form to prefer:
 

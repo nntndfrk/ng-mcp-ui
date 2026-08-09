@@ -10,7 +10,7 @@ import { z } from "zod";
  * ```ts
  * server.registerTool({
  *   name: "summarize-document",
- *   inputSchema: { document: FileRef },
+ *   inputSchema: z.object({ document: FileRef }),
  * }, async ({ document }) => {
  *   const res = await fetch(document.download_url);
  *   // …

@@ -13,7 +13,9 @@ injectViewState<T extends ViewState>(
 ```
 
 The host keeps this state, therefore it survives a re-render of the view. The model can also read
-it, so it knows what the user is looking at.
+it, so it knows what the user is looking at. A view that carries a
+[sealed state](/docs/guides/sealed-state) token keeps the freshest token here, so a remount can
+still call the server.
 
 ```ts
 import { injectViewState } from "ng-mcp-ui/web";
@@ -75,4 +77,5 @@ widget state. An MCP Apps host sends it to the host and also writes a copy to `l
 ## Related
 
 - [View state](/docs/guides/view-state)
+- [Sealed state](/docs/guides/sealed-state) for a server token that the view carries between calls
 - [`injectViewStore`](/docs/api/inject-view-store)

@@ -31,6 +31,18 @@ The order matters. A catch-all route that runs first answers `/mcp` with your ap
 The package uses SSR for the thing SSR gives you here: an Express server. It does not use SSR to
 render the view content.
 
+## The endpoint holds no session
+
+`createMcpServer()` returns a blueprint: it declares your tools and views, and it stores no request
+data. The router builds a **fresh SDK server for each request** from that blueprint, through
+`McpServer.factory()`. Therefore the endpoint scales to serverless and to several instances, and
+state that must survive a call travels on the wire. See
+[sealed state](/docs/guides/sealed-state).
+
+The endpoint speaks **MCP 2026-07-28** only. A client of the 2025 era gets an
+unsupported-protocol-version error that names the one supported revision. In this revision a host
+probes the capabilities of the server with `server/discover`. There is no `initialize` handshake.
+
 ## A view is a client-bootstrapped widget
 
 The standard Angular builder puts each registered view in its own lazy chunk, and the server sends

@@ -22,11 +22,11 @@ return {
 
 | Helper | Signature |
 | --- | --- |
-| `text` | `(value: string, annotations?) => TextBlock` |
-| `image` | `(data: string \| Uint8Array, mimeType: string, annotations?) => ImageBlock` |
-| `audio` | `(data: string \| Uint8Array, mimeType: string, annotations?) => AudioBlock` |
-| `resourceLink` | `(link: { uri, name, title?, description?, mimeType?, size? }, annotations?) => ResourceLinkBlock` |
-| `embeddedResource` | `(resource: { uri, mimeType?, text } \| { uri, mimeType?, blob }, annotations?) => EmbeddedResourceBlock` |
+| `text` | `(value: string, annotations?) => TextContent` |
+| `image` | `(data: string \| Uint8Array, mimeType: string, annotations?) => ImageContent` |
+| `audio` | `(data: string \| Uint8Array, mimeType: string, annotations?) => AudioContent` |
+| `resourceLink` | `(link: { uri, name, title?, description?, mimeType?, size? }, annotations?) => ResourceLink` |
+| `embeddedResource` | `(resource: { uri, mimeType?, text } \| { uri, mimeType?, blob }, annotations?) => EmbeddedResource` |
 
 `image` and `audio` accept a base64 string or a `Uint8Array`. The helper encodes a `Uint8Array` for
 you.
@@ -64,8 +64,7 @@ value and gives back a correct array of blocks.
 | --- | --- |
 | A string | One text block |
 | One block | An array with that block |
-| An array of blocks | The same array |
-| A mixed array of strings and blocks | Each string becomes a text block |
+| An array of blocks | The same array, unchanged |
 | `undefined` | An empty array |
 
 Therefore the short form is correct:

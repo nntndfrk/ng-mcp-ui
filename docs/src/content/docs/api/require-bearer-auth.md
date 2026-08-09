@@ -23,8 +23,8 @@ app.use(
 );
 ```
 
-The middleware comes from the MCP SDK. The package re-exports it, therefore you import it from one
-place.
+The middleware comes from `@modelcontextprotocol/express`. `ng-mcp-ui/server` re-exports it,
+therefore you import it from one place.
 
 ## Options
 
@@ -43,17 +43,17 @@ place.
 
 ## Reading the identity
 
-After the middleware runs, the verified identity is on the request. A tool handler reads it from
-the `extra` argument:
+The middleware attaches the verified `AuthInfo` to `req.auth`. The SDK forwards it to a tool
+handler as `ctx.http?.authInfo`:
 
 ```ts
-server.registerTool({ name: "whoami" }, async (_args, extra) => {
-  const subject = extra.authInfo?.clientId;
+server.registerTool({ name: "whoami" }, async (_args, ctx) => {
+  const subject = ctx.http?.authInfo?.clientId;
   return { content: `You are ${subject}.` };
 });
 ```
 
-Use `extra.authInfo` for an access decision. Do not use the
+Use `ctx.http?.authInfo` for an access decision. Do not use the
 [client hints](/docs/guides/client-hints) for that, because the host supplies them and they are not
 verified.
 
@@ -61,4 +61,4 @@ verified.
 
 - [`optionalBearerAuth`](/docs/api/optional-bearer-auth)
 - [`mcpAuthMetadataRouter`](/docs/api/mcp-auth-metadata-router)
-- [`mcpMiddleware`](/docs/api/mcp-middleware) for an MCP-level check on each transport
+- [`registerTool`](/docs/api/register-tool) for the `securitySchemes` a tool declares
