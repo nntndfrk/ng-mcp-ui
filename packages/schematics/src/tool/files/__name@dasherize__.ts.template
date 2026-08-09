@@ -13,8 +13,8 @@ export function register<%= classify(name) %>Tool(server: McpServer): void {
       name: "<%= dasherize(name) %>",
       title: "<%= classify(name) %>",
       description: "Describe what the <%= dasherize(name) %> tool does.",
-      inputSchema: { message: z.string() },
-      outputSchema: { message: z.string() },<% if (hasView) { %>
+      inputSchema: z.object({ message: z.string() }),
+      outputSchema: z.object({ message: z.string() }),<% if (hasView) { %>
       view: {
         component: "<%= viewName %>",
         description: "Renders the <%= viewName %> view.",

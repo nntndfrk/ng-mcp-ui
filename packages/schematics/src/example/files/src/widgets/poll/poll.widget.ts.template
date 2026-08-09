@@ -39,6 +39,17 @@ type PollSnapshot = {
 };
 
 /**
+ * The sealed-state token key (`STATE_META_KEY` on the server entry; the
+ * literal is used here because widget code must not import server code into
+ * the browser bundle). The server returns the token under this key in every
+ * tool result's `_meta`; the widget passes it back as the `state` argument.
+ */
+const STATE_KEY = "ng-mcp-ui/state";
+
+/** Tool-result `_meta` refinement carrying the sealed poll token. */
+type WeaveMeta = { [STATE_KEY]?: string };
+
+/**
  * The Quick Poll demo view (S21, PLAN §10). A single standalone, zoneless,
  * OnPush component that exercises the full §10.2 capability table:
  *
@@ -46,7 +57,8 @@ type PollSnapshot = {
  * |-----------------------|---------------------------------------------------|
  * | tool → view render    | `injectToolInfo` reads the rendering tool output  |
  * | view → server call    | `injectCallTool('cast_vote' / 'tally_votes')`     |
- * | persisted view state  | `injectViewState({ myVote })` survives reopen     |
+ * | persisted view state  | `injectViewState({ myVote, token })` survives reopen |
+ * | sealed server state   | token from `_meta["ng-mcp-ui/state"]`, echoed as `state` |
  * | LLM-visible context   | `[dataLlm]` surfaces "User voted: X" to the model |
  * | drive the chat        | `injectSendFollowUpMessage()` ("Discuss")         |
  * | theme / layout        | `injectLayout()` → theme class + safe-area padding |
@@ -69,7 +81,11 @@ type PollSnapshot = {
   styleUrl: "./poll.css",
   template: `
     @let p = poll();
-    @if (p === null) {
+    @if (expired()) {
+      <p class="poll-waiting">
+        This poll expired. Ask the assistant to create a new one.
+      </p>
+    } @else if (p === null) {
       <p class="poll-waiting">Waiting for the poll…</p>
     } @else {
       <section class="poll-card" [attr.aria-busy]="isBusy()">
@@ -140,23 +156,27 @@ type PollSnapshot = {
 })
 export default class PollWidget {
   private readonly tool = injectToolInfo<{
-    input: { question?: string; options?: string[]; pollId?: string };
+    input: { question?: string; options?: string[] };
     output: PollSnapshot;
+    responseMetadata: WeaveMeta;
   }>();
 
   private readonly castVote = injectCallTool<
-    { pollId: string; option: string },
-    { structuredContent: PollSnapshot }
+    { state: string; option: string },
+    { structuredContent: PollSnapshot; meta: WeaveMeta }
   >("cast_vote");
 
   private readonly tallyVotes = injectCallTool<
-    { pollId: string },
-    { structuredContent: PollSnapshot }
+    { state: string },
+    { structuredContent: PollSnapshot; meta: WeaveMeta }
   >("tally_votes");
 
-  private readonly viewState = injectViewState<{ myVote: string | null }>({
-    myVote: null,
-  });
+  // Host-persisted view state now also carries the sealed token, so a
+  // remounted widget can keep calling tools without any server-side session.
+  private readonly viewState = injectViewState<{
+    myVote: string | null;
+    token: string | null;
+  }>({ myVote: null, token: null });
 
   private readonly followUp = injectSendFollowUpMessage();
   private readonly layout = injectLayout();
@@ -164,6 +184,22 @@ export default class PollWidget {
 
   /** A snapshot from an interactive call, overlaid on the rendered tool output. */
   private readonly live = signal<PollSnapshot | null>(null);
+
+  /** Set when the server rejects the token (expired or tampered). */
+  protected readonly expired = signal(false);
+
+  /**
+   * The sealed poll token: the persisted copy (survives remounts), else the
+   * one the rendering tool returned in its response `_meta`.
+   */
+  private readonly token = computed<string | null>(() => {
+    const persisted = this.viewState.value()?.token;
+    if (persisted) {
+      return persisted;
+    }
+    const state = this.tool();
+    return state.isSuccess ? (state.responseMetadata?.[STATE_KEY] ?? null) : null;
+  });
 
   protected readonly theme = computed(() => this.layout().theme);
   protected readonly safeAreaBottom = computed(
@@ -207,38 +243,60 @@ export default class PollWidget {
   }
 
   protected vote(option: string): void {
-    const p = this.poll();
-    if (!p) {
+    const token = this.token();
+    if (!this.poll() || token === null) {
       return;
     }
     this.castVote.callTool(
-      { pollId: p.pollId, option },
+      { state: token, option },
       {
         onSuccess: (data) => {
+          // A rejected token resolves as an isError result with the stable
+          // "invalid or expired" message; render the expired panel.
+          if (data.isError) {
+            this.expired.set(true);
+            return;
+          }
           if (data.structuredContent) {
             this.live.set(data.structuredContent);
           }
-          this.viewState.set({ myVote: option });
+          this.adoptToken(data.meta?.[STATE_KEY], { myVote: option });
         },
       },
     );
   }
 
   protected tally(): void {
-    const p = this.poll();
-    if (!p) {
+    const token = this.token();
+    if (!this.poll() || token === null) {
       return;
     }
     this.tallyVotes.callTool(
-      { pollId: p.pollId },
+      { state: token },
       {
         onSuccess: (data) => {
+          if (data.isError) {
+            this.expired.set(true);
+            return;
+          }
           if (data.structuredContent) {
             this.live.set(data.structuredContent);
           }
+          this.adoptToken(data.meta?.[STATE_KEY]);
         },
       },
     );
+  }
+
+  /** Persist the freshest token (and optionally the vote) into host view state. */
+  private adoptToken(
+    token: string | undefined,
+    patch: { myVote?: string } = {},
+  ): void {
+    this.viewState.set((prev) => ({
+      myVote: patch.myVote ?? prev?.myVote ?? null,
+      token: token ?? prev?.token ?? null,
+    }));
   }
 
   protected discuss(): void {

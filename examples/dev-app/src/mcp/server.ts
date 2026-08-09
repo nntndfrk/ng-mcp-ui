@@ -21,7 +21,12 @@ declare module "ng-mcp-ui/server" {
 export function createMcpServer(): McpServer {
   const server = new McpServer(
     { name: "dev-app", version: "0.0.0" },
-    { viewManifest: resolveViewManifest() },
+    {
+      viewManifest: resolveViewManifest(),
+      // Sealed state + verified MRTR requestState (MCP 2026-07-28). Dev
+      // fallback: ephemeral per-process key with a warning.
+      state: { key: process.env["NG_MCP_STATE_KEY"] },
+    },
   );
 
   // The minimal echo variant: a single `echo` view tool.

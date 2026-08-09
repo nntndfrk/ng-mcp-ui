@@ -21,7 +21,15 @@ declare module "ng-mcp-ui/server" {
 export function createMcpServer(): McpServer {
   const server = new McpServer(
     { name: "<%= projectName %>", version: "0.0.0" },
-    { viewManifest: resolveViewManifest() },
+    {
+      viewManifest: resolveViewManifest(),
+      // Sealed state (ctx.state) + verified MRTR requestState (MCP
+      // 2026-07-28). In development an omitted key falls back to an ephemeral
+      // per-process key; in production set NG_MCP_STATE_KEY to a stable
+      // secret of 32+ bytes. Delete this option if your tools never use
+      // ctx.state or requestState.
+      state: { key: process.env["NG_MCP_STATE_KEY"] },
+    },
   );
 
   server.registerTool(
@@ -29,8 +37,8 @@ export function createMcpServer(): McpServer {
       name: "echo",
       title: "Echo",
       description: "Echoes the message back, and renders it in the echo view.",
-      inputSchema: { message: z.string() },
-      outputSchema: { message: z.string() },
+      inputSchema: z.object({ message: z.string() }),
+      outputSchema: z.object({ message: z.string() }),
       view: {
         component: "echo",
         description: "Renders the echoed message.",

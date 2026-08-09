@@ -62,8 +62,8 @@ describe("tool", () => {
     expect(toolFile).toContain('import { McpServer } from "ng-mcp-ui/server";');
     expect(toolFile).toContain('import { z } from "zod";');
     expect(toolFile).toContain('name: "bar"');
-    expect(toolFile).toContain("inputSchema: { message: z.string() }");
-    expect(toolFile).toContain("outputSchema: { message: z.string() }");
+    expect(toolFile).toContain("inputSchema: z.object({ message: z.string() })");
+    expect(toolFile).toContain("outputSchema: z.object({ message: z.string() })");
     expect(toolFile).toContain("structuredContent: { message }");
     // No --view ⇒ no view config block.
     expect(toolFile).not.toContain("view: {");

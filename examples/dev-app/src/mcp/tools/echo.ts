@@ -21,8 +21,8 @@ export function registerEchoTool(server: McpServer): void {
       name: "echo",
       title: "Echo",
       description: "Echoes the message back, and renders it in the echo view.",
-      inputSchema: { message: z.string() },
-      outputSchema: { message: z.string() },
+      inputSchema: z.object({ message: z.string() }),
+      outputSchema: z.object({ message: z.string() }),
       view: {
         component: "echo",
         description: "Renders the echoed message.",

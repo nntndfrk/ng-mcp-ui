@@ -1,64 +1,65 @@
-// The "Quick Poll" demo tools (S21, PLAN §10).
+// The "Quick Poll" demo tools, 1.x edition: a stateless server on sealed
+// state (MCP 2026-07-28).
 //
-// Three tools over a single in-memory store exercise the full §10.2 capability
-// table:
-//   - `create_poll`  — view tool: creates a poll, renders the `poll` view.
-//   - `cast_vote`    — view→server: the view's vote buttons call this; the open
-//                       poll view re-renders bars from the returned snapshot.
-//   - `tally_votes`  — view→server: the view's "Tally" button (and a chat-driven
-//                       "tally the votes") refresh the standings.
+// The 0.2.x demo kept polls in a module-level Map, which breaks on serverless
+// and multi-instance hosting. This version seals the WHOLE poll into an HMAC
+// token via `ctx.state` (the sealed-state "weave"):
+//   - `create_poll`  view tool: seals the initial poll and returns the token
+//                    in `_meta[STATE_META_KEY]`. The token reaches the widget
+//                    as `toolResponseMetadata` but is not model-visible.
+//   - `cast_vote`    view-to-server: the widget echoes the token as the
+//                    `state` argument; the server opens it, records the vote,
+//                    and returns the new snapshot with a fresh token.
+//   - `tally_votes`  view-to-server: opens the token and returns the snapshot
+//                    (re-sealed, which also refreshes the token's lifetime).
 //
-// Only `create_poll` carries a `view` — the library enforces exactly one tool
-// per view (`enforceOneToolPerView`), and the §10.2 table maps tally/vote to
-// `injectCallTool` (view→server), not to separate renders. All three tools
-// return the SAME snapshot shape so the `poll` widget renders consistently.
+// The model stays in the loop through `structuredContent`: every call returns
+// the full snapshot, so "what are the standings?" is answerable from the
+// conversation without any server-side state. Demo caveats, by design: each
+// widget instance carries its own fork of the poll (last writer wins), and
+// the token rides every call, so keep sealed payloads small.
 //
-// State lives in-memory and resets on restart — deliberately zero-dependency
-// (PLAN §10.1). `createMcpServer()` wires these in via `registerPollTools()`.
+// Requires the blueprint's `state` option (src/mcp/server.ts configures it;
+// see `requireState` below).
 
-import type { McpServer } from "ng-mcp-ui/server";
+import {
+  type McpServer,
+  type McpToolContext,
+  type SealedState,
+  STATE_META_KEY,
+} from "ng-mcp-ui/server";
 import { z } from "zod";
 
-interface Poll {
-  id: string;
+/** The whole poll, sealed into the token the widget carries. */
+interface PollState {
+  pollId: string;
   question: string;
   options: string[];
-  /** option label → vote count. */
+  /** option label -> vote count. */
   votes: Record<string, number>;
 }
 
-/** Demo store. Process-local; resets on server restart. */
-const polls = new Map<string, Poll>();
-let pollSeq = 0;
-
 /**
- * The shape `create_poll` / `tally_votes` return (zod output schema). The poll
- * widget's `injectToolInfo` is typed to its inferred form, so the two stay in
- * lockstep.
+ * The shape all three tools return (zod output schema). The poll widget's
+ * `injectToolInfo` is typed to its inferred form, so the two stay in lockstep.
  */
-const snapshotShape = {
+const snapshotSchema = z.object({
   pollId: z.string(),
   question: z.string(),
   options: z.array(z.string()),
   tally: z.array(z.object({ option: z.string(), count: z.number() })),
   total: z.number(),
-} as const;
+});
 
 /** Build the public snapshot of a poll (options always listed, counts default 0). */
-function snapshot(poll: Poll): {
-  pollId: string;
-  question: string;
-  options: string[];
-  tally: { option: string; count: number }[];
-  total: number;
-} {
+function snapshot(poll: PollState): z.infer<typeof snapshotSchema> {
   const tally = poll.options.map((option) => ({
     option,
     count: poll.votes[option] ?? 0,
   }));
   const total = tally.reduce((sum, t) => sum + t.count, 0);
   return {
-    pollId: poll.id,
+    pollId: poll.pollId,
     question: poll.question,
     options: poll.options,
     tally,
@@ -67,13 +68,29 @@ function snapshot(poll: Poll): {
 }
 
 /** A short human/LLM-readable line summarizing the current standings. */
-function describeTally(poll: Poll): string {
+function describeTally(poll: PollState): string {
   const { tally, total } = snapshot(poll);
   if (total === 0) {
     return `No votes yet for "${poll.question}".`;
   }
   const parts = tally.map((t) => `${t.option}: ${t.count}`).join(", ");
-  return `"${poll.question}" — ${parts} (${total} total).`;
+  return `"${poll.question}": ${parts} (${total} total).`;
+}
+
+/**
+ * `ctx.state` exists only when the `McpServer` was constructed with a `state`
+ * option. The ng-add scaffold configures it; this guard turns a missing
+ * option into an actionable error instead of a silent `undefined`.
+ */
+function requireState(ctx: McpToolContext): SealedState {
+  if (!ctx.state) {
+    throw new Error(
+      "ng-mcp-ui poll demo: the server has no `state` option. Add " +
+        "`state: { key: process.env['NG_MCP_STATE_KEY'] }` to the McpServer " +
+        "options in src/mcp/server.ts.",
+    );
+  }
+  return ctx.state;
 }
 
 /**
@@ -90,28 +107,27 @@ export function registerPollTools(server: McpServer): void {
       description:
         "Create a poll with a question and 2+ options, then render it as an " +
         "interactive view the user can vote in.",
-      inputSchema: {
+      inputSchema: z.object({
         question: z.string().min(1),
         options: z.array(z.string().min(1)).min(2),
-      },
-      outputSchema: snapshotShape,
+      }),
+      outputSchema: snapshotSchema,
       view: {
         component: "poll",
         description: "Interactive poll: vote, tally, and discuss the results.",
       },
     },
-    (args) => {
-      const id = `poll-${++pollSeq}`;
-      const poll: Poll = {
-        id,
+    async (args, ctx) => {
+      const poll: PollState = {
+        pollId: crypto.randomUUID(),
         question: args.question,
         options: args.options,
         votes: {},
       };
-      polls.set(id, poll);
       return {
         content: `Created poll "${poll.question}" with options: ${poll.options.join(", ")}.`,
         structuredContent: snapshot(poll),
+        _meta: { [STATE_META_KEY]: await requireState(ctx).seal(poll) },
       };
     },
   );
@@ -121,28 +137,30 @@ export function registerPollTools(server: McpServer): void {
       name: "cast_vote",
       title: "Cast vote",
       description:
-        "Record a vote for one option in a poll. Called by the poll view when " +
-        "the user clicks an option.",
-      inputSchema: {
-        pollId: z.string(),
+        "Record a vote for one option in a poll. Called by the poll view " +
+        "when the user clicks an option; `state` is the sealed poll token " +
+        "from the previous snapshot.",
+      inputSchema: z.object({
+        state: z.string(),
         option: z.string(),
-      },
-      outputSchema: snapshotShape,
+      }),
+      outputSchema: snapshotSchema,
     },
-    (args) => {
-      const poll = polls.get(args.pollId);
-      if (!poll) {
-        throw new Error(`Unknown poll: ${args.pollId}`);
-      }
+    async (args, ctx) => {
+      const state = requireState(ctx);
+      // Throws the stable "invalid or expired" error on a bad token; the SDK
+      // surfaces it as an isError result the widget renders as "expired".
+      const poll = await state.open<PollState>(args.state);
       if (!poll.options.includes(args.option)) {
         throw new Error(
-          `"${args.option}" is not an option in poll ${args.pollId}.`,
+          `"${args.option}" is not an option in poll ${poll.pollId}.`,
         );
       }
       poll.votes[args.option] = (poll.votes[args.option] ?? 0) + 1;
       return {
         content: `Recorded a vote for "${args.option}". ${describeTally(poll)}`,
         structuredContent: snapshot(poll),
+        _meta: { [STATE_META_KEY]: await state.seal(poll) },
       };
     },
   );
@@ -152,21 +170,21 @@ export function registerPollTools(server: McpServer): void {
       name: "tally_votes",
       title: "Tally votes",
       description:
-        "Return the current vote tally for a poll. Called by the poll view's " +
-        "Tally button to refresh the standings.",
-      inputSchema: {
-        pollId: z.string(),
-      },
-      outputSchema: snapshotShape,
+        "Return the current vote tally for a poll. Called by the poll " +
+        "view's Tally button; `state` is the sealed poll token.",
+      inputSchema: z.object({
+        state: z.string(),
+      }),
+      outputSchema: snapshotSchema,
     },
-    (args) => {
-      const poll = polls.get(args.pollId);
-      if (!poll) {
-        throw new Error(`Unknown poll: ${args.pollId}`);
-      }
+    async (args, ctx) => {
+      const state = requireState(ctx);
+      const poll = await state.open<PollState>(args.state);
       return {
         content: describeTally(poll),
         structuredContent: snapshot(poll),
+        // Re-seal so the widget's token lifetime restarts with every refresh.
+        _meta: { [STATE_META_KEY]: await state.seal(poll) },
       };
     },
   );

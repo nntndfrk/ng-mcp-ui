@@ -50,8 +50,10 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import {
+  Client,
+  StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -116,10 +118,13 @@ const tag = `[major ${ngVersion}]`;
 // mcp/ scaffold import. Ranges are the known-good floors from the lib manifest;
 // npm resolves the highest matching published version.
 const PEERS = [
-  "@modelcontextprotocol/sdk@>=1.27.0",
+  "@modelcontextprotocol/express@^2.0.0",
   "@modelcontextprotocol/ext-apps@^1.7.0",
+  "@modelcontextprotocol/node@^2.0.0",
+  "@modelcontextprotocol/sdk@>=1.29.0",
+  "@modelcontextprotocol/server@^2.0.0",
   "express@^5.0.0",
-  "zod@^4.0.0",
+  "zod@^4.2.0",
 ];
 
 // ---- shell helpers --------------------------------------------------------
@@ -219,7 +224,9 @@ async function waitForServer(mcpUrl, timeoutMs = 45000) {
   while (Date.now() < deadline) {
     try {
       const res = await fetch(mcpUrl, { method: "GET" });
-      if (res.status === 405 || res.ok) {
+      if (res.status > 0) {
+        // Any HTTP answer means the SSR server is up; the 1.x endpoint
+        // answers a bare GET with a JSON-RPC error status, not 405.
         return;
       }
     } catch {
@@ -270,7 +277,12 @@ async function probe() {
   let client;
   try {
     await waitForServer(mcpUrl);
-    client = new Client({ name: "ci-fixture", version: "0.0.0" });
+    // Pin the 2026-07-28 era: the generated 1.x server is modern-only
+    // (`legacy: 'reject'`), and the v2 client's default posture is legacy.
+    client = new Client(
+      { name: "ci-fixture", version: "0.0.0" },
+      { versionNegotiation: { mode: { pin: "2026-07-28" } } },
+    );
     await client.connect(new StreamableHTTPClientTransport(new URL(mcpUrl)));
 
     const tools = await client.listTools();
@@ -382,29 +394,40 @@ async function probe() {
       );
     }
 
-    // Exercise the poll demo's RUNTIME handlers (create → vote → tally), not
-    // just their registration — a `registerPollTools` / handler / in-memory
-    // store regression in the chained example demo would pass a list-only check.
+    // Exercise the poll demo's RUNTIME handlers (create -> vote -> tally),
+    // not just their registration. The 1.x demo is stateless: the whole poll
+    // is sealed into the `_meta["ng-mcp-ui/state"]` token, which each call
+    // echoes back as the `state` argument (the widget's job in production).
     const createRes = await client.callTool({
       name: "create_poll",
       arguments: { question: "Lunch?", options: ["Pizza", "Sushi"] },
     });
     const created = createRes.structuredContent;
-    const pollId =
-      created && typeof created === "object" ? created.pollId : undefined;
+    const createToken = (createRes._meta ?? {})["ng-mcp-ui/state"];
     check(
-      "tools/call create_poll returns a snapshot with a pollId",
-      typeof pollId === "string" && pollId.length > 0,
-      `structured=${JSON.stringify(created)}`,
+      "tools/call create_poll returns a snapshot + sealed state token",
+      created &&
+        typeof created === "object" &&
+        typeof created.pollId === "string" &&
+        typeof createToken === "string",
+      `structured=${JSON.stringify(created)} meta=${JSON.stringify(createRes._meta ?? {})}`,
     );
-    if (typeof pollId === "string" && pollId.length > 0) {
-      await client.callTool({
+    if (typeof createToken === "string") {
+      const voteRes = await client.callTool({
         name: "cast_vote",
-        arguments: { pollId, option: "Pizza" },
+        arguments: { state: createToken, option: "Pizza" },
       });
+      const voteToken = (voteRes._meta ?? {})["ng-mcp-ui/state"];
+      check(
+        "tools/call cast_vote returns a fresh sealed state token",
+        typeof voteToken === "string" && voteToken !== createToken,
+        `meta=${JSON.stringify(voteRes._meta ?? {})}`,
+      );
       const tallyRes = await client.callTool({
         name: "tally_votes",
-        arguments: { pollId },
+        arguments: {
+          state: typeof voteToken === "string" ? voteToken : createToken,
+        },
       });
       const tallied = tallyRes.structuredContent;
       const pizza =
@@ -412,7 +435,7 @@ async function probe() {
           ? tallied.tally.find((t) => t.option === "Pizza")
           : undefined;
       check(
-        "tools/call cast_vote → tally_votes counts the vote",
+        "tools/call cast_vote -> tally_votes counts the vote",
         Boolean(pizza) && pizza.count === 1 && tallied.total === 1,
         `tally=${JSON.stringify(tallied)}`,
       );
