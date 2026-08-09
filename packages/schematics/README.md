@@ -9,8 +9,9 @@ package compiled to CommonJS; at pack time its `dist/` is embedded into
 to retrofit an app, then `ng generate ng-mcp-ui:<schematic>` for the individual
 generators.
 
-> `ng add ng-mcp-ui` installs the package and runs the `ng-add` retrofit in one
-> step. If `ng-mcp-ui` is already installed, run the same schematic directly with
+> `ng add ng-mcp-ui@next` installs the package and runs the `ng-add` retrofit in
+> one step (`@next` selects the 1.x line; `latest` is 0.2.x). If `ng-mcp-ui` is
+> already installed, run the same schematic directly with
 > `ng generate ng-mcp-ui:ng-add`.
 
 ## Generators

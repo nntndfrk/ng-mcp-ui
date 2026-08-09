@@ -114,7 +114,7 @@ private readonly move = injectCallTool<
 private readonly viewState = injectViewState<{ token: string | null }>({ token: null });
 ```
 
-The scaffolded poll example (`ng add ng-mcp-ui --example=demo`) is a complete worked version of
+The scaffolded poll example (`ng add ng-mcp-ui@next --example=demo`) is a complete worked version of
 this pattern, including token adoption on every response.
 
 ## Expiry and tampering

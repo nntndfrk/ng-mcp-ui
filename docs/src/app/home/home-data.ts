@@ -37,7 +37,7 @@ export const API_CARDS: Labelled[] = [
 ];
 
 export const TERMINAL_LINES: { cmd: string; note: string }[] = [
-  { cmd: "ng add ng-mcp-ui --example=demo", note: "retrofits SSR + /mcp" },
+  { cmd: "ng add ng-mcp-ui@next --example=demo", note: "retrofits SSR + /mcp" },
   { cmd: "ng generate ng-mcp-ui:view poll", note: "scaffold a widget" },
   { cmd: "ng generate ng-mcp-ui:tool cast_vote", note: "typed Zod tool" },
   { cmd: "npm run build:widgets", note: "code-split chunks" },

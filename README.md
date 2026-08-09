@@ -15,8 +15,9 @@
 [Schematics](https://nntndfrk.github.io/ng-mcp-ui/next/docs/schematics/ng-add) ·
 [API reference](https://nntndfrk.github.io/ng-mcp-ui/next/docs/reference/web)
 
-Install with **`npm i ng-mcp-ui`**, or retrofit an existing app with
-**`ng add ng-mcp-ui`** (see below). See the
+This branch is the **1.x** line. Install it with **`npm i ng-mcp-ui@next`**, or
+retrofit an existing app with **`ng add ng-mcp-ui@next`** (see below). The
+`@next` tag matters: npm's `latest` is 0.2.x. See the
 [package README](./packages/ng-mcp-ui/README.md) for the API reference and the
 [schematics README](./packages/schematics/README.md) for the generators.
 
@@ -45,7 +46,7 @@ served from your own app and driven by your own tools.
 `ng-mcp-ui` makes that essentially a single schematic — install and retrofit:
 
 ```bash
-ng add ng-mcp-ui --example=demo
+ng add ng-mcp-ui@next --example=demo
 ```
 
 It mounts an [MCP](https://modelcontextprotocol.io) server into your app's

@@ -19,7 +19,7 @@ import { DOCS_ENTRY_ROUTE } from "../site/site";
             host at.
           </p>
           <div class="cmd">
-            <span class="prompt">$</span><span>ng add ng-mcp-ui --example=demo</span>
+            <span class="prompt">$</span><span>ng add ng-mcp-ui@next --example=demo</span>
           </div>
           <a class="read" [routerLink]="docsRoute">Read the docs →</a>
         </div>

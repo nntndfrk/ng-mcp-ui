@@ -53,10 +53,13 @@ if the app does not have it, mounts the MCP server before the SSR catch-all, add
 a widgets build target, and by default scaffolds the runnable Quick Poll demo:
 
 ```bash
-ng add ng-mcp-ui --example=demo
+ng add ng-mcp-ui@next --example=demo
 ```
 
-> Already installed (`npm i ng-mcp-ui`)? The same schematic runs with
+The `@next` tag is what selects this line. Plain `ng add ng-mcp-ui` resolves to
+`latest`, which is 0.2.x.
+
+> Already installed (`npm i ng-mcp-ui@next`)? The same schematic runs with
 > `ng generate ng-mcp-ui:ng-add --example=demo`.
 
 `ng add` wires three npm scripts; the dev loop is:

@@ -21,7 +21,7 @@ type Installer = "ng" | "npm";
       <div class="inner">
         <a class="badge" [routerLink]="docsRoute">
           <span class="pill">v{{ version }}</span>
-          <span class="badge-text">Live-host validation signed off on Claude &amp; ChatGPT</span>
+          <span class="badge-text">Beta on MCP 2026-07-28, pending live-host sign-off</span>
           <span class="badge-arrow" aria-hidden="true">→</span>
         </a>
 
@@ -266,10 +266,13 @@ export class HeroSection {
   protected readonly installer = signal<Installer>("ng");
   protected readonly copied = signal(false);
 
+  // The `@next` tag is load-bearing on this site: it serves the 1.x line, and
+  // npm's `latest` is 0.2.x. Without it a visitor copying from these docs
+  // installs the 2025-era server and none of the API below exists.
   protected readonly installCmd = computed(() =>
     this.installer() === "ng"
-      ? "ng add ng-mcp-ui --example=demo"
-      : "npm i ng-mcp-ui",
+      ? "ng add ng-mcp-ui@next --example=demo"
+      : "npm i ng-mcp-ui@next",
   );
   protected readonly copyLabel = computed(() =>
     this.copied() ? "Copied" : "Copy",
