@@ -1,8 +1,9 @@
 /// <reference types="vite/client" />
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import analog from "@analogjs/platform";
-import { type Plugin, defineConfig } from "vite";
+import type { MarkedExtension } from "marked";
+import { defineConfig, type Plugin } from "vite";
 
 // The hero badge shows the *published* version, read from the library package at
 // build time so the site can never drift from what `npm i ng-mcp-ui` installs.
@@ -70,6 +71,36 @@ function markdownLinksUnderBase(): Plugin {
   };
 }
 
+/**
+ * Restores the HTML escaping that marked does by default.
+ *
+ * Analog's build-time markdown setup replaces marked's `codespan` renderer with
+ * `` `<code>${text}</code>` ``, and that replacement does not escape while the
+ * renderer it replaces does. A code span therefore reached the page as live
+ * markup: `<script type="module">` written in prose opened a real script
+ * element, and the HTML parser swallowed the rest of the article into it, which
+ * is how two pages ended mid-sentence with no error anywhere in the build.
+ *
+ * Analog offers no setting for this; `extensions` is the whole hook it exposes
+ * (its options type is that array plus `mangle`), and ours registers after its
+ * own, so this override wins. Fenced blocks need no equivalent: marked-shiki
+ * rewrites every code token to finished HTML in `walkTokens` and treats a
+ * language-less fence as `text`, so Shiki escapes those before a renderer runs.
+ */
+function escapeMarkdownHtml(): MarkedExtension {
+  const escapeHtml = (text: string) =>
+    text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+  return {
+    renderer: { codespan: ({ text }) => `<code>${escapeHtml(text)}</code>` },
+  };
+}
+
 export default defineConfig(() => ({
   base,
   build: { target: ["es2022"] },
@@ -86,6 +117,7 @@ export default defineConfig(() => ({
       ssr: true,
       content: {
         highlighter: "shiki",
+        markedOptions: { extensions: [escapeMarkdownHtml()] },
         shikiOptions: {
           highlight: {
             // Dual themes emit --shiki-light/--shiki-dark custom properties on

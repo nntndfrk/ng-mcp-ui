@@ -16,7 +16,7 @@
     "typecheck": "node tools/typecheck.mjs",
     "build": "npm run build --workspace ng-mcp-ui --workspace ng-mcp-ui-schematics --if-present",
     "docs:dev": "npm run dev --workspace ng-mcp-ui-docs",
-    "docs:build": "npm run build --workspace ng-mcp-ui-docs",
+    "docs:build": "npm run build --workspace ng-mcp-ui-docs && node tools/check-docs-html.mjs",
     "docs:preview": "npm run preview --workspace ng-mcp-ui-docs",
     "pretest": "npm run build --workspace ng-mcp-ui-schematics",
     "test": "vitest run --passWithNoTests",
