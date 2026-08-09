@@ -1,13 +1,18 @@
-// Public entry point for `ng-mcp-ui/server` — the MCP server library.
-// Pure-TS foundation: content helpers, the FileRef schema, and the tool/type
-// inference machinery (the `typeof server` -> typed-view chain), the `McpServer`
-// core (S04), the mountable express router + auth helpers (S05), and the
-// Angular shell renderer + `index.html` manifest parser + asset router (S06).
+// Public entry point for `ng-mcp-ui/server` — the MCP server library (1.x,
+// MCP spec 2026-07-28 / TypeScript SDK v2).
+// Pure-TS foundation: content helpers, the FileRef schema, the tool/type
+// inference machinery (the `typeof server` -> typed-view chain), the
+// `McpServer` blueprint, the mountable express router + fetch handler + auth
+// helpers, and the Angular shell renderer + `index.html` manifest parser +
+// asset router.
+//
+// Gone in 1.x (see the migration guide): the protocol middleware API
+// (`McpExtra*` / `McpMiddleware*` types and `mcpMiddleware()`) and the
+// `InvalidTokenError` re-export.
 export {
   type AuthInfo,
   type AuthMetadataOptions,
   type BearerAuthMiddlewareOptions,
-  InvalidTokenError,
   mcpAuthMetadataRouter,
   optionalBearerAuth,
   requireBearerAuth,
@@ -26,30 +31,24 @@ export {
 export {
   createMcpExpressRouter,
   type CreateMcpExpressRouterOptions,
+  createMcpFetchHandler,
+  type CreateMcpFetchHandlerOptions,
 } from "./express.js";
 export { FileRef } from "./file-ref.js";
 export {
   IndexHtmlViewManifest,
   ViewManifestError,
 } from "./index-html-manifest.js";
-export type {
-  McpExtra,
-  McpExtraFor,
-  McpMethodString,
-  McpMiddlewareFilter,
-  McpMiddlewareFn,
-  McpResultFor,
-  McpTypedMiddlewareFn,
-  McpWildcard,
-} from "./middleware.js";
 export { normalizeContent } from "./normalize-content.js";
 export { McpServer, type McpServerExtraOptions } from "./server.js";
 export type { ShellRenderer, ShellRenderInput } from "./shell-renderer.js";
 export { AngularShellRenderer, type ShellMode } from "./shell-templates.js";
 export type {
   ClientHintsMeta,
+  McpToolContext,
   ToolConfig,
   ToolHandler,
+  ToolInputSchema,
 } from "./tool-types.js";
 export { InMemoryViewManifest, type ViewManifest } from "./view-manifest.js";
 export type {

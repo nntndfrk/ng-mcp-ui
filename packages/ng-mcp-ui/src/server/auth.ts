@@ -1,38 +1,41 @@
 // Express auth helpers for the MCP router.
 //
-// These are thin re-exports of the MCP SDK's own Express auth helpers plus one
-// convenience wrapper (`optionalBearerAuth`). They are express-level
-// `RequestHandler`s, so they slot in naturally around `createMcpExpressRouter`:
-// mount `requireBearerAuth(...)` / `optionalBearerAuth(...)` on the host app
-// before the MCP router so an unauthenticated request is rejected before it
-// reaches the transport. (These are request middleware, not error handlers, so
-// they don't belong in the router's `errorMiddleware` pipeline.)
+// These are thin re-exports of the MCP SDK v2 Express auth helpers
+// (`@modelcontextprotocol/express`) plus one convenience wrapper
+// (`optionalBearerAuth`). They are express-level `RequestHandler`s, so they
+// slot in naturally around `createMcpExpressRouter`: mount
+// `requireBearerAuth(...)` / `optionalBearerAuth(...)` on the host app before
+// the MCP router so an unauthenticated request is rejected before it reaches
+// the handler. `requireBearerAuth` attaches the verified `AuthInfo` to
+// `req.auth`, which the SDK's `toNodeHandler` forwards to tool handlers as
+// `ctx.http.authInfo`.
 //
-// Zero new dependencies: everything comes from `@modelcontextprotocol/sdk`
-// (already a peer dep) and `express` (already a peer dep). Nothing is stubbed.
+// 1.x note: the v1 `InvalidTokenError` re-export is gone — SDK v2 reports
+// bearer failures through its own OAuth error responses; there is no
+// error-class surface to re-export.
 
 import {
+  type AuthMetadataOptions,
   type BearerAuthMiddlewareOptions,
+  mcpAuthMetadataRouter,
   requireBearerAuth,
-} from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
+} from "@modelcontextprotocol/express";
+import type { AuthInfo } from "@modelcontextprotocol/server";
 import type { RequestHandler } from "express";
 
-export { InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
-export {
-  type BearerAuthMiddlewareOptions,
-  requireBearerAuth,
-} from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
 export {
   type AuthMetadataOptions,
+  type BearerAuthMiddlewareOptions,
   mcpAuthMetadataRouter,
-} from "@modelcontextprotocol/sdk/server/auth/router.js";
-export type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+  requireBearerAuth,
+};
+export type { AuthInfo };
 
 /**
  * Like `requireBearerAuth`, but lets requests through when no
  * `Authorization` header is present. Used for mixed-auth servers where some
  * tools are public and others require sign-in: each tool enforces its own
- * `securitySchemes` against `extra.authInfo`.
+ * `securitySchemes` against `ctx.http?.authInfo`.
  *
  * Behavior:
  * - No `Authorization` header → `next()` without `req.auth`.

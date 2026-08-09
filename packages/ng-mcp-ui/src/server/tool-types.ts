@@ -1,15 +1,11 @@
-import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type {
-  AnySchema,
-  SchemaOutput,
-  ZodRawShapeCompat,
-} from "@modelcontextprotocol/sdk/server/zod-compat.js";
-import type {
+  Icon,
   RequestMeta,
-  ServerNotification,
-  ServerRequest,
+  ServerContext,
+  StandardSchemaV1,
+  StandardSchemaWithJSON,
   ToolAnnotations,
-} from "@modelcontextprotocol/sdk/types.js";
+} from "@modelcontextprotocol/server";
 import type {
   HandlerContent,
   SecurityScheme,
@@ -22,25 +18,25 @@ import type {
 export type Simplify<T> = { [K in keyof T]: T[K] };
 
 /**
- * @internal
- * Infer a tool handler's `args` object from its input raw shape.
+ * The input-schema position of a tool config: any Standard Schema that can
+ * also produce JSON Schema (zod v4 `z.object({...})`, ArkType, Valibot), or
+ * absent for a zero-input tool.
  *
- * Unlike the SDK's `ShapeOutput` (which maps every key as required), this
- * splits the shape so a field whose schema accepts `undefined` (e.g. a Zod
- * `.optional()`) becomes an **optional** property (`key?:`) — matching how the
- * handler is actually called.
+ * 1.x drops the v1 raw-shape form (`{ field: z.string() }`) — wrap fields in
+ * `z.object({...})`.
  */
-export type ShapeOutput<Shape extends ZodRawShapeCompat> = Simplify<
-  {
-    [K in keyof Shape as undefined extends SchemaOutput<Shape[K]>
-      ? never
-      : K]: SchemaOutput<Shape[K]>;
-  } & {
-    [K in keyof Shape as undefined extends SchemaOutput<Shape[K]>
-      ? K
-      : never]?: SchemaOutput<Shape[K]>;
-  }
->;
+export type ToolInputSchema = StandardSchemaWithJSON;
+
+/**
+ * @internal
+ * Infer a tool handler's `args` object from its input schema. Zero-input tools
+ * (no `inputSchema`) get an empty object, matching how the server bridges the
+ * SDK's single-argument calling convention for schema-less tools.
+ */
+export type InferToolArgs<TInput extends ToolInputSchema | undefined> =
+  TInput extends StandardSchemaWithJSON
+    ? Simplify<StandardSchemaV1.InferOutput<TInput>>
+    : Record<never, never>;
 
 /**
  * @internal
@@ -78,17 +74,17 @@ export type ExtractMeta<T> = [MetaOf<T>] extends [never]
  * @internal
  * Extend a tool registry with one newly-registered tool. This is the
  * type-level accumulation that lets `typeof server` carry every tool's
- * input/output/meta shape; the `McpServer` class (S04f) wraps it as
+ * input/output/meta shape; the `McpServer` blueprint wraps it as
  * `AddTool<…> = McpServer<ExtendToolRegistry<…>>`.
  */
 export type ExtendToolRegistry<
   TTools,
   TName extends string,
-  TInput extends ZodRawShapeCompat,
+  TInput extends ToolInputSchema | undefined,
   TOutput,
   TResponseMetadata = unknown,
 > = TTools & {
-  [K in TName]: ToolDef<ShapeOutput<TInput>, TOutput, TResponseMetadata>;
+  [K in TName]: ToolDef<InferToolArgs<TInput>, TOutput, TResponseMetadata>;
 };
 
 /**
@@ -96,13 +92,16 @@ export type ExtendToolRegistry<
  * declared auth schemes, and `_meta`. Passed to `registerTool` alongside the
  * handler.
  */
-export interface ToolConfig<TInput extends ZodRawShapeCompat | AnySchema> {
+export interface ToolConfig<
+  TInput extends ToolInputSchema | undefined = undefined,
+> {
   name: string;
   title?: string;
   description?: string;
   inputSchema?: TInput;
-  outputSchema?: ZodRawShapeCompat | AnySchema;
+  outputSchema?: StandardSchemaWithJSON;
   annotations?: ToolAnnotations;
+  icons?: Icon[];
   view?: ViewConfig;
   /**
    * Declares which auth schemes this tool supports (e.g. `noauth`, `oauth2`).
@@ -146,25 +145,25 @@ export interface ClientHintsMeta {
 }
 
 /**
- * @internal
- * The `extra` argument passed to a tool handler: the SDK's request extra with
- * `_meta` widened to also carry the Apps SDK {@link ClientHintsMeta}.
+ * The context passed to a tool handler: the SDK's v2 {@link ServerContext}
+ * (request metadata + `http.req` + MRTR accessors) with `mcpReq._meta` widened
+ * to also carry the Apps SDK {@link ClientHintsMeta}.
+ *
+ * Header access moved in v2: `ctx.http?.req?.headers.get("x-header")` (a fetch
+ * `Headers` object) replaces v1's `extra.requestInfo.headers` record.
  */
-export type ToolHandlerExtra = Omit<
-  RequestHandlerExtra<ServerRequest, ServerNotification>,
-  "_meta"
-> & {
-  _meta?: RequestMeta & ClientHintsMeta;
+export type McpToolContext = ServerContext & {
+  mcpReq: { _meta?: RequestMeta & ClientHintsMeta };
 };
 
 /**
- * A tool handler: receives the parsed input `args` (per {@link ShapeOutput})
- * and the {@link ToolHandlerExtra}, and returns the tool result (sync or async).
+ * A tool handler: receives the parsed input `args` (per {@link InferToolArgs})
+ * and the {@link McpToolContext}, and returns the tool result (sync or async).
  */
 export type ToolHandler<
-  TInput extends ZodRawShapeCompat,
+  TInput extends ToolInputSchema | undefined = undefined,
   TReturn extends { content?: HandlerContent } = { content?: HandlerContent },
 > = (
-  args: ShapeOutput<TInput>,
-  extra: ToolHandlerExtra,
+  args: InferToolArgs<TInput>,
+  ctx: McpToolContext,
 ) => TReturn | Promise<TReturn>;
