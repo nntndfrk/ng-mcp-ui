@@ -1,5 +1,5 @@
 import type { McpUiToolMeta } from "@modelcontextprotocol/ext-apps";
-import type { ContentBlock } from "@modelcontextprotocol/sdk/types.js";
+import type { ContentBlock } from "@modelcontextprotocol/server";
 
 /**
  * Type marker for a registered tool — carries its input, output, and response
