@@ -4,12 +4,13 @@ export const REPO_URL = "https://github.com/nntndfrk/ng-mcp-ui";
 export const NPM_URL = "https://www.npmjs.com/package/ng-mcp-ui";
 
 /**
- * The 1.x line's documentation. It is a separate build of this site, nested
- * under /next/ by the docs workflow, so it is an absolute link rather than a
- * router route. This site covers 0.2.x (npm `latest`); 1.x speaks the MCP
- * 2026-07-28 revision only and ships on the npm `next` dist-tag.
+ * The 0.2.x line's documentation. This build is the 1.x one, which the docs
+ * workflow nests under /next/ on the same Pages site, so the stable docs are an
+ * absolute link out of this subpath rather than a router route. 1.x speaks the
+ * MCP 2026-07-28 revision only and ships on the npm `next` dist-tag; 0.2.x is
+ * npm `latest` and the line today's hosts connect to.
  */
-export const NEXT_DOCS_URL = "https://nntndfrk.github.io/ng-mcp-ui/next/";
+export const STABLE_DOCS_URL = "https://nntndfrk.github.io/ng-mcp-ui/";
 
 /** Injected at build time from packages/ng-mcp-ui/package.json — never hand-edited. */
 export const LIBRARY_VERSION = import.meta.env.NG_MCP_UI_VERSION;

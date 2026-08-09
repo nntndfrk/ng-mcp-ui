@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from "@angular/core";
 import { RouterLink } from "@angular/router";
 
-import { NEXT_DOCS_URL, NPM_URL, REPO_URL } from "./site";
+import { NPM_URL, REPO_URL, STABLE_DOCS_URL } from "./site";
 
 interface FooterLink {
   label: string;
@@ -106,9 +106,9 @@ export class SiteFooter {
         { label: "GitHub", href: REPO_URL },
         { label: "npm", href: NPM_URL },
         { label: "Releases", href: `${REPO_URL}/releases` },
-        // The other line. Carried in the footer so every page of the 0.2.x
-        // docs, not only the landing page, can reach 1.x.
-        { label: "1.x beta docs", href: NEXT_DOCS_URL },
+        // The other line. Carried in the footer so every page of the 1.x docs,
+        // not only the landing page, can reach 0.2.x.
+        { label: "0.2.x stable docs", href: STABLE_DOCS_URL },
         { label: "License", href: `${REPO_URL}/blob/main/LICENSE` },
       ],
     },

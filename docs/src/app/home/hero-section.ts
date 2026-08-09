@@ -9,8 +9,8 @@ import { RouterLink } from "@angular/router";
 import {
   DOCS_ENTRY_ROUTE,
   LIBRARY_VERSION,
-  NEXT_DOCS_URL,
   REPO_URL,
+  STABLE_DOCS_URL,
 } from "../site/site";
 import { TERMINAL_LINES } from "./home-data";
 
@@ -59,9 +59,9 @@ type Installer = "ng" | "npm";
         </div>
 
         <p class="line-switch">
-          This is 0.2.x, the line today's hosts connect to. Targeting the
-          <strong>MCP 2026-07-28</strong> revision?
-          <a [href]="nextDocsUrl" rel="noreferrer noopener">Read the 1.x beta docs →</a>
+          This is the 1.x beta, which speaks <strong>MCP 2026-07-28</strong> only. Building for the
+          hosts that connect today?
+          <a [href]="stableDocsUrl" rel="noreferrer noopener">Read the 0.2.x docs →</a>
         </p>
 
         <div class="terminal">
@@ -281,7 +281,7 @@ type Installer = "ng" | "npm";
 export class HeroSection {
   protected readonly terminalLines = TERMINAL_LINES;
   protected readonly repoUrl = REPO_URL;
-  protected readonly nextDocsUrl = NEXT_DOCS_URL;
+  protected readonly stableDocsUrl = STABLE_DOCS_URL;
   protected readonly docsRoute = DOCS_ENTRY_ROUTE;
   protected readonly version = LIBRARY_VERSION;
 
