@@ -246,6 +246,22 @@ export class MockAdaptor implements Adaptor {
     this.record("callTool", name, args);
 
     const canned = this.toolResponses[name];
+    // 2026-07-28 host behavior: a view-initiated call must complete in one
+    // round. No host surfaces an MRTR input_required result to the widget
+    // iframe, so a canned response modeling one is a test-design error the
+    // mock rejects loudly (design: .claude/REQUEST-STATE-DESIGN.md §5).
+    if (
+      typeof canned === "object" &&
+      canned !== null &&
+      (canned as { resultType?: unknown }).resultType === "input_required"
+    ) {
+      throw new Error(
+        `ng-mcp-ui: tool "${name}" answered a view-initiated call with an ` +
+          "input_required (multi-round-trip) result. Hosts do not surface " +
+          "MRTR to widgets, so tools called from views must complete in one " +
+          "round; keep elicitation flows on chat-path tools.",
+      );
+    }
     if (canned !== undefined && isFullCallToolResponse(canned)) {
       return canned as unknown as ToolResponse;
     }

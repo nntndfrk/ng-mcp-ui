@@ -137,4 +137,51 @@ describe("provideMockMcpUi", () => {
     expect(response.structuredContent).toEqual({ ok: false });
     injector.destroy();
   });
+
+  it("forwards a sealed-state token in the canned response meta (the weave)", async () => {
+    // "ng-mcp-ui/state" is STATE_META_KEY on the server entry; the literal is
+    // used here because testing/ must not import server code into web bundles.
+    const { injector } = injectorFrom({
+      toolResponses: {
+        bump: {
+          content: [],
+          structuredContent: { count: 2 },
+          isError: false,
+          meta: { "ng-mcp-ui/state": "sealed-token" },
+        },
+      },
+    });
+
+    const { callToolAsync } = runInInjectionContext(injector, () =>
+      injectCallTool("bump"),
+    );
+    const response = await callToolAsync();
+
+    expect(response.structuredContent).toEqual({ count: 2 });
+    expect(response.meta).toEqual({ "ng-mcp-ui/state": "sealed-token" });
+    injector.destroy();
+  });
+
+  it("rejects a canned input_required response: view-initiated calls must complete in one round", async () => {
+    const { injector } = injectorFrom({
+      toolResponses: {
+        // A test modeling an MRTR tool behind a view is a design error the
+        // mock host surfaces loudly (2026-07-28 hosts do not forward MRTR to
+        // widget iframes).
+        confirm_delete: {
+          resultType: "input_required",
+          requestState: "opaque",
+        } as never,
+      },
+    });
+
+    const { callToolAsync } = runInInjectionContext(injector, () =>
+      injectCallTool("confirm_delete"),
+    );
+
+    await expect(callToolAsync()).rejects.toThrow(
+      /input_required.*complete in one round/s,
+    );
+    injector.destroy();
+  });
 });
