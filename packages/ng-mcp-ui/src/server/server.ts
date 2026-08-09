@@ -540,11 +540,12 @@ export class McpServer<
     // URI is immutable — its HTML shell and `_meta` only change when the URI
     // itself changes — so it can be cached for a long horizon. `private`
     // because the `_meta` embeds request-derived origins (forwarded host).
-    // The dev shell recompiles freely: ttl 0. Per-view overrides land with the
-    // first-class cache-hint API (Phase 2).
-    const cacheHint: CacheHint = immutableUri
+    // The dev shell recompiles freely: ttl 0. A `view.cacheHint` overrides
+    // the default field by field.
+    const defaultHint: CacheHint = immutableUri
       ? { ttlMs: 3_600_000, cacheScope: "private" }
       : { ttlMs: 0, cacheScope: "private" };
+    const cacheHint: CacheHint = { ...defaultHint, ...view.cacheHint };
 
     server.registerResource(
       name,

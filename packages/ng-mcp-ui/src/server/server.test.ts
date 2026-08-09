@@ -9,7 +9,7 @@ import {
   SEALED_STATE_INVALID_MESSAGE,
   STATE_META_KEY,
 } from "./state.js";
-import { connectModern, rpc } from "./test-fakes.js";
+import { connectModern, modernBody, modernHeaders, rpc } from "./test-fakes.js";
 import type { ViewName } from "./types.js";
 import { InMemoryViewManifest, type ViewManifest } from "./view-manifest.js";
 
@@ -528,6 +528,108 @@ describe("2026-07-28 wire surface", () => {
     };
     expect(bareBody.error).toBeDefined();
     expect(bareBody.error?.data?.supported).toEqual(["2026-07-28"]);
+  });
+
+  it("serves subscriptions/listen as an SSE stream and delivers notify events", async () => {
+    const server = new McpServer(
+      { name: "test", version: "1.0.0" },
+      // The honored filter is capability-gated: without
+      // `resources.subscribe` the ack comes back with an EMPTY
+      // `notifications` filter and per-uri updates are never delivered.
+      { capabilities: { resources: { subscribe: true, listChanged: true } } },
+    ).registerTool({ name: "v", view: view("poll") }, async () => ({
+      content: "ok",
+    }));
+
+    const { handler, close } = await connectModern(server);
+    const uri = "ui://views/apps-sdk/poll.html";
+
+    const res = await handler.fetch(
+      new Request("http://localhost:3000/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          ...modernHeaders("subscriptions/listen"),
+        },
+        body: JSON.stringify(
+          modernBody("subscriptions/listen", {
+            notifications: { resourceSubscriptions: [uri] },
+          }),
+        ),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/event-stream");
+
+    const reader = (res.body as ReadableStream<Uint8Array>).getReader();
+    const decoder = new TextDecoder();
+    let seen = "";
+    const readUntil = async (marker: string) => {
+      while (!seen.includes(marker)) {
+        const { value, done } = await reader.read();
+        if (done) {
+          throw new Error(`stream ended before "${marker}" (got: ${seen})`);
+        }
+        seen += decoder.decode(value, { stream: true });
+      }
+    };
+
+    // The stream opens with the subscription acknowledgement.
+    await readUntil("notifications/subscriptions/acknowledged");
+
+    // The handler's publish facade reaches the open stream.
+    handler.notify.resourceUpdated(uri);
+    await readUntil("notifications/resources/updated");
+    expect(seen).toContain(uri);
+
+    await reader.cancel();
+    await close();
+  });
+});
+
+describe("cache hints (SEP-2549)", () => {
+  it("a view.cacheHint overrides the computed default field by field on resources/read", async () => {
+    const server = new McpServer(
+      { name: "test", version: "1.0.0" },
+      { capabilities: {} },
+    ).registerTool(
+      {
+        name: "v",
+        view: { component: "poll" as ViewName, cacheHint: { ttlMs: 123_456 } },
+      },
+      async () => ({ content: "ok" }),
+    );
+
+    const { handler, close } = await connectModern(server);
+    const read = await rpc(handler, "resources/read", {
+      uri: "ui://views/apps-sdk/poll.html",
+    });
+    await close();
+
+    expect(read.status).toBe(200);
+    expect(read.body.result?.ttlMs).toBe(123_456);
+    // The un-overridden field keeps the computed default (dev shell:
+    // private scope).
+    expect(read.body.result?.cacheScope).toBe("private");
+  });
+
+  it("per-operation ServerOptions.cacheHints pass through to list results", async () => {
+    const server = new McpServer(
+      { name: "test", version: "1.0.0" },
+      {
+        capabilities: {},
+        cacheHints: { "tools/list": { ttlMs: 60_000, cacheScope: "public" } },
+      },
+    ).registerTool({ name: "ping" }, async () => ({ content: "pong" }));
+
+    const { handler, close } = await connectModern(server);
+    const list = await rpc(handler, "tools/list");
+    await close();
+
+    expect(list.body.result?.ttlMs).toBe(60_000);
+    expect(list.body.result?.cacheScope).toBe("public");
   });
 });
 

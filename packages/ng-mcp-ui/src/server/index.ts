@@ -35,6 +35,7 @@ export {
   type CreateMcpFetchHandlerOptions,
   createMcpExpressRouter,
   createMcpFetchHandler,
+  type McpExpressRouter,
 } from "./express.js";
 export { FileRef } from "./file-ref.js";
 export {
@@ -78,6 +79,8 @@ export type {
   ToolInputSchema,
 } from "./tool-types.js";
 export type {
+  CacheHint,
+  CacheScope,
   HandlerContent,
   KnownToolMeta,
   McpServerTypes,

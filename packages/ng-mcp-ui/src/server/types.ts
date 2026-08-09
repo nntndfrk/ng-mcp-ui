@@ -1,5 +1,9 @@
 import type { McpUiToolMeta } from "@modelcontextprotocol/ext-apps";
-import type { ContentBlock } from "@modelcontextprotocol/server";
+import type { CacheHint, ContentBlock } from "@modelcontextprotocol/server";
+
+// Re-exported so consumers can type per-view / per-operation cache hints
+// (SEP-2549) without importing the SDK directly.
+export type { CacheHint, CacheScope } from "@modelcontextprotocol/server";
 
 /**
  * Type marker for a registered tool — carries its input, output, and response
@@ -80,6 +84,15 @@ export interface ViewConfig {
   domain?: string;
   /** Per-view CSP overrides — see {@link ViewCsp}. */
   csp?: ViewCsp;
+  /**
+   * Per-view cache hint override (SEP-2549), merged field by field over the
+   * computed default: an immutable content-hashed production URI defaults to
+   * `{ ttlMs: 3_600_000, cacheScope: "private" }`, a dev shell to
+   * `{ ttlMs: 0, cacheScope: "private" }`. Both view resources (apps-sdk and
+   * mcp-app) receive the merged hint on their `resources/read` results.
+   * Per-operation hints go through the SDK's `ServerOptions.cacheHints`.
+   */
+  cacheHint?: CacheHint;
   /** Free-form metadata forwarded on the view resource's `_meta`. */
   _meta?: Record<string, unknown>;
 }

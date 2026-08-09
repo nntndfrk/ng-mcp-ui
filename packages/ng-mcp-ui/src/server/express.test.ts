@@ -300,4 +300,17 @@ describe("createMcpExpressRouter", () => {
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ error: "Unauthorized" });
   });
+
+  it("exposes the SDK handler as router.mcp (notify/bus for subscriptions)", async () => {
+    const server = new McpServer({ name: "t", version: "0.0.0" });
+    const router = createMcpExpressRouter(server);
+
+    expect(typeof router.mcp.fetch).toBe("function");
+    expect(typeof router.mcp.close).toBe("function");
+    expect(typeof router.mcp.notify.resourceUpdated).toBe("function");
+    expect(router.mcp.bus).toBeDefined();
+    // Publishing with no open subscription stream is a safe no-op.
+    router.mcp.notify.toolsChanged();
+    await router.mcp.close();
+  });
 });

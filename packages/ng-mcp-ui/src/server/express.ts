@@ -150,6 +150,15 @@ export interface CreateMcpExpressRouterOptions {
 }
 
 /**
+ * The router {@link createMcpExpressRouter} returns: a mountable
+ * `express.Router` that also exposes the underlying SDK handler as `mcp`, so
+ * server code can publish `subscriptions/listen` change events
+ * (`router.mcp.notify.*`) or share its `bus` without holding a separate
+ * fetch-handler instance.
+ */
+export type McpExpressRouter = express.Router & { mcp: McpHttpHandler };
+
+/**
  * Build a mountable Express {@link express.Router} that serves the MCP
  * endpoint for `server`. Mount it on the path the host connects to:
  *
@@ -170,7 +179,7 @@ export function createMcpExpressRouter(
   // biome-ignore lint/suspicious/noExplicitAny: any tool registry is acceptable at the transport boundary
   server: McpServer<any>,
   options: CreateMcpExpressRouterOptions = {},
-): express.Router {
+): McpExpressRouter {
   const {
     cors: enableCors = true,
     errorMiddleware = [],
@@ -201,5 +210,5 @@ export function createMcpExpressRouter(
   }
   router.use(defaultErrorHandler);
 
-  return router;
+  return Object.assign(router, { mcp: handler });
 }
