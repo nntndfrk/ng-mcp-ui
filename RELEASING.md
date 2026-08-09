@@ -4,6 +4,24 @@ The library is published to npm by the **Release** GitHub Actions workflow
 (`.github/workflows/release.yml`), triggered by pushing a `vX.Y.Z` git tag. There
 is no manual `npm publish` step — tagging is the release.
 
+## Two lines, two dist-tags
+
+| Line | Branch | Version shape | npm dist-tag | Docs |
+| --- | --- | --- | --- | --- |
+| 0.2.x | `main` | `0.2.7` | `latest` | <https://nntndfrk.github.io/ng-mcp-ui/> |
+| 1.x | `next` | `1.0.0-beta.1` | `next` | <https://nntndfrk.github.io/ng-mcp-ui/next/> |
+
+The publish step routes by version shape: a version with a prerelease
+identifier (anything with a `-`) goes to the `next` dist-tag, and a plain
+`X.Y.Z` goes to `latest`. This matters because npm assigns `latest` to whatever
+you publish unless told otherwise, so an unrouted beta would become the default
+install for everyone. Tag a 1.x beta from the `next` branch; the workflow reads
+the version from the tagged commit, so nothing else changes.
+
+The 1.x docs deploy only when the **Docs** workflow runs on `main`, since one
+Pages site serves both lines. After landing docs on `next`, dispatch it by hand
+(Actions → Docs → Run workflow).
+
 ## Versions that must agree
 
 Three values are gated to stay in lockstep; a mismatch fails the build instead of
