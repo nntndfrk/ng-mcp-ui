@@ -6,7 +6,12 @@ import {
 } from "@angular/core";
 import { RouterLink } from "@angular/router";
 
-import { DOCS_ENTRY_ROUTE, LIBRARY_VERSION, REPO_URL } from "../site/site";
+import {
+  DOCS_ENTRY_ROUTE,
+  LIBRARY_VERSION,
+  REPO_URL,
+  STABLE_DOCS_URL,
+} from "../site/site";
 import { TERMINAL_LINES } from "./home-data";
 
 type Installer = "ng" | "npm";
@@ -52,6 +57,12 @@ type Installer = "ng" | "npm";
           </div>
           <a class="ghost" [href]="repoUrl" rel="noreferrer noopener">View repo</a>
         </div>
+
+        <p class="line-switch">
+          This is the 1.x beta, which speaks <strong>MCP 2026-07-28</strong> only. Building for the
+          hosts that connect today?
+          <a [href]="stableDocsUrl" rel="noreferrer noopener">Read the 0.2.x docs →</a>
+        </p>
 
         <div class="terminal">
           <div class="chrome">
@@ -215,6 +226,16 @@ type Installer = "ng" | "npm";
     }
     .ghost:hover { border-color: var(--hoverBorder); color: var(--hoverText); }
 
+    .line-switch {
+      margin: 16px 0 0;
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--dim);
+    }
+    .line-switch strong { color: var(--body); font-weight: 600; }
+    .line-switch a { color: var(--body); }
+    .line-switch a:hover { color: var(--hoverText); }
+
     .terminal {
       margin-top: 52px;
       border-radius: 14px;
@@ -260,6 +281,7 @@ type Installer = "ng" | "npm";
 export class HeroSection {
   protected readonly terminalLines = TERMINAL_LINES;
   protected readonly repoUrl = REPO_URL;
+  protected readonly stableDocsUrl = STABLE_DOCS_URL;
   protected readonly docsRoute = DOCS_ENTRY_ROUTE;
   protected readonly version = LIBRARY_VERSION;
 
