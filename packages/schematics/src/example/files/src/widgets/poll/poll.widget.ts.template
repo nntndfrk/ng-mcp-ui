@@ -249,20 +249,7 @@ export default class PollWidget {
     }
     this.castVote.callTool(
       { state: token, option },
-      {
-        onSuccess: (data) => {
-          // A rejected token resolves as an isError result with the stable
-          // "invalid or expired" message; render the expired panel.
-          if (data.isError) {
-            this.expired.set(true);
-            return;
-          }
-          if (data.structuredContent) {
-            this.live.set(data.structuredContent);
-          }
-          this.adoptToken(data.meta?.[STATE_KEY], { myVote: option });
-        },
-      },
+      { onSuccess: (data) => this.adopt(data, { myVote: option }) },
     );
   }
 
@@ -273,26 +260,36 @@ export default class PollWidget {
     }
     this.tallyVotes.callTool(
       { state: token },
-      {
-        onSuccess: (data) => {
-          if (data.isError) {
-            this.expired.set(true);
-            return;
-          }
-          if (data.structuredContent) {
-            this.live.set(data.structuredContent);
-          }
-          this.adoptToken(data.meta?.[STATE_KEY]);
-        },
-      },
+      { onSuccess: (data) => this.adopt(data) },
     );
   }
 
-  /** Persist the freshest token (and optionally the vote) into host view state. */
-  private adoptToken(
-    token: string | undefined,
+  /**
+   * Adopt one tool response: render the expired panel on a rejected token,
+   * otherwise overlay the fresh snapshot and persist the fresh token (with the
+   * vote, when this call cast one) into host view state.
+   *
+   * Both view-to-server calls return the same snapshot + token shape, so they
+   * share this instead of each keeping its own copy of the rules.
+   */
+  private adopt(
+    data: {
+      isError?: boolean;
+      structuredContent?: PollSnapshot;
+      meta?: WeaveMeta;
+    },
     patch: { myVote?: string } = {},
   ): void {
+    // A rejected token resolves as an isError result with the stable
+    // "invalid or expired" message; render the expired panel.
+    if (data.isError) {
+      this.expired.set(true);
+      return;
+    }
+    if (data.structuredContent) {
+      this.live.set(data.structuredContent);
+    }
+    const token = data.meta?.[STATE_KEY];
     this.viewState.set((prev) => ({
       myVote: patch.myVote ?? prev?.myVote ?? null,
       token: token ?? prev?.token ?? null,

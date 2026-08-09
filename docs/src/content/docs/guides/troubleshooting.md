@@ -3,7 +3,7 @@ title: Troubleshooting
 description: The errors that the library throws, what causes each one, and how to correct it.
 group: Guides
 groupOrder: 2
-order: 10
+order: 11
 ---
 
 Each message below comes from the library. Find your message, then apply the correction.

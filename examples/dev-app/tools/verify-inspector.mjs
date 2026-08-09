@@ -12,14 +12,19 @@
 //
 // Prints PASS/FAIL per check; exits non-zero on any failure. Tears down the
 // server process at the end.
+//
+// 1.x: the client is the split SDK v2 client, pinned to the 2026-07-28
+// protocol because the endpoint speaks that revision only.
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import {
+  Client,
+  StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const devAppRoot = resolve(__dirname, "..");
@@ -62,12 +67,11 @@ async function waitForServer(timeoutMs = 30000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      // The MCP endpoint rejects GET with 405 — that proves it is mounted and
-      // the server is accepting connections.
-      const res = await fetch(MCP_URL, { method: "GET" });
-      if (res.status === 405 || res.ok) {
-        return;
-      }
+      // Any HTTP answer proves the endpoint is mounted and the server is
+      // accepting connections. 1.x forwards every verb to the SDK handler, so
+      // the status for a bare GET is the SDK's to choose, not ours to assert.
+      await fetch(MCP_URL, { method: "GET" });
+      return;
     } catch {
       // not up yet
     }
@@ -93,7 +97,12 @@ async function main() {
   try {
     await waitForServer();
 
-    client = new Client({ name: "verify-inspector", version: "0.0.0" });
+    // Pin the 2026-07-28 era: the 1.x endpoint is modern-only
+    // (`legacy: 'reject'`), and the v2 client's default posture is legacy.
+    client = new Client(
+      { name: "verify-inspector", version: "0.0.0" },
+      { versionNegotiation: { mode: { pin: "2026-07-28" } } },
+    );
     const transport = new StreamableHTTPClientTransport(new URL(MCP_URL));
     await client.connect(transport);
 

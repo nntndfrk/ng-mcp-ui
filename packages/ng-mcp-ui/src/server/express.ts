@@ -131,14 +131,20 @@ export interface CreateMcpExpressRouterOptions {
   cors?: boolean;
   /**
    * Express error handlers to run *before* the built-in default JSON-RPC error
-   * handler, scoped to this router. Use to log or transform errors thrown by
-   * the handler adaptation. A handler that responds short-circuits the
+   * handler, scoped to this router. A handler that responds short-circuits the
    * default; a handler that calls `next(err)` falls through to the default 500.
+   *
+   * Scope: router-level failures only (CORS, body normalization, anything a
+   * caller mounts inside this router). Errors raised while the SDK handles a
+   * request do NOT arrive here: `toNodeHandler` catches request-conversion and
+   * `handler.fetch` failures itself, reports them to {@link onerror}, and
+   * writes its own JSON-RPC 500. Use `onerror` to observe those.
    */
   errorMiddleware?: ErrorRequestHandler[];
   /**
    * Reporting callback for out-of-band errors and rejected requests inside the
-   * SDK handler (it never alters the response).
+   * SDK handler (it never alters the response). This is the seam for
+   * handler-level failures; see {@link errorMiddleware} for the split.
    */
   onerror?: (error: Error) => void;
   /**

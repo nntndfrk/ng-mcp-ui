@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { CLIENT_CAPABILITIES_META_KEY } from "@modelcontextprotocol/server";
 import { afterEach, describe, expect, it } from "vitest";
 import * as z from "zod";
+import { createMcpFetchHandler } from "./express.js";
 import { McpServer } from "./server.js";
 import {
   acceptedContent,
@@ -530,6 +531,43 @@ describe("2026-07-28 wire surface", () => {
     expect(bareBody.error?.data?.supported).toEqual(["2026-07-28"]);
   });
 
+  it("advertises the MCP Apps extension when it serves views (SEP-2133)", async () => {
+    const withView = new McpServer(
+      { name: "test", version: "1.0.0" },
+      { capabilities: {} },
+    ).registerTool({ name: "v", view: view("poll") }, async () => ({
+      content: "ok",
+    }));
+
+    // `server/discover` is the modern capability probe; the 2026-07-28 era
+    // has no `initialize` (it answers -32601).
+    const extensionsOf = async (blueprint: McpServer<never>) => {
+      const res = await rpc(
+        createMcpFetchHandler(blueprint),
+        "server/discover",
+      );
+      return (
+        res.body.result?.capabilities as {
+          extensions?: Record<string, unknown>;
+        }
+      )?.extensions;
+    };
+
+    expect(await extensionsOf(withView)).toEqual({
+      "io.modelcontextprotocol/ui": {
+        mimeTypes: ["text/html;profile=mcp-app"],
+      },
+    });
+
+    // A blueprint with no views declares no UI extension.
+    const withoutView = new McpServer(
+      { name: "test", version: "1.0.0" },
+      { capabilities: {} },
+    ).registerTool({ name: "ping" }, async () => ({ content: "pong" }));
+
+    expect(await extensionsOf(withoutView)).toBeUndefined();
+  });
+
   it("serves subscriptions/listen as an SSE stream and delivers notify events", async () => {
     const server = new McpServer(
       { name: "test", version: "1.0.0" },
@@ -724,11 +762,12 @@ describe("sealed state + MRTR (the weave)", () => {
                 requestedSchema: confirmSchema,
               }),
             },
-            requestState: await ctx.state?.seal({ target }),
+            requestState: await ctx.state?.sealRequestState({ target }),
           });
         }
-        // Round two: the seam has already verified and decoded the echo.
-        const sealed = ctx.mcpReq.requestState<{ target: string }>();
+        // Round two: the seam verified the echo and checked its purpose;
+        // `ctx.state.requestState` unwraps it and checks the tool binding.
+        const sealed = ctx.state?.requestState<{ target: string }>();
         return { content: `deleted ${sealed?.target}, ok=${confirmed.ok}` };
       },
     );
@@ -798,5 +837,74 @@ describe("sealed state + MRTR (the weave)", () => {
     expect(tampered.body.error?.message).toContain(
       "Invalid or expired requestState",
     );
+  });
+
+  it("refuses a widget token substituted as the MRTR echo", async () => {
+    // Both carriers share one key, so a genuine widget token has a valid MAC
+    // here. Only the purpose binding inside the envelope stops the swap.
+    const confirmSchema = z.object({ ok: z.boolean() });
+    const server = new McpServer(
+      { name: "test", version: "1.0.0" },
+      { capabilities: {}, state: { key: KEY } },
+    )
+      .registerTool({ name: "start" }, async (_args, ctx) => ({
+        content: "started",
+        _meta: { [STATE_META_KEY]: await ctx.state?.seal({ count: 1 }) },
+      }))
+      .registerTool(
+        {
+          name: "confirm_delete",
+          inputSchema: z.object({ target: z.string() }),
+        },
+        async ({ target }, ctx) => {
+          const confirmed = acceptedContent(
+            ctx.mcpReq.inputResponses,
+            "confirm",
+            confirmSchema,
+          );
+          if (confirmed === undefined) {
+            return inputRequired({
+              inputRequests: {
+                confirm: inputRequired.elicit({
+                  message: `Delete ${target}?`,
+                  requestedSchema: confirmSchema,
+                }),
+              },
+              requestState: await ctx.state?.sealRequestState({ target }),
+            });
+          }
+          return { content: `deleted ${target}` };
+        },
+      );
+
+    const { handler, close } = await connectModern(server);
+    const started = await rpc(handler, "tools/call", {
+      name: "start",
+      arguments: {},
+    });
+    const viewToken = (started.body.result?._meta as Record<string, unknown>)[
+      STATE_META_KEY
+    ] as string;
+    expect(typeof viewToken).toBe("string");
+
+    const substituted = await rpc(
+      handler,
+      "tools/call",
+      {
+        name: "confirm_delete",
+        arguments: { target: "report.pdf" },
+        requestState: viewToken,
+        inputResponses: {
+          confirm: { action: "accept", content: { ok: true } },
+        },
+        _meta: {
+          [CLIENT_CAPABILITIES_META_KEY]: { elicitation: { form: {} } },
+        },
+      },
+      { id: 2 },
+    );
+    await close();
+
+    expect(substituted.body.error?.code).toBe(-32602);
   });
 });

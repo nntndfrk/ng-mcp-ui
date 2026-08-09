@@ -20,6 +20,20 @@ Install with **`npm i ng-mcp-ui`**, or retrofit an existing app with
 [package README](./packages/ng-mcp-ui/README.md) for the API reference and the
 [schematics README](./packages/schematics/README.md) for the generators.
 
+### Two lines: 0.2.x and 1.x
+
+| Line | Install | MCP protocol | Status |
+| --- | --- | --- | --- |
+| **0.2.x** | `npm i ng-mcp-ui` | 2025 era | Current hosts. Security patches until August 2027 |
+| **1.x** | `npm i ng-mcp-ui@next` | 2026-07-28 only | Beta, on SDK v2. Adds sealed state, elicitation, cache hints |
+
+1.x speaks 2026-07-28 exclusively and rejects 2025-era clients. Claude still
+connects with 2025-11-25 as of August 2026, so **a connector you want working
+today needs 0.2.x**. 1.x goes stable once a real host renders widgets over the
+new protocol. The widget API is identical in both lines; the changes are on the
+server. See the
+[migration guide](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/migrate-from-0-2).
+
 ---
 
 ## What it does
@@ -75,6 +89,10 @@ initial HTML. `ng-mcp-ui` is built around that reality:
   `injectDisplayMode`)
 - Zero-auth dev tunnel (`cloudflared`) for live iteration against real hosts
 - A testing harness (`MockAdaptor` / `provideMockMcpUi`) for unit-testing widgets
+
+1.x adds, on the 2026-07-28 protocol: sealed server state a widget carries
+between calls (no sessions), elicitation round trips on chat-path tools, per-view
+cache hints, and `subscriptions/listen` change notifications.
 
 ## Packages
 

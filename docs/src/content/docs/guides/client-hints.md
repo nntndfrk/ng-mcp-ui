@@ -3,7 +3,7 @@ title: Client hints
 description: The locale, location and session data that an Apps SDK host adds to each tool call, and the correct way to use it.
 group: Guides
 groupOrder: 2
-order: 7
+order: 9
 ---
 
 An Apps SDK host adds data about the caller to each tool call. The host puts this data in

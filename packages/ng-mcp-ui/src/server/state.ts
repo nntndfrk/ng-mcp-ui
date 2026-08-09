@@ -16,6 +16,13 @@
 //
 // The codec is signed, not encrypted: payloads are client-readable. Never put
 // secrets in sealed state.
+//
+// The two carriers are domain-separated inside the signed envelope. Every
+// token records the purpose it was minted for, and MRTR tokens additionally
+// record the tool the flow started in, so a view token can never be replayed
+// as `requestState` (or the reverse) and an MRTR echo cannot be moved to a
+// different tool. Both checks are inside the MAC, so a client cannot alter
+// them.
 
 import crypto from "node:crypto";
 import {
@@ -89,19 +96,84 @@ export interface StateOptions {
 
 /**
  * Handler-facing sealed-state helpers, available as `ctx.state` when the
- * blueprint was constructed with a `state` option. `seal`/`open` delegate to
- * the underlying SDK codec's `mint`/`verify` with the current request context.
+ * blueprint was constructed with a `state` option. Each method delegates to
+ * the underlying SDK codec's `mint`/`verify` with the current request context,
+ * adding the purpose (and, for MRTR, the operation) binding.
+ *
+ * Two carriers, two pairs:
+ *   * `seal` / `open` for state a widget carries between tool calls.
+ *   * `sealRequestState` / `requestState` for MRTR round trips.
+ *
+ * Tokens are not interchangeable between the pairs.
  */
 export interface SealedState {
-  /** Seal a JSON-serializable payload into an opaque token. */
+  /** Seal a JSON-serializable payload into an opaque widget-carried token. */
   seal<T>(payload: T): Promise<string>;
   /**
-   * Verify a token and return its payload. Throws an `Error` whose message
-   * is {@link SEALED_STATE_INVALID_MESSAGE} on any failure (bad MAC,
-   * expired, bind mismatch, malformed). The type parameter is a
-   * compile-time cast only.
+   * Verify a widget-carried token and return its payload. Throws an `Error`
+   * whose message is {@link SEALED_STATE_INVALID_MESSAGE} on any failure (bad
+   * MAC, expired, bind mismatch, malformed, or a token minted for a different
+   * purpose). The type parameter is a compile-time cast only.
    */
   open<T>(token: string): Promise<T>;
+  /**
+   * Seal a payload as the `requestState` of an MRTR `inputRequired(...)`
+   * return. The token is bound to the tool that mints it, so the client can
+   * only echo it back into the same tool.
+   */
+  sealRequestState<T>(payload: T): Promise<string>;
+  /**
+   * Read the payload of a verified MRTR echo on a retry round, or `undefined`
+   * when this round carried no state. Integrity was already checked by the
+   * `requestState.verify` seam before the handler ran; this unwraps the
+   * envelope and enforces the operation binding. Throws the
+   * {@link SEALED_STATE_INVALID_MESSAGE} error when the echo belongs to a
+   * different tool.
+   *
+   * Use this instead of the SDK's `ctx.mcpReq.requestState<T>()`, which
+   * returns the raw signed envelope when a `state` option is configured.
+   */
+  requestState<T>(): T | undefined;
+}
+
+/**
+ * @internal
+ * The signed envelope every ng-mcp-ui token carries. Keys are single letters
+ * because the token rides every call in both directions.
+ */
+type SealedEnvelope = {
+  /** Purpose: `"v"` widget-carried view state, `"r"` MRTR request state. */
+  p: "v" | "r";
+  /** The caller's payload. */
+  d: unknown;
+  /** MRTR only: the tool the flow started in. */
+  o?: string;
+};
+
+/** @internal Structural check for our own envelope shape and purpose. */
+function isEnvelope(
+  value: unknown,
+  purpose: SealedEnvelope["p"],
+): value is SealedEnvelope {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as SealedEnvelope).p === purpose
+  );
+}
+
+/**
+ * @internal
+ * Unwrap a decoded MRTR envelope for `operation`, throwing the stable error
+ * when the purpose or the operation binding does not match. Exported for the
+ * `requestState.verify` seam in `server.ts`, which runs before any handler.
+ */
+export function assertRequestStateEnvelope(
+  value: unknown,
+): asserts value is SealedEnvelope {
+  if (!isEnvelope(value, "r")) {
+    throw new Error(SEALED_STATE_INVALID_MESSAGE);
+  }
 }
 
 /** @internal Structural check: a ready-made codec vs. plain options. */
@@ -156,7 +228,11 @@ export function resolveStateCodec(
 
 /**
  * @internal
- * Bind a codec to one request's context, producing the `ctx.state` surface.
+ * Bind a codec to one request's context and one tool, producing the
+ * `ctx.state` surface. `operation` is the registered tool name; it is sealed
+ * into MRTR tokens and checked when they come back, so an echo cannot be moved
+ * to another tool.
+ *
  * `open` failures are wrapped in the stable {@link SEALED_STATE_INVALID_MESSAGE}
  * error (the SDK turns a throwing tool callback into an `isError` result with
  * the message text); the codec's opaque reason code stays on `cause`.
@@ -164,15 +240,37 @@ export function resolveStateCodec(
 export function createSealedState(
   codec: RequestStateCodec,
   ctx: ServerContext,
+  operation: string,
 ): SealedState {
   return {
-    seal: (payload) => codec.mint(payload, ctx),
+    seal: (payload) => codec.mint({ p: "v", d: payload }, ctx),
     open: async <T>(token: string): Promise<T> => {
+      let decoded: unknown;
       try {
-        return (await codec.verify(token, ctx)) as T;
+        decoded = await codec.verify(token, ctx);
       } catch (cause) {
         throw new Error(SEALED_STATE_INVALID_MESSAGE, { cause });
       }
+      // A token minted for the MRTR carrier is not a view token, even though
+      // its MAC checks out. Refuse it with the same opaque message.
+      if (!isEnvelope(decoded, "v")) {
+        throw new Error(SEALED_STATE_INVALID_MESSAGE);
+      }
+      return decoded.d as T;
+    },
+    sealRequestState: (payload) =>
+      codec.mint({ p: "r", d: payload, o: operation }, ctx),
+    requestState: <T>(): T | undefined => {
+      // The `requestState.verify` seam already checked the MAC, the expiry,
+      // and the purpose; an unverified round has no state at all.
+      const envelope = ctx.mcpReq.requestState<SealedEnvelope>();
+      if (envelope === undefined) {
+        return undefined;
+      }
+      if (!isEnvelope(envelope, "r") || envelope.o !== operation) {
+        throw new Error(SEALED_STATE_INVALID_MESSAGE);
+      }
+      return envelope.d as T;
     },
   };
 }

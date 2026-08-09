@@ -3,7 +3,7 @@ title: Testing widgets
 description: How to unit-test a widget against an in-memory MockAdaptor, with no real host and no window globals.
 group: Guides
 groupOrder: 2
-order: 9
+order: 10
 ---
 
 `ng-mcp-ui/testing` gives a unit test and Storybook a pure provider override. The override mirrors

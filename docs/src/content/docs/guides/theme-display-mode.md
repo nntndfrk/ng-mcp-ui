@@ -3,7 +3,7 @@ title: Theme and display mode
 description: How to adapt a widget to the theme, the display mode, the safe-area insets and the available height of the host.
 group: Guides
 groupOrder: 2
-order: 4
+order: 6
 ---
 
 Your widget renders inside the product of another company. Therefore it must follow the theme of

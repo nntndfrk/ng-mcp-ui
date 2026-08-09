@@ -17,6 +17,22 @@
      Claude, and a vote as it is cast. Highest-value addition to this page.
      Everything below is text that argues for what this would simply show. -->
 
+## Which version to install
+
+This package has two lines. Pick by the MCP protocol your host speaks.
+
+| Line | Install | Protocol | Status |
+| --- | --- | --- | --- |
+| **0.2.x** | `npm i ng-mcp-ui` | 2025 era | Current hosts. Security patches until August 2027 |
+| **1.x** | `npm i ng-mcp-ui@next` | 2026-07-28 only | Beta. Built on MCP TypeScript SDK v2 |
+
+A 1.x server rejects 2025-era clients. Claude still connects with the
+2025-11-25 protocol as of August 2026, so **use 0.2.x for a connector you want
+to work today**. Move to 1.x when your hosts adopt 2026-07-28. See the
+[migration guide](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/migrate-from-0-2).
+
+Your widget code is the same in both lines. The changes are on the server.
+
 ## Description
 
 You have an Angular app. You want its features to show as **interactive widgets
@@ -207,17 +223,17 @@ export function createMcpServer(): McpServer {
       name: "create_poll",
       title: "Create poll",
       description: "Create a poll and render it as an interactive view.",
-      inputSchema: {
+      inputSchema: z.object({
         question: z.string().min(1),
         options: z.array(z.string().min(1)).min(2),
-      },
-      outputSchema: {
+      }),
+      outputSchema: z.object({
         pollId: z.string(),
         question: z.string(),
         options: z.array(z.string()),
         tally: z.array(z.object({ option: z.string(), count: z.number() })),
         total: z.number(),
-      },
+      }),
       // a `view` links this tool to the `poll` widget component (one tool per view)
       view: {
         component: "poll",
@@ -257,11 +273,34 @@ server type, so `typeof server` carries enough type information for the
 `injectAppHelpers<typeof server>()` web helper to produce fully-typed,
 tool-name-narrowed hooks.
 
+Tool schemas are [Standard Schema](https://standardschema.dev) instances. Use
+`z.object({ ... })`, ArkType, or Valibot. The raw field-shape form of 0.2.x is
+not accepted.
+
 Content helpers build well-formed MCP content blocks for tool results: `text`,
 `image`, `audio`, `resourceLink`, `embeddedResource`, and the `FileRef` schema.
 Auth helpers (`requireBearerAuth`, `optionalBearerAuth`,
-`mcpAuthMetadataRouter`) and protocol-level `mcpMiddleware(...)` cover bearer
-auth and cross-cutting concerns.
+`mcpAuthMetadataRouter`) cover bearer auth. Mount them on your app before the
+MCP router. The verified `AuthInfo` reaches each handler as
+`ctx.http?.authInfo`.
+
+### Server state
+
+Set the `state` option and every handler gets `ctx.state`. The server seals
+state into a signed token, the widget carries it, and the server opens it on
+the next call. The server keeps no session:
+
+```ts
+new McpServer(
+  { name: "my-app", version: "1.0.0" },
+  { state: { key: process.env["NG_MCP_STATE_KEY"] } },
+);
+```
+
+The same option verifies the `requestState` of an
+[elicitation](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/elicitation)
+round trip. See
+[sealed state](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/sealed-state).
 
 ## `testing`
 
@@ -303,8 +342,8 @@ Full docs, searchable, at **<https://nntndfrk.github.io/ng-mcp-ui/>**.
 
 | | |
 | --- | --- |
-| **Getting started** | [Introduction](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/introduction) · [Quickstart](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/quickstart) · [How it works](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/how-it-works) |
-| **Guides** | [Host bridge and adaptors](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/host-bridge) · [Typed tool data](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/typed-tool-data) · [View state](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/view-state) · [Theme and display mode](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/theme-display-mode) · [Files and downloads](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/files) · [Content Security Policy](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/csp) · [Client hints](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/client-hints) · [Protocol middleware](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/mcp-middleware) · [Testing widgets](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/testing-widgets) · [Troubleshooting](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/troubleshooting) |
+| **Getting started** | [Introduction](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/introduction) · [Quickstart](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/quickstart) · [How it works](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/how-it-works) · [Migrate from 0.2.x](https://nntndfrk.github.io/ng-mcp-ui/docs/getting-started/migrate-from-0-2) |
+| **Guides** | [Host bridge and adaptors](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/host-bridge) · [Typed tool data](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/typed-tool-data) · [View state](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/view-state) · [Theme and display mode](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/theme-display-mode) · [Files and downloads](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/files) · [Content Security Policy](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/csp) · [Client hints](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/client-hints) · [Sealed state](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/sealed-state) · [Elicitation](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/elicitation) · [Testing widgets](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/testing-widgets) · [Troubleshooting](https://nntndfrk.github.io/ng-mcp-ui/docs/guides/troubleshooting) |
 | **Schematics** | [ng add](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/ng-add) · [generate view](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/generate-view) · [generate tool](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/generate-tool) · [build-widgets](https://nntndfrk.github.io/ng-mcp-ui/docs/schematics/build-widgets) |
 | **Reference** | [`ng-mcp-ui/server`](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/server) · [`ng-mcp-ui/web`](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web) · [`ng-mcp-ui/testing`](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/testing) · [Host support matrix](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/host-support) |
 | **API** | One page for each exported symbol, with its full signature: [`createMcpServer`](https://nntndfrk.github.io/ng-mcp-ui/docs/api/mcp-server) · [`registerTool`](https://nntndfrk.github.io/ng-mcp-ui/docs/api/register-tool) · [`provideMcpUi`](https://nntndfrk.github.io/ng-mcp-ui/docs/api/provide-mcp-ui) · [`injectToolInfo`](https://nntndfrk.github.io/ng-mcp-ui/docs/api/inject-tool-info) · [`injectCallTool`](https://nntndfrk.github.io/ng-mcp-ui/docs/api/inject-call-tool) · [and 33 more](https://nntndfrk.github.io/ng-mcp-ui/docs/reference/web) |

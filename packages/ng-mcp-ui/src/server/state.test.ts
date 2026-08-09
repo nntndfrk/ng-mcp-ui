@@ -14,9 +14,18 @@ import {
 
 const KEY = "0123456789abcdef0123456789abcdef"; // 32 bytes
 
-// The codec only reads `ctx` through the optional `bind` callback, so a
-// plain object stands in for the full SDK context.
-const ctx = {} as ServerContext;
+// The codec only reads `ctx` through the optional `bind` callback, and the
+// MRTR reader only through `mcpReq.requestState`, so a stub stands in for the
+// full SDK context. `echo` seeds what a verified retry round would carry.
+let echoed: unknown;
+const ctx = {
+  mcpReq: { requestState: () => echoed },
+} as unknown as ServerContext;
+
+/** Stand in for the `requestState.verify` seam having resolved `value`. */
+function echo(value: unknown): void {
+  echoed = value;
+}
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -75,7 +84,7 @@ describe("resolveStateCodec", () => {
 
 describe("createSealedState", () => {
   const codec = createRequestStateCodec({ key: KEY });
-  const state = createSealedState(codec, ctx);
+  const state = createSealedState(codec, ctx, "bump");
 
   it("round-trips a payload through seal/open", async () => {
     const token = await state.seal({ pollId: "p1", total: 3 });
@@ -106,6 +115,7 @@ describe("createSealedState", () => {
     const shortLived = createSealedState(
       createRequestStateCodec({ key: KEY, ttlSeconds: 10 }),
       ctx,
+      "bump",
     );
     vi.useFakeTimers();
     const token = await shortLived.seal({ n: 1 });
@@ -113,5 +123,43 @@ describe("createSealedState", () => {
     await expect(shortLived.open(token)).rejects.toThrow(
       SEALED_STATE_INVALID_MESSAGE,
     );
+  });
+});
+
+// The two carriers share one key, so the envelope carries the purpose (and,
+// for MRTR, the tool) inside the MAC. Without these checks a widget token
+// would be a valid `requestState` echo and vice versa.
+describe("createSealedState domain separation", () => {
+  const codec = createRequestStateCodec({ key: KEY });
+  const state = createSealedState(codec, ctx, "confirm_delete");
+
+  it("refuses a request-state token passed to open()", async () => {
+    const mrtrToken = await state.sealRequestState({ target: "report.pdf" });
+    await expect(state.open(mrtrToken)).rejects.toThrow(
+      SEALED_STATE_INVALID_MESSAGE,
+    );
+  });
+
+  it("refuses a view token substituted as the verified echo", async () => {
+    // What the seam would resolve if a widget token were echoed as
+    // requestState: a structurally valid envelope of the wrong purpose.
+    const viewToken = await state.seal({ count: 1 });
+    echo(await codec.verify(viewToken, ctx));
+    expect(() => state.requestState()).toThrow(SEALED_STATE_INVALID_MESSAGE);
+  });
+
+  it("refuses an echo minted by a different tool", async () => {
+    const other = createSealedState(codec, ctx, "other_tool");
+    const token = await other.sealRequestState({ target: "report.pdf" });
+    echo(await codec.verify(token, ctx));
+    expect(() => state.requestState()).toThrow(SEALED_STATE_INVALID_MESSAGE);
+  });
+
+  it("returns the payload of its own echo, and undefined on a first round", async () => {
+    const token = await state.sealRequestState({ target: "report.pdf" });
+    echo(await codec.verify(token, ctx));
+    expect(state.requestState()).toEqual({ target: "report.pdf" });
+    echo(undefined);
+    expect(state.requestState()).toBeUndefined();
   });
 });

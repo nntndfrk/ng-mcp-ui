@@ -3,7 +3,7 @@ title: Files and downloads
 description: How to declare a file field with FileRef, and how to use injectFiles and injectDownload in a widget.
 group: Guides
 groupOrder: 2
-order: 5
+order: 7
 ---
 
 Files move in two directions. A different host supports each direction.

@@ -3,7 +3,7 @@ title: Content Security Policy
 description: How to declare the origins that a view can load, contact, frame and redirect to, and how the server merges these values.
 group: Guides
 groupOrder: 2
-order: 6
+order: 8
 ---
 
 Your view operates in a sandboxed iframe. The host controls that iframe. The host builds the CSP of

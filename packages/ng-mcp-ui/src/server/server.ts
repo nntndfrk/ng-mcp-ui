@@ -43,6 +43,7 @@ import {
 import type { ShellRenderer } from "./shell-renderer.js";
 import { AngularShellRenderer } from "./shell-templates.js";
 import {
+  assertRequestStateEnvelope,
   createSealedState,
   type RequestStateCodec,
   resolveStateCodec,
@@ -90,6 +91,41 @@ type OpenaiToolMeta = {
 type McpAppsToolMeta = {
   ui: McpUiToolMeta;
 };
+
+/**
+ * The MCP Apps extension identifier and resource MIME type. Mirrors
+ * `EXTENSION_ID` / `RESOURCE_MIME_TYPE` from `@modelcontextprotocol/ext-apps`,
+ * copied rather than imported because that package's server entry still pins
+ * SDK v1 (this file only takes *types* from it).
+ */
+const MCP_APPS_EXTENSION_ID = "io.modelcontextprotocol/ui";
+const MCP_APPS_MIME_TYPE = "text/html;profile=mcp-app";
+
+/** @internal Tools already warned about a missing fallback (warn once each). */
+const warnedViewFallback = new Set<string>();
+
+/**
+ * @internal
+ * Warn, in development only, that a view tool returned no `content`. The view
+ * renders only on hosts that support MCP Apps or the Apps SDK; every other
+ * client (and the model's own transcript) sees an empty result. `content` is
+ * the non-UI fallback and should describe what the view shows.
+ */
+function warnMissingViewFallback(toolName: string): void {
+  if (
+    process.env.NODE_ENV === "production" ||
+    warnedViewFallback.has(toolName)
+  ) {
+    return;
+  }
+  warnedViewFallback.add(toolName);
+  console.warn(
+    `ng-mcp-ui: tool "${toolName}" renders a view but returned no \`content\`. ` +
+      "Clients without MCP Apps support, and the model's own reading of the " +
+      "result, see nothing. Return a short text summary alongside " +
+      "`structuredContent` as the non-UI fallback.",
+  );
+}
 
 type SecuritySchemesToolMeta = {
   securitySchemes: SecurityScheme[];
@@ -223,15 +259,22 @@ export class McpServer<
     const codec = resolveStateCodec(state);
     this.stateCodec = codec;
     // Wire the codec's `verify` into the SDK's MRTR integrity hook so echoed
-    // `requestState` is checked before handlers run and the decoded payload
-    // reaches `ctx.mcpReq.requestState<T>()`. A user-supplied `requestState`
-    // option wins.
+    // `requestState` is checked before handlers run. The hook also enforces
+    // the purpose binding, so a widget-carried token substituted here is
+    // refused with the SDK's frozen -32602 before any handler sees it. The
+    // resolved value is the signed envelope; `ctx.state.requestState<T>()`
+    // unwraps it and checks the operation binding. A user-supplied
+    // `requestState` option wins.
     this.sdkOptions =
       codec !== undefined && sdkOptions.requestState === undefined
         ? {
             ...sdkOptions,
             requestState: {
-              verify: (echoed, ctx) => codec.verify(echoed, ctx),
+              verify: async (echoed, ctx) => {
+                const envelope = await codec.verify(echoed, ctx);
+                assertRequestStateEnvelope(envelope);
+                return envelope;
+              },
             },
           }
         : sdkOptions;
@@ -313,11 +356,55 @@ export class McpServer<
   /** @internal Build one per-request SDK server from the recorded entries. */
   buildInstance(ctx: McpRequestContext): SdkMcpServer {
     const view = this.resolveViewRequestContext(ctx.requestInfo);
-    const server = new SdkMcpServer(this.serverInfo, this.sdkOptions);
+    const server = new SdkMcpServer(this.serverInfo, this.instanceOptions());
     for (const entry of this.toolEntries) {
       this.applyToolEntry(server, entry, view);
     }
     return server;
+  }
+
+  /**
+   * @internal
+   * The SDK options for one instance: the caller's options plus the MCP Apps
+   * extension declaration (SEP-2133) when this blueprint serves any `mcp-app`
+   * view. Extensions are negotiated, so a server that renders views has to
+   * advertise the capability rather than only publishing the resources. Hosts
+   * declare their side in the request envelope's client capabilities, readable
+   * with `getUiCapability(ctx.mcpReq.envelope?.clientCapabilities)`.
+   *
+   * An explicit `extensions` entry in the caller's `capabilities` wins, so an
+   * app can pin its own payload.
+   */
+  private instanceOptions(): ServerOptions | undefined {
+    if (!this.servesMcpAppViews()) {
+      return this.sdkOptions;
+    }
+    const capabilities = this.sdkOptions?.capabilities;
+    const extensions = capabilities?.extensions;
+    if (extensions?.[MCP_APPS_EXTENSION_ID] !== undefined) {
+      return this.sdkOptions;
+    }
+    return {
+      ...this.sdkOptions,
+      capabilities: {
+        ...capabilities,
+        extensions: {
+          ...extensions,
+          [MCP_APPS_EXTENSION_ID]: { mimeTypes: [MCP_APPS_MIME_TYPE] },
+        },
+      },
+    };
+  }
+
+  /** @internal Does any registered tool render an `mcp-app` view? */
+  private servesMcpAppViews(): boolean {
+    return this.toolEntries.some((entry) => {
+      const hosts = entry.config.view?.hosts;
+      return (
+        entry.config.view !== undefined &&
+        (hosts === undefined || hosts.includes("mcp-app"))
+      );
+    });
   }
 
   private enforceOneToolPerView(component: string, toolName: string): void {
@@ -392,6 +479,7 @@ export class McpServer<
 
     const wrapped = this.wrapHandler(entry.handler, {
       attachViewUUID: Boolean(view),
+      operation: name,
     });
 
     const sdkConfig = {
@@ -424,14 +512,18 @@ export class McpServer<
   private wrapHandler(
     // biome-ignore lint/suspicious/noExplicitAny: erased-type boundary with the SDK callback
     cb: ToolHandler<any, any>,
-    { attachViewUUID }: { attachViewUUID: boolean },
+    {
+      attachViewUUID,
+      operation,
+    }: { attachViewUUID: boolean; operation: string },
   ) {
     return async (args: Record<string, unknown>, ctx: McpToolContext) => {
       if (this.stateCodec) {
-        // Attach the per-request sealed-state surface. Mutating the SDK's ctx
-        // (rather than spreading it) preserves its prototype and any
+        // Attach the per-request sealed-state surface, bound to this tool so
+        // MRTR echoes cannot be replayed into another one. Mutating the SDK's
+        // ctx (rather than spreading it) preserves its prototype and any
         // `this`-bound internals.
-        ctx.state = createSealedState(this.stateCodec, ctx);
+        ctx.state = createSealedState(this.stateCodec, ctx, operation);
       }
       const result = await cb(args, ctx);
       if (isInputRequiredResult(result)) {
@@ -439,9 +531,13 @@ export class McpServer<
         // carry a viewUUID (nothing renders until the flow completes).
         return result;
       }
+      const content = normalizeContent(result.content);
+      if (attachViewUUID && content.length === 0) {
+        warnMissingViewFallback(operation);
+      }
       return {
         ...result,
-        content: normalizeContent(result.content),
+        content,
         ...(attachViewUUID && {
           _meta: {
             ...(result as { _meta?: Record<string, unknown> })._meta,
@@ -488,7 +584,7 @@ export class McpServer<
       const viewResource: ViewResourceConfig<McpAppsResourceMeta> = {
         hostType: "mcp-app",
         uri: `ui://views/ext-apps/${view.component}.html${versionParam}`,
-        mimeType: "text/html;profile=mcp-app",
+        mimeType: MCP_APPS_MIME_TYPE,
         buildContentMeta: (defaults, overrides) =>
           buildExtAppsContentMeta(view, defaults, overrides),
       };
