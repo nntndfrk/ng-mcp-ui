@@ -78,10 +78,17 @@ unchanged.
 ```ts
 // 0.2.x
 inputSchema: { question: z.string(), options: z.array(z.string()) },
+outputSchema: pollContract.shape,
 
 // 1.x
 inputSchema: z.object({ question: z.string(), options: z.array(z.string()) }),
+outputSchema: pollContract,
 ```
+
+`outputSchema` moves the same way. In 0.2.x it also took a raw shape, so `someSchema.shape` was
+the natural way to write it when the contract lived in a shared `z.object`. Both positions now
+take the schema itself, so a tool that declares input and output is two edits, not one. Size the
+migration accordingly.
 
 Type inference through to the widget (`ToolInput`, `ToolOutput`, `injectToolInfo`) works exactly
 as before.
@@ -96,6 +103,7 @@ Handlers now receive the SDK v2 tool context instead of the v1 `extra` object:
 | `extra.requestInfo.headers["x-foo"]` | `ctx.http?.req?.headers.get("x-foo")` |
 | `extra.authInfo` | `ctx.http?.authInfo` |
 | `extra._meta` (client hints) | `ctx.mcpReq._meta` |
+| `extra.sessionId` | `ctx.sessionId`, unchanged |
 | n/a | `ctx.state` ([sealed state](/docs/guides/sealed-state)) |
 | n/a | `ctx.mcpReq.inputResponses`, `ctx.mcpReq.requestState<T>()` ([elicitation](/docs/guides/elicitation)) |
 
@@ -109,13 +117,91 @@ middleware chain, so there is no hook to expose. Replace each use:
 
 | 0.2.x middleware use | 1.x replacement |
 | --- | --- |
-| Logging, metrics, tracing | Express middleware around the router (`app.use` before the mount) |
+| Logging, metrics, tracing | Wrap each tool handler ([below](#logging-metrics-and-tracing)). Express middleware around the mount sees the request but not the result |
 | Auth checks | `requireBearerAuth` / `optionalBearerAuth` before the router, `ctx.http?.authInfo` in handlers |
-| Per-request context for handlers | Read `ctx` directly in the handler |
+| Per-request context for handlers | Read `ctx` in the handler, or open an `AsyncLocalStorage` scope for code that takes no `ctx` ([below](#per-request-context)) |
 | Rewriting results | Do it in the handler, or wrap the handler function in your own helper |
 
 The view `_meta` injection that ng-mcp-ui itself performed through middleware now happens at
 registration time. You get it automatically and cannot break it by middleware ordering.
+
+### Logging, metrics, and tracing
+
+Express middleware around the mount sees the HTTP exchange. With `express.json()` mounted
+upstream, which is the wiring `ng add` generates, it can read the method, the tool name, and the
+arguments straight off `req.body`, and time the request:
+
+```ts
+app.use("/mcp", (req, res, next) => {
+  const { method, params } = req.body ?? {};
+  const startedAt = Date.now();
+  res.on("finish", () =>
+    log("info", "mcp_request", {
+      method,
+      name: params?.name,
+      ms: Date.now() - startedAt,
+    }),
+  );
+  next();
+});
+```
+
+What it does not see is the outcome. The SDK handler writes the response, so whether the call
+returned an error result, what it returned, and how long the handler itself ran are all out of
+reach. Under the default `responseMode: "auto"` the response can also upgrade to an SSE stream
+rather than a single JSON body, so intercepting the write is not dependable either.
+
+Anything that depends on the result belongs in a handler wrapper applied at registration:
+
+```ts
+import type { McpToolContext } from "ng-mcp-ui/server";
+
+const instrument =
+  <A, R>(name: string, fn: (args: A, ctx: McpToolContext) => Promise<R>) =>
+  async (args: A, ctx: McpToolContext): Promise<R> => {
+    const startedAt = Date.now();
+    try {
+      const result = await fn(args, ctx);
+      log("info", "tool_call", { name, ms: Date.now() - startedAt });
+      return result;
+    } catch (error) {
+      log("error", "tool_call", { name, ms: Date.now() - startedAt, error });
+      throw error;
+    }
+  };
+
+server.registerTool(
+  { name: "search", inputSchema: z.object({ q: z.string() }) },
+  instrument("search", async (args, ctx) => searchHandler(args, ctx)),
+);
+```
+
+The wrapper is transparent to inference: `args` stays typed from `inputSchema` and `typeof server`
+still carries the tool's `structuredContent` shape, so typed view helpers keep working.
+
+Be aware that this is a per-tool edit rather than one cross-cutting registration. Budget one edit
+per tool on top of the shared helper. On a server with a few dozen tools it is the largest single
+line item in the migration.
+
+### Per-request context
+
+`ctx` covers code that can take a parameter. When a per-request value has to reach code that
+cannot, such as an API client several awaits down the call graph or a logger that stamps a
+correlation id, open an `AsyncLocalStorage` scope in Express middleware around the mount. The
+store propagates into tool handlers and everything they await:
+
+```ts
+const requestContext = new AsyncLocalStorage<{ correlationId: string }>();
+
+app.use("/mcp", (req, _res, next) => {
+  const correlationId = req.header("x-correlation-id") ?? randomUUID();
+  requestContext.run({ correlationId }, next);
+});
+app.use("/mcp", createMcpExpressRouter(mcp));
+```
+
+That scope carries HTTP-level facts. To put tool-call-level facts in the store, the tool name or
+the parsed arguments, open the scope inside the handler wrapper above instead.
 
 ## 6. Replace the transport plumbing
 

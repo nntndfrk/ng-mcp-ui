@@ -4,6 +4,7 @@
 // ONLY (`legacy: 'reject'`), so every request stamps the modern `_meta`
 // envelope + `Mcp-Method`/`Mcp-Name` routing headers (SEP-2243).
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import express from "express";
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -299,6 +300,48 @@ describe("createMcpExpressRouter", () => {
     expect(calls).toEqual(["reject"]);
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ error: "Unauthorized" });
+  });
+
+  it("propagates an AsyncLocalStorage scope opened before the mount into handlers", async () => {
+    // The 0.2.x migration guide tells consumers to replace `mcpMiddleware`
+    // per-request context with an ALS scope in express middleware. That only
+    // holds while the router keeps the request's async context: it calls the
+    // node adapter synchronously inside the express chain, so the store must
+    // still be visible in the tool handler and everything it awaits.
+    const als = new AsyncLocalStorage<{ correlationId: string }>();
+    const seen: Array<string | undefined> = [];
+
+    async function deeperInTheCallGraph(): Promise<string | undefined> {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      return als.getStore()?.correlationId;
+    }
+
+    const server = new McpServer({ name: "t", version: "0.0.0" });
+    server.registerTool(
+      { name: "echo", inputSchema: z.object({ v: z.string() }) },
+      async (args) => {
+        seen.push(als.getStore()?.correlationId);
+        seen.push(await deeperInTheCallGraph());
+        return { content: [{ type: "text", text: args.v }] };
+      },
+    );
+
+    const app = express();
+    app.use(express.json());
+    app.use("/mcp", (req, _res, next) => {
+      als.run({ correlationId: String(req.headers["x-correlation-id"]) }, next);
+    });
+    app.use("/mcp", createMcpExpressRouter(server));
+
+    const res = await request(app)
+      .post("/mcp")
+      .set("Accept", ACCEPT_BOTH)
+      .set("x-correlation-id", "abc-123")
+      .set(modernHeaders("tools/call", "echo"))
+      .send(modernBody("tools/call", { name: "echo", arguments: { v: "hi" } }));
+
+    expect(res.status).toBe(200);
+    expect(seen).toEqual(["abc-123", "abc-123"]);
   });
 
   it("exposes the SDK handler as router.mcp (notify/bus for subscriptions)", async () => {
