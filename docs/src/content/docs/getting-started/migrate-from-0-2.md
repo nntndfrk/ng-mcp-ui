@@ -139,6 +139,9 @@ app.use("/mcp", (req, res, next) => {
     log("info", "mcp_request", {
       method,
       name: params?.name,
+      // The parsed arguments sit on `params.arguments`. Log their keys rather
+      // than their values unless you know the tool takes nothing sensitive.
+      argKeys: Object.keys(params?.arguments ?? {}),
       ms: Date.now() - startedAt,
     }),
   );
@@ -191,6 +194,9 @@ correlation id, open an `AsyncLocalStorage` scope in Express middleware around t
 store propagates into tool handlers and everything they await:
 
 ```ts
+import { AsyncLocalStorage } from "node:async_hooks";
+import { randomUUID } from "node:crypto";
+
 const requestContext = new AsyncLocalStorage<{ correlationId: string }>();
 
 app.use("/mcp", (req, _res, next) => {
